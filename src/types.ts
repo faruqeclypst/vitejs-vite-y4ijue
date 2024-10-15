@@ -1,4 +1,3 @@
-
 export interface Teacher {
   id: string;
   name: string;
@@ -23,8 +22,7 @@ export interface Attendance {
   rosterId: string;
   date: string;
   presentHours: number[];
-  status: AttendanceStatus;
-  remarks?: string;
+  keterangan: string;
 }
 
 export interface Student {
@@ -45,16 +43,15 @@ export interface StudentLeaveRequest {
 
 export type DayOfWeek = 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday';
 
-export type AttendanceStatus = 'Present' | 'Absent' | 'Late' | 'Excused' | 'Sick';
-
 export const daySchedule: Record<DayOfWeek, number> = {
   Monday: 8,
   Tuesday: 8,
   Wednesday: 8,
   Thursday: 8,
   Friday: 6,
-  Saturday: 8
+  Saturday: 7
 };
+
 
 export const availableClasses = [
   'X-1', 'X-2', 'X-3', 'X-4', 'X-5', 'X-6',

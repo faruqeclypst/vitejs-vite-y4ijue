@@ -16,7 +16,7 @@ const Sidebar: React.FC = () => {
 
   return (
     <nav className="bg-blue-600 text-white w-64 min-h-screen p-4">
-      <h1 className="text-2xl font-bold mb-8">School Management</h1>
+      <h1 className="text-2xl font-bold mb-8">Piket MOSA</h1>
       <ul className="space-y-2">
         {navItems.map((item) => (
           <li key={item.path}>

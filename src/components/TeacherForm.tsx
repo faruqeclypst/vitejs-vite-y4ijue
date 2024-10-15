@@ -19,35 +19,25 @@ const TeacherForm: React.FC<TeacherFormProps> = ({ onSubmit, initialTeacher }) =
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <div>
-        <label htmlFor="name" className="block text-sm font-medium text-gray-700">
-          Teacher Name
-        </label>
-        <input
-          type="text"
-          id="name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
-          required
-        />
-      </div>
-      <div>
-        <label htmlFor="code" className="block text-sm font-medium text-gray-700">
-          Kode Guru
-        </label>
-        <input
-          type="text"
-          id="code"
-          value={code}
-          onChange={(e) => setCode(e.target.value)}
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
-          required
-        />
-      </div>
+      <input
+        type="text"
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        placeholder="Teacher Name"
+        required
+        className="w-full p-2 border rounded"
+      />
+      <input
+        type="text"
+        value={code}
+        onChange={(e) => setCode(e.target.value)}
+        placeholder="Kode Guru"
+        required
+        className="w-full p-2 border rounded"
+      />
       <button
         type="submit"
-        className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
+        className="w-full p-2 bg-blue-500 text-white rounded hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
       >
         {initialTeacher ? 'Update Teacher' : 'Add Teacher'}
       </button>

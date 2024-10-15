@@ -1,13 +1,20 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { RosterEntry, Teacher } from '../types';
+import RosterForm from './RosterForm';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 
 interface RosterTableProps {
   roster: RosterEntry[];
   teachers: Teacher[];
   onDelete: (id: string) => void;
+  onAdd: (entry: Omit<RosterEntry, 'id'>) => void;
+  classes: string[];
 }
 
-const RosterTable: React.FC<RosterTableProps> = ({ roster, teachers, onDelete }) => {
+const RosterTable: React.FC<RosterTableProps> = ({ roster, teachers, onDelete, onAdd, classes }) => {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [openTeachers, setOpenTeachers] = useState<string[]>([]);
+
   // Group roster entries by teacher
   const groupedRoster = roster.reduce((acc, entry) => {
     if (!acc[entry.teacherId]) {
@@ -17,45 +24,80 @@ const RosterTable: React.FC<RosterTableProps> = ({ roster, teachers, onDelete })
     return acc;
   }, {} as Record<string, RosterEntry[]>);
 
+  const toggleTeacher = (teacherId: string) => {
+    setOpenTeachers(prev =>
+      prev.includes(teacherId)
+        ? prev.filter(id => id !== teacherId)
+        : [...prev, teacherId]
+    );
+  };
+
   return (
     <div className="overflow-x-auto">
-      <table className="min-w-full bg-white">
-        <thead>
-          <tr className="bg-gray-200 text-gray-600 uppercase text-sm leading-normal">
-            <th className="py-3 px-6 text-left">Teacher</th>
-            <th className="py-3 px-6 text-left">Schedule</th>
-            <th className="py-3 px-6 text-center">Actions</th>
-          </tr>
-        </thead>
-        <tbody className="text-gray-600 text-sm font-light">
-          {Object.entries(groupedRoster).map(([teacherId, entries]) => {
-            const teacher = teachers.find(t => t.id === teacherId);
-            return (
-              <tr key={teacherId} className="border-b border-gray-200 hover:bg-gray-100">
-                <td className="py-3 px-6 text-left whitespace-nowrap">{teacher?.name}</td>
-                <td className="py-3 px-6 text-left">
-                  {entries.map((entry, index) => (
-                    <div key={entry.id} className={index > 0 ? 'mt-2' : ''}>
-                      <span className="font-semibold">{entry.dayOfWeek}:</span> {entry.classId} (Hours: {entry.hours.join(', ')})
+      <button
+        onClick={() => setIsModalOpen(true)}
+        className="mb-4 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+      >
+        Add New Entry
+      </button>
+      <div className="space-y-2">
+        {Object.entries(groupedRoster).map(([teacherId, entries]) => {
+          const teacher = teachers.find(t => t.id === teacherId);
+          const isOpen = openTeachers.includes(teacherId);
+          return (
+            <div key={teacherId} className="bg-white shadow rounded-lg overflow-hidden">
+              <button
+                onClick={() => toggleTeacher(teacherId)}
+                className="w-full flex justify-between items-center p-4 text-left"
+              >
+                <h3 className="font-bold text-lg">{teacher?.name}</h3>
+                {isOpen ? (
+                  <ChevronUp className="h-5 w-5" />
+                ) : (
+                  <ChevronDown className="h-5 w-5" />
+                )}
+              </button>
+              {isOpen && (
+                <div className="p-4 bg-gray-50">
+                  {entries.map((entry) => (
+                    <div key={entry.id} className="mb-2 p-2 bg-white rounded shadow">
+                      <p><span className="font-semibold">{entry.dayOfWeek}:</span> {entry.classId}</p>
+                      <p>Hours: {entry.hours.join(', ')}</p>
+                      <button
+                        onClick={() => onDelete(entry.id)}
+                        className="mt-2 bg-red-500 text-white text-xs px-2 py-1 rounded hover:bg-red-600"
+                      >
+                        Delete
+                      </button>
                     </div>
                   ))}
-                </td>
-                <td className="py-3 px-6 text-center">
-                  {entries.map(entry => (
-                    <button
-                      key={entry.id}
-                      onClick={() => onDelete(entry.id)}
-                      className="bg-red-500 text-white active:bg-red-600 font-bold uppercase text-xs px-2 py-1 rounded shadow hover:shadow-md outline-none focus:outline-none mr-1 mb-1 ease-linear transition-all duration-150"
-                    >
-                      Delete
-                    </button>
-                  ))}
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <h2 className="text-xl font-bold mb-4">Add New Roster Entry</h2>
+            <RosterForm
+              teachers={teachers}
+              classes={classes}
+              onSubmit={(entry) => {
+                onAdd(entry);
+                setIsModalOpen(false);
+              }}
+            />
+            <button
+              onClick={() => setIsModalOpen(false)}
+              className="mt-4 bg-gray-300 text-gray-800 px-4 py-2 rounded hover:bg-gray-400"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
