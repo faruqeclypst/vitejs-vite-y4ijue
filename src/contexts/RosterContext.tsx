@@ -1,4 +1,6 @@
-import React, { createContext, useState, useContext } from 'react';
+import React, { createContext, useState, useContext, useEffect } from 'react';
+import { ref, onValue, push, update, remove } from 'firebase/database';
+import { db } from '../firebase';
 import { RosterEntry } from '../types';
 
 interface RosterContextType {
@@ -10,21 +12,38 @@ interface RosterContextType {
 
 const RosterContext = createContext<RosterContextType | undefined>(undefined);
 
-let nextRosterId = 1;
-
 export const RosterProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [roster, setRoster] = useState<RosterEntry[]>([]);
 
+  useEffect(() => {
+    const rosterRef = ref(db, 'roster');
+    onValue(rosterRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const rosterList = Object.entries(data).map(([id, entry]) => ({
+          id,
+          ...(entry as Omit<RosterEntry, 'id'>)
+        }));
+        setRoster(rosterList);
+      } else {
+        setRoster([]);
+      }
+    });
+  }, []);
+
   const addRosterEntry = (entry: Omit<RosterEntry, 'id'>) => {
-    setRoster([...roster, { ...entry, id: `roster_${nextRosterId++}`, hours: entry.hours || [] }]);
+    const rosterRef = ref(db, 'roster');
+    push(rosterRef, entry);
   };
 
   const updateRosterEntry = (id: string, updatedEntry: Omit<RosterEntry, 'id'>) => {
-    setRoster(roster.map(entry => entry.id === id ? { ...updatedEntry, id, hours: updatedEntry.hours || [] } : entry));
+    const entryRef = ref(db, `roster/${id}`);
+    update(entryRef, updatedEntry);
   };
 
   const deleteRosterEntry = (id: string) => {
-    setRoster(roster.filter(entry => entry.id !== id));
+    const entryRef = ref(db, `roster/${id}`);
+    remove(entryRef);
   };
 
   return (

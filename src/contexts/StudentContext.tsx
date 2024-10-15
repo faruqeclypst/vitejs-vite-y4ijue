@@ -1,4 +1,6 @@
-import React, { createContext, useState, useContext } from 'react';
+import React, { createContext, useState, useContext, useEffect } from 'react';
+import { ref, onValue, push, update, remove } from 'firebase/database';
+import { db } from '../firebase';
 import { Student } from '../types';
 
 interface StudentContextType {
@@ -10,30 +12,38 @@ interface StudentContextType {
 
 const StudentContext = createContext<StudentContextType | undefined>(undefined);
 
-let nextStudentId = 1;
-
 export const StudentProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [students, setStudents] = useState<Student[]>([]);
 
+  useEffect(() => {
+    const studentsRef = ref(db, 'students');
+    onValue(studentsRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const studentsList = Object.entries(data).map(([id, student]) => ({
+          id,
+          ...(student as Omit<Student, 'id'>)
+        }));
+        setStudents(studentsList);
+      } else {
+        setStudents([]);
+      }
+    });
+  }, []);
+
   const addStudent = (student: Omit<Student, 'id'>) => {
-    if (window.confirm('Are you sure you want to add this student?')) {
-      setStudents([...students, { ...student, id: `student_${nextStudentId++}` }]);
-      alert('Student added successfully.');
-    }
+    const studentsRef = ref(db, 'students');
+    push(studentsRef, student);
   };
 
   const updateStudent = (id: string, updatedStudent: Omit<Student, 'id'>) => {
-    if (window.confirm('Are you sure you want to update this student?')) {
-      setStudents(students.map(student => student.id === id ? { ...updatedStudent, id } : student));
-      alert('Student updated successfully.');
-    }
+    const studentRef = ref(db, `students/${id}`);
+    update(studentRef, updatedStudent);
   };
 
   const deleteStudent = (id: string) => {
-    if (window.confirm('Are you sure you want to delete this student?')) {
-      setStudents(students.filter(student => student.id !== id));
-      alert('Student deleted successfully.');
-    }
+    const studentRef = ref(db, `students/${id}`);
+    remove(studentRef);
   };
 
   return (

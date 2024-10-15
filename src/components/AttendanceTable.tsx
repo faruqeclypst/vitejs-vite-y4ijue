@@ -22,9 +22,10 @@ const AttendanceTable: React.FC<AttendanceTableProps> = ({ roster, teachers, onS
     setAttendanceData(initialData);
   }, [roster, existingAttendance]);
 
-  const handleCheckboxChange = (rosterId: string, hour: number) => {
+  const handleToggle = (rosterId: string, hour: number) => {
     setAttendanceData(prev => {
       const current = prev[rosterId];
+      if (!current) return prev;
       const updatedHours = current.presentHours.includes(hour)
         ? current.presentHours.filter(h => h !== hour)
         : [...current.presentHours, hour].sort((a, b) => a - b);
@@ -54,8 +55,37 @@ const AttendanceTable: React.FC<AttendanceTableProps> = ({ roster, teachers, onS
   };
 
   const handleSubmit = () => {
+    const filteredAttendanceData = Object.entries(attendanceData).reduce((acc, [rosterId, data]) => {
+      if (data.presentHours.length > 0 || data.status !== 'Present' || data.remarks.trim() !== '') {
+        acc[rosterId] = data;
+      }
+      return acc;
+    }, {} as typeof attendanceData);
+
+    const hasAttendanceData = Object.keys(filteredAttendanceData).length > 0;
+
+    if (!hasAttendanceData) {
+      alert('No attendance data to submit. Please enter attendance information before submitting.');
+      return;
+    }
+
     if (window.confirm('Are you sure you want to submit this attendance data?')) {
-      onSubmit(attendanceData);
+      // Merge new attendance data with existing data to prevent duplication
+      const mergedAttendanceData = existingAttendance.reduce((acc, record) => {
+        acc[record.rosterId] = {
+          presentHours: record.presentHours,
+          status: record.status,
+          remarks: record.remarks || '',
+        };
+        return acc;
+      }, {} as typeof filteredAttendanceData);
+
+      // Update or add new attendance data
+      Object.entries(filteredAttendanceData).forEach(([rosterId, data]) => {
+        mergedAttendanceData[rosterId] = data;
+      });
+
+      onSubmit(mergedAttendanceData);
     }
   };
 
@@ -63,62 +93,100 @@ const AttendanceTable: React.FC<AttendanceTableProps> = ({ roster, teachers, onS
     return <div>No roster data available.</div>;
   }
 
+  // Group roster entries by teacher
+  const groupedRoster = roster.reduce((acc, entry) => {
+    const teacherId = entry.teacherId;
+    if (!acc[teacherId]) {
+      acc[teacherId] = [];
+    }
+    acc[teacherId].push(entry);
+    return acc;
+  }, {} as { [teacherId: string]: RosterEntry[] });
+
   return (
     <div className="overflow-x-auto">
       <table className="min-w-full bg-white border border-gray-300">
         <thead>
           <tr className="bg-gray-100">
-            <th className="py-2 px-4 border-b">Teacher</th>
-            <th className="py-2 px-4 border-b">Class</th>
+            <th className="py-2 px-4 border-b">Nama Guru</th>
             {Array.from({ length: 8 }, (_, i) => (
-              <th key={i} className="py-2 px-4 border-b">Hour {i + 1}</th>
+              <th key={i} className="py-2 px-4 border-b">JP {i + 1}</th>
             ))}
             <th className="py-2 px-4 border-b">Status</th>
             <th className="py-2 px-4 border-b">Remarks</th>
           </tr>
         </thead>
         <tbody>
-          {roster.map(entry => {
-            const teacher = teachers.find(t => t.id === entry.teacherId);
-            const currentData = attendanceData[entry.id] || { presentHours: [], status: 'Present' as AttendanceStatus, remarks: '' };
-            const maxHours = daySchedule[entry.dayOfWeek];
+          {Object.entries(groupedRoster).map(([teacherId, entries]) => {
+            const teacher = teachers.find(t => t.id === teacherId);
+            const maxHours = Math.max(...entries.map(e => daySchedule[e.dayOfWeek]));
             return (
-              <tr key={entry.id}>
+              <tr key={teacherId}>
                 <td className="py-2 px-4 border-b">{teacher?.name || 'Unknown'}</td>
-                <td className="py-2 px-4 border-b">{entry.classId}</td>
                 {Array.from({ length: 8 }, (_, i) => (
                   <td key={i} className="py-2 px-4 border-b text-center">
-                    {i < maxHours && entry.hours.includes(i + 1) ? (
-                      <input
-                        type="checkbox"
-                        checked={currentData.presentHours.includes(i + 1)}
-                        onChange={() => handleCheckboxChange(entry.id, i + 1)}
-                        className="form-checkbox h-5 w-5 text-blue-600"
-                      />
+                    {i < maxHours ? (
+                      <div className="flex flex-col space-y-1">
+                        {entries.map(entry => {
+                          if (entry.hours.includes(i + 1)) {
+                            const currentData = attendanceData[entry.id];
+                            return currentData ? (
+                              <button
+                                key={entry.id}
+                                onClick={() => handleToggle(entry.id, i + 1)}
+                                className={`px-2 py-1 text-xs rounded ${
+                                  currentData.presentHours.includes(i + 1)
+                                    ? 'bg-green-500 text-white'
+                                    : 'bg-gray-200 text-gray-700'
+                                }`}
+                              >
+                                {entry.classId}
+                              </button>
+                            ) : null;
+                          }
+                          return null;
+                        })}
+                      </div>
                     ) : null}
                   </td>
                 ))}
                 <td className="py-2 px-4 border-b">
-                  <select
-                    value={currentData.status}
-                    onChange={(e) => handleStatusChange(entry.id, e.target.value as AttendanceStatus)}
-                    className="form-select block w-full mt-1"
-                  >
-                    <option value="Present">Present</option>
-                    <option value="Absent">Absent</option>
-                    <option value="Late">Late</option>
-                    <option value="Excused">Excused</option>
-                    <option value="Sick">Sick</option>
-                  </select>
+                  {entries.map(entry => {
+                    const currentData = attendanceData[entry.id];
+                    return currentData ? (
+                      <div key={entry.id} className="flex items-center space-x-2 mb-1">
+                        <span className="text-xs font-medium">{entry.classId}:</span>
+                        <select
+                          value={currentData.status}
+                          onChange={(e) => handleStatusChange(entry.id, e.target.value as AttendanceStatus)}
+                          className="form-select block w-full text-xs"
+                        >
+                          <option value="Present">Present</option>
+                          <option value="Absent">Absent</option>
+                          <option value="Late">Late</option>
+                          <option value="Excused">Excused</option>
+                          <option value="Sick">Sick</option>
+                        </select>
+                      </div>
+                    ) : null;
+                  })}
                 </td>
                 <td className="py-2 px-4 border-b">
-                  <input
-                    type="text"
-                    value={currentData.remarks}
-                    onChange={(e) => handleRemarksChange(entry.id, e.target.value)}
-                    className="form-input block w-full mt-1"
-                    placeholder="Add remarks..."
-                  />
+                  {entries.map(entry => {
+                    const currentData = attendanceData[entry.id];
+                    return currentData ? (
+                      <div key={entry.id} className="flex items-center space-x-2 mb-1">
+                        <span className="text-xs font-medium">{entry.classId}:</span>
+                        <input
+                          type="text"
+                          value={currentData.remarks}
+                          onChange={(e) => handleRemarksChange(entry.id, e.target.value)}
+                          className="form-input block w-full text-xs"
+                          placeholder="Add remarks..."
+                        />
+                      </div>
+                    ) : null;
+                  })}
                 </td>
               </tr>
             );
@@ -127,7 +195,8 @@ const AttendanceTable: React.FC<AttendanceTableProps> = ({ roster, teachers, onS
       </table>
       <button
         onClick={handleSubmit}
-        className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
+        className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 disabled:bg-gray-400 disabled:cursor-not-allowed"
+        disabled={!roster.length || Object.keys(attendanceData).length === 0}
       >
         Submit Attendance
       </button>

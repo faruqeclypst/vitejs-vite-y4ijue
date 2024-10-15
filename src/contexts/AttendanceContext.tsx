@@ -1,57 +1,65 @@
-import React, { createContext, useState, useContext } from 'react';
-import { Attendance, AttendanceStatus } from '../types';
+import React, { createContext, useState, useContext, useEffect } from 'react';
+import { ref, onValue, push, update, remove, get } from 'firebase/database';
+import { db } from '../firebase';
+import { Attendance } from '../types';
 
 interface AttendanceContextType {
   attendanceRecords: Attendance[];
-  addOrUpdateAttendanceRecord: (record: Omit<Attendance, 'id'>) => void;
+  addOrUpdateAttendanceRecord: (record: Omit<Attendance, 'id'>) => Promise<void>;
   deleteAttendanceRecord: (id: string) => void;
 }
 
 const AttendanceContext = createContext<AttendanceContextType | undefined>(undefined);
 
-let nextId = 1;
-
-const initialAttendanceRecords: Attendance[] = [
-  {
-    id: `attendance_${nextId++}`,
-    rosterId: 'roster_1',
-    date: '2023-05-01',
-    presentHours: [1, 2, 3],
-    status: 'Present',
-    remarks: 'On time'
-  },
-  {
-    id: `attendance_${nextId++}`,
-    rosterId: 'roster_2',
-    date: '2023-05-01',
-    presentHours: [1, 2],
-    status: 'Late',
-    remarks: 'Arrived 10 minutes late'
-  },
-];
-
 export const AttendanceProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [attendanceRecords, setAttendanceRecords] = useState<Attendance[]>(initialAttendanceRecords);
+  const [attendanceRecords, setAttendanceRecords] = useState<Attendance[]>([]);
 
-  const addOrUpdateAttendanceRecord = (record: Omit<Attendance, 'id'>) => {
-    setAttendanceRecords(prevRecords => {
-      const existingRecordIndex = prevRecords.findIndex(
-        r => r.rosterId === record.rosterId && r.date === record.date
-      );
-
-      if (existingRecordIndex !== -1) {
-        const updatedRecords = [...prevRecords];
-        updatedRecords[existingRecordIndex] = { ...record, id: prevRecords[existingRecordIndex].id };
-        return updatedRecords;
+  useEffect(() => {
+    const attendanceRef = ref(db, 'attendance');
+    onValue(attendanceRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const recordsList = Object.entries(data).map(([id, record]) => ({
+          id,
+          ...(record as Omit<Attendance, 'id'>)
+        }));
+        setAttendanceRecords(recordsList);
       } else {
-        const newId = `attendance_${nextId++}`;
-        return [...prevRecords, { ...record, id: newId }];
+        setAttendanceRecords([]);
       }
     });
+  }, []);
+
+  const addOrUpdateAttendanceRecord = async (record: Omit<Attendance, 'id'>) => {
+    const attendanceRef = ref(db, 'attendance');
+    
+    // Check if a record already exists for this roster entry and date
+    const snapshot = await get(attendanceRef);
+    const existingRecords = snapshot.val();
+    
+    if (existingRecords) {
+      const existingRecordId = Object.entries(existingRecords).find(([_, value]) => 
+        (value as Attendance).rosterId === record.rosterId && 
+        (value as Attendance).date === record.date
+      )?.[0];
+
+      if (existingRecordId) {
+        // Update existing record
+        const recordRef = ref(db, `attendance/${existingRecordId}`);
+        await update(recordRef, record);
+      } else {
+        // Create new record
+        await push(attendanceRef, record);
+      }
+    } else {
+      // Create new record if no records exist yet
+      await push(attendanceRef, record);
+    }
   };
 
   const deleteAttendanceRecord = (id: string) => {
-    setAttendanceRecords(prevRecords => prevRecords.filter(record => record.id !== id));
+    const recordRef = ref(db, `attendance/${id}`);
+    remove(recordRef);
   };
 
   return (

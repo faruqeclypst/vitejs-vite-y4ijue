@@ -1,4 +1,6 @@
-import React, { createContext, useState, useContext } from 'react';
+import React, { createContext, useState, useContext, useEffect } from 'react';
+import { ref, onValue, push, update, remove } from 'firebase/database';
+import { db } from '../firebase';
 import { Teacher } from '../types';
 
 interface TeachersContextType {
@@ -10,21 +12,38 @@ interface TeachersContextType {
 
 const TeachersContext = createContext<TeachersContextType | undefined>(undefined);
 
-let nextTeacherId = 1;
-
 export const TeachersProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [teachers, setTeachers] = useState<Teacher[]>([]);
 
+  useEffect(() => {
+    const teachersRef = ref(db, 'teachers');
+    onValue(teachersRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const teachersList = Object.entries(data).map(([id, teacher]) => ({
+          id,
+          ...(teacher as Omit<Teacher, 'id'>)
+        }));
+        setTeachers(teachersList);
+      } else {
+        setTeachers([]);
+      }
+    });
+  }, []);
+
   const addTeacher = (teacher: Omit<Teacher, 'id'>) => {
-    setTeachers([...teachers, { ...teacher, id: `teacher_${nextTeacherId++}` }]);
+    const teachersRef = ref(db, 'teachers');
+    push(teachersRef, teacher);
   };
 
   const updateTeacher = (id: string, updatedTeacher: Omit<Teacher, 'id'>) => {
-    setTeachers(teachers.map(teacher => teacher.id === id ? { ...updatedTeacher, id } : teacher));
+    const teacherRef = ref(db, `teachers/${id}`);
+    update(teacherRef, updatedTeacher);
   };
 
   const deleteTeacher = (id: string) => {
-    setTeachers(teachers.filter(teacher => teacher.id !== id));
+    const teacherRef = ref(db, `teachers/${id}`);
+    remove(teacherRef);
   };
 
   return (
