@@ -51,7 +51,7 @@ const RosterPage: React.FC = () => {
   };
 
   return (
-    <div className="p-4">
+    <div>
       <h2 className="text-2xl font-bold mb-4">Kelola Jadwal</h2>
       <RosterTable
         roster={roster}

@@ -45,6 +45,7 @@ const StudentLeaveRequestForm: React.FC = () => {
 
   return (
     <div className="space-y-8">
+      <h2 className="text-2xl font-bold mb-4">Permintaan Izin Siswa</h2>
       <form onSubmit={handleSubmit} className="space-y-4">
         <select
           value={request.studentId}

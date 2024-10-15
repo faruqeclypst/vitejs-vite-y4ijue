@@ -84,6 +84,7 @@ const StudentManagement: React.FC = () => {
 
   return (
     <div className="space-y-8">
+      <h2 className="text-2xl font-bold mb-4">Kelola Siswa</h2>
       <form onSubmit={handleAddOrUpdateStudent} className="space-y-4">
         <input
           type="text"

@@ -23,7 +23,7 @@ function App() {
                 <div className="flex flex-col md:flex-row min-h-screen bg-gray-100">
                   <Sidebar />
                   <main className="flex-1 p-4 md:p-8 mb-16 md:mb-0">
-                    <div className="container mx-auto">
+                    <div className="container mx-auto max-w-4xl">
                       <Routes>
                         <Route path="/" element={<LandingPage />} />
                         <Route path="/teachers" element={<TeachersPage />} />
