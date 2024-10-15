@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Student, availableClasses } from '../types';
 import { useStudents } from '../contexts/StudentContext';
 import Papa from 'papaparse';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 
 const StudentManagement: React.FC = () => {
   const { students, addStudent, updateStudent, deleteStudent } = useStudents();
@@ -13,6 +14,7 @@ const StudentManagement: React.FC = () => {
     asrama: ''
   });
   const [asramaList, setAsramaList] = useState<string[]>([]);
+  const [expandedClasses, setExpandedClasses] = useState<string[]>([]);
 
   useEffect(() => {
     const uniqueAsramas = Array.from(new Set(students.map(s => s.asrama))).filter(Boolean);
@@ -82,6 +84,20 @@ const StudentManagement: React.FC = () => {
     }
   };
 
+  const toggleClass = (className: string) => {
+    setExpandedClasses(prev =>
+      prev.includes(className) ? prev.filter(c => c !== className) : [...prev, className]
+    );
+  };
+
+  const groupedStudents = students.reduce((acc, student) => {
+    if (!acc[student.class]) {
+      acc[student.class] = [];
+    }
+    acc[student.class].push(student);
+    return acc;
+  }, {} as Record<string, Student[]>);
+
   return (
     <div className="space-y-8">
       <h2 className="text-2xl font-bold mb-4">Kelola Siswa</h2>
@@ -139,41 +155,60 @@ const StudentManagement: React.FC = () => {
         </button>
       </div>
 
-      <table className="min-w-full bg-white border border-gray-300">
-        <thead>
-          <tr className="bg-gray-100">
-            <th className="py-2 px-4 border-b">Name</th>
-            <th className="py-2 px-4 border-b">Gender</th>
-            <th className="py-2 px-4 border-b">Class</th>
-            <th className="py-2 px-4 border-b">Asrama</th>
-            <th className="py-2 px-4 border-b">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {students.map((student) => (
-            <tr key={student.id} className="hover:bg-gray-50">
-              <td className="py-2 px-4 border-b">{student.fullName}</td>
-              <td className="py-2 px-4 border-b">{student.gender}</td>
-              <td className="py-2 px-4 border-b">{student.class}</td>
-              <td className="py-2 px-4 border-b">{student.asrama}</td>
-              <td className="py-2 px-4 border-b">
-                <button
-                  onClick={() => handleEditStudent(student)}
-                  className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-1 px-2 rounded mr-2"
-                >
-                  Edit
-                </button>
-                <button
-                  onClick={() => deleteStudent(student.id)}
-                  className="bg-red-500 hover:bg-red-600 text-white font-bold py-1 px-2 rounded"
-                >
-                  Delete
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <div className="space-y-4">
+        {Object.entries(groupedStudents).map(([className, classStudents]) => (
+          <div key={className} className="border rounded-lg overflow-hidden">
+            <button
+              onClick={() => toggleClass(className)}
+              className="w-full flex justify-between items-center p-4 bg-gray-100 hover:bg-gray-200"
+            >
+              <h3 className="font-bold text-lg">{className}</h3>
+              {expandedClasses.includes(className) ? (
+                <ChevronUp className="h-5 w-5" />
+              ) : (
+                <ChevronDown className="h-5 w-5" />
+              )}
+            </button>
+            {expandedClasses.includes(className) && (
+              <div className="p-4">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Gender</th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Asrama</th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {classStudents.map((student) => (
+                      <tr key={student.id}>
+                        <td className="px-6 py-4 whitespace-nowrap">{student.fullName}</td>
+                        <td className="px-6 py-4 whitespace-nowrap">{student.gender}</td>
+                        <td className="px-6 py-4 whitespace-nowrap">{student.asrama}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                          <button
+                            onClick={() => handleEditStudent(student)}
+                            className="text-indigo-600 hover:text-indigo-900 mr-2"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => deleteStudent(student.id)}
+                            className="text-red-600 hover:text-red-900"
+                          >
+                            Delete
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
     </div>
   );
 };

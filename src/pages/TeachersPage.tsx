@@ -44,24 +44,38 @@ const TeachersPage: React.FC = () => {
   };
 
   return (
-    <div>
-      <h2 className="text-2xl font-bold mb-4">Kelola Guru</h2>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+    <div className="p-2 sm:p-4">
+      <h1 className="text-2xl sm:text-3xl font-bold mb-4 text-gray-800">Kelola Guru</h1>
+      
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         <div>
-          <TeacherForm onSubmit={handleSubmit} initialTeacher={editingTeacher} />
+          <h2 className="text-xl sm:text-2xl font-semibold mb-3 text-gray-700">
+            {editingTeacher ? 'Edit Guru' : 'Tambah Guru'}
+          </h2>
+          <div className="bg-white rounded-lg shadow-md p-3 sm:p-4">
+            <TeacherForm onSubmit={handleSubmit} initialTeacher={editingTeacher} />
+          </div>
         </div>
+
         <div>
-          <TeacherList teachers={teachers} onEdit={handleEdit} onDelete={handleDelete} />
+          <h2 className="text-xl sm:text-2xl font-semibold mb-3 text-gray-700">Daftar Guru</h2>
+          <div className="bg-white rounded-lg shadow-md overflow-hidden">
+            <TeacherList teachers={teachers} onEdit={handleEdit} onDelete={handleDelete} />
+          </div>
         </div>
       </div>
+
       {alert && (
-        <Alert
-          type={alert.type}
-          message={alert.message}
-          duration={alert.duration}
-          onClose={hideAlert}
-        />
+        <div className="mt-4">
+          <Alert
+            type={alert.type}
+            message={alert.message}
+            duration={alert.duration}
+            onClose={hideAlert}
+          />
+        </div>
       )}
+
       <ConfirmationModal
         isOpen={isOpen}
         onClose={handleCancel}

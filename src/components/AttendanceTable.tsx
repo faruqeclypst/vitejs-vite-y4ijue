@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { RosterEntry, Teacher, Attendance, daySchedule } from '../types';
+import Alert from './Alert';
 
 interface AttendanceTableProps {
   roster: RosterEntry[];
@@ -10,13 +11,14 @@ interface AttendanceTableProps {
 
 const AttendanceTable: React.FC<AttendanceTableProps> = ({ roster, teachers, onSubmit, existingAttendance }) => {
   const [attendanceData, setAttendanceData] = useState<{ [rosterId: string]: { presentHours: number[], keterangan: string } }>({});
+  const [showAlert, setShowAlert] = useState(false);
 
   useEffect(() => {
     const initialData: { [rosterId: string]: { presentHours: number[], keterangan: string } } = {};
     roster.forEach(entry => {
       const existingRecord = existingAttendance.find(record => record.rosterId === entry.id);
       initialData[entry.id] = existingRecord
-        ? { presentHours: existingRecord.presentHours, keterangan: existingRecord.keterangan || '' }
+        ? { presentHours: existingRecord.presentHours || [], keterangan: existingRecord.keterangan || '' }
         : { presentHours: [], keterangan: '' };
     });
     setAttendanceData(initialData);
@@ -24,8 +26,7 @@ const AttendanceTable: React.FC<AttendanceTableProps> = ({ roster, teachers, onS
 
   const handleToggle = (rosterId: string, hour: number) => {
     setAttendanceData(prev => {
-      const current = prev[rosterId];
-      if (!current) return prev;
+      const current = prev[rosterId] || { presentHours: [], keterangan: '' };
       const updatedHours = current.presentHours.includes(hour)
         ? current.presentHours.filter(h => h !== hour)
         : [...current.presentHours, hour].sort((a, b) => a - b);
@@ -53,17 +54,15 @@ const AttendanceTable: React.FC<AttendanceTableProps> = ({ roster, teachers, onS
       }
       return acc;
     }, {} as typeof attendanceData);
-
+  
     const hasAttendanceData = Object.keys(filteredAttendanceData).length > 0;
-
+  
     if (!hasAttendanceData) {
-      alert('No attendance data to submit. Please enter attendance information before submitting.');
+      setShowAlert(true);
       return;
     }
-
-    if (window.confirm('Are you sure you want to submit this attendance data?')) {
-      onSubmit(filteredAttendanceData);
-    }
+  
+    onSubmit(filteredAttendanceData);
   };
 
   if (!roster.length) {
@@ -80,19 +79,26 @@ const AttendanceTable: React.FC<AttendanceTableProps> = ({ roster, teachers, onS
     return acc;
   }, {} as { [teacherId: string]: RosterEntry[] });
 
-  
   return (
-    <div className="overflow-x-auto">
-      <table className="min-w-full divide-y divide-gray-200">
+    <div className="overflow-x-auto w-full">
+      {showAlert && (
+        <Alert
+          type="warning"
+          message="No attendance data to submit. Please enter attendance information before submitting."
+          duration={5000}
+          onClose={() => setShowAlert(false)}
+        />
+      )}
+      <table className="w-full table-auto divide-y divide-gray-200">
         <thead className="bg-gray-50">
           <tr>
-            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Guru</th>
+            <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Nama Guru</th>
             {Array.from({ length: 8 }, (_, i) => (
-              <th key={i} scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">JP {i + 1}</th>
+              <th key={i} scope="col" className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">JP{i + 1}</th>
             ))}
-            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Keterangan</th>
+            <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Keterangan</th>
           </tr>
-          </thead>
+        </thead>
         <tbody className="bg-white divide-y divide-gray-200">
           {Object.entries(groupedRoster).map(([teacherId, entries]) => {
             const teacher = teachers.find(t => t.id === teacherId);
@@ -100,29 +106,30 @@ const AttendanceTable: React.FC<AttendanceTableProps> = ({ roster, teachers, onS
             const teacherInitials = teacher?.name.split(' ').map(n => n[0]).join('');
             return (
               <tr key={teacherId}>
-                <td className="py-2 px-4 border-b">
+                <td className="py-2 px-3 border-b whitespace-nowrap">
                   {teacher?.name || 'Unknown'} {teacherInitials ? `(${teacherInitials})` : ''}
                 </td>
                 {Array.from({ length: 8 }, (_, i) => (
-                  <td key={i} className="py-2 px-4 border-b text-center">
+                  <td key={i} className="py-2 px-3 border-b text-center">
                     {i < maxHours ? (
                       <div className="flex flex-col space-y-1">
                         {entries.map(entry => {
                           if (entry.hours.includes(i + 1)) {
-                            const currentData = attendanceData[entry.id];
-                            return currentData ? (
+                            const currentData = attendanceData[entry.id] || { presentHours: [], keterangan: '' };
+                            return (
                               <button
                                 key={entry.id}
                                 onClick={() => handleToggle(entry.id, i + 1)}
-                                className={`px-2 py-1 text-xs rounded ${
+                                className={`px-1 py-1 text-xs rounded truncate ${
                                   currentData.presentHours.includes(i + 1)
                                     ? 'bg-green-500 text-white'
                                     : 'bg-gray-200 text-gray-700'
                                 }`}
+                                style={{ maxWidth: '100%', whiteSpace: 'nowrap', overflow: 'hidden' }}
                               >
                                 {entry.classId}
                               </button>
-                            ) : null;
+                            );
                           }
                           return null;
                         })}
@@ -130,12 +137,12 @@ const AttendanceTable: React.FC<AttendanceTableProps> = ({ roster, teachers, onS
                     ) : null}
                   </td>
                 ))}
-                <td className="py-2 px-4 border-b">
+                <td className="py-2 px-3 border-b">
                   {entries.map(entry => {
-                    const currentData = attendanceData[entry.id];
-                    return currentData ? (
+                    const currentData = attendanceData[entry.id] || { presentHours: [], keterangan: '' };
+                    return (
                       <div key={entry.id} className="flex items-center space-x-2 mb-1">
-                        <span className="text-xs font-medium">{entry.classId}:</span>
+                        <span className="text-xs font-medium whitespace-nowrap">{entry.classId}:</span>
                         <input
                           type="text"
                           value={currentData.keterangan}
@@ -144,7 +151,7 @@ const AttendanceTable: React.FC<AttendanceTableProps> = ({ roster, teachers, onS
                           placeholder="Add keterangan..."
                         />
                       </div>
-                    ) : null;
+                    );
                   })}
                 </td>
               </tr>
