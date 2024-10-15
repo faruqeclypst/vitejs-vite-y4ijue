@@ -1,17 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { RosterEntry, Teacher, Attendance, daySchedule } from '../types';
-import Alert from './Alert';
+import { Check } from 'lucide-react';
 
 interface AttendanceTableProps {
   roster: RosterEntry[];
   teachers: Teacher[];
   onSubmit: (attendanceData: { [rosterId: string]: { presentHours: number[], keterangan: string } }) => void;
   existingAttendance: Attendance[];
+  confirmedTeachers: string[];
 }
 
-const AttendanceTable: React.FC<AttendanceTableProps> = ({ roster, teachers, onSubmit, existingAttendance }) => {
+const AttendanceTable: React.FC<AttendanceTableProps> = ({ roster, teachers, onSubmit, existingAttendance, confirmedTeachers }) => {
   const [attendanceData, setAttendanceData] = useState<{ [rosterId: string]: { presentHours: number[], keterangan: string } }>({});
-  const [showAlert, setShowAlert] = useState(false);
 
   useEffect(() => {
     const initialData: { [rosterId: string]: { presentHours: number[], keterangan: string } } = {};
@@ -48,21 +48,7 @@ const AttendanceTable: React.FC<AttendanceTableProps> = ({ roster, teachers, onS
   };
 
   const handleSubmit = () => {
-    const filteredAttendanceData = Object.entries(attendanceData).reduce((acc, [rosterId, data]) => {
-      if (data.presentHours.length > 0 || data.keterangan.trim() !== '') {
-        acc[rosterId] = data;
-      }
-      return acc;
-    }, {} as typeof attendanceData);
-  
-    const hasAttendanceData = Object.keys(filteredAttendanceData).length > 0;
-  
-    if (!hasAttendanceData) {
-      setShowAlert(true);
-      return;
-    }
-  
-    onSubmit(filteredAttendanceData);
+    onSubmit(attendanceData);
   };
 
   if (!roster.length) {
@@ -80,15 +66,7 @@ const AttendanceTable: React.FC<AttendanceTableProps> = ({ roster, teachers, onS
   }, {} as { [teacherId: string]: RosterEntry[] });
 
   return (
-    <div className="overflow-x-auto w-full">
-      {showAlert && (
-        <Alert
-          type="warning"
-          message="No attendance data to submit. Please enter attendance information before submitting."
-          duration={5000}
-          onClose={() => setShowAlert(false)}
-        />
-      )}
+<div className="overflow-x-auto w-full">
       <table className="w-full table-auto divide-y divide-gray-200">
         <thead className="bg-gray-50">
           <tr>
@@ -103,11 +81,14 @@ const AttendanceTable: React.FC<AttendanceTableProps> = ({ roster, teachers, onS
           {Object.entries(groupedRoster).map(([teacherId, entries]) => {
             const teacher = teachers.find(t => t.id === teacherId);
             const maxHours = Math.max(...entries.map(e => daySchedule[e.dayOfWeek]));
-            const teacherInitials = teacher?.name.split(' ').map(n => n[0]).join('');
+            const isConfirmed = confirmedTeachers.includes(teacherId);
             return (
               <tr key={teacherId}>
                 <td className="py-2 px-3 border-b whitespace-nowrap">
-                  {teacher?.name || 'Unknown'} {teacherInitials ? `(${teacherInitials})` : ''}
+                  <div className="flex items-center space-x-2">
+                    {isConfirmed && <Check className="text-green-500" size={16} />}
+                    <span>{teacher?.name || 'Unknown'} ({teacher?.code || 'N/A'})</span>
+                  </div>
                 </td>
                 {Array.from({ length: 8 }, (_, i) => (
                   <td key={i} className="py-2 px-3 border-b text-center">
@@ -161,10 +142,9 @@ const AttendanceTable: React.FC<AttendanceTableProps> = ({ roster, teachers, onS
       </table>
       <button
         onClick={handleSubmit}
-        className="mt-4 w-full sm:w-auto px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:bg-gray-400 disabled:cursor-not-allowed"
-        disabled={!roster.length || Object.keys(attendanceData).length === 0}
+        className="mt-4 w-full sm:w-auto px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
       >
-        Submit Attendance
+        Kirim Absensi {new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
       </button>
     </div>
   );

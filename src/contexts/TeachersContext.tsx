@@ -38,7 +38,13 @@ export const TeachersProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const updateTeacher = (id: string, updatedTeacher: Omit<Teacher, 'id'>) => {
     const teacherRef = ref(db, `teachers/${id}`);
-    update(teacherRef, updatedTeacher);
+    update(teacherRef, updatedTeacher).then(() => {
+      setTeachers(prevTeachers => 
+        prevTeachers.map(teacher => 
+          teacher.id === id ? { ...teacher, ...updatedTeacher } : teacher
+        )
+      );
+    });
   };
 
   const deleteTeacher = (id: string) => {

@@ -1,5 +1,5 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import { ref, get, set, push } from 'firebase/database';
+import { ref, get, push } from 'firebase/database';
 import { db } from '../firebase';
 
 type UserRole = 'admin' | 'piket' | 'wakil_kepala';
@@ -40,11 +40,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const matchedUser = Object.entries(users).find(
       ([_, userData]: [string, any]) =>
-        userData.username === username && userData.password === password
+        (userData as { username: string; password: string; role: UserRole }).username === username &&
+        (userData as { username: string; password: string; role: UserRole }).password === password
     );
 
     if (matchedUser) {
-      const [id, userData] = matchedUser;
+      const [id, userData] = matchedUser as [string, { username: string; password: string; role: UserRole }];
       const loggedInUser: User = {
         id,
         username: userData.username,

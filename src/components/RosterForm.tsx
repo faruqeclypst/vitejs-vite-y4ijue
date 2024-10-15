@@ -18,7 +18,7 @@ interface Conflict {
 const RosterForm: React.FC<RosterFormProps> = ({ teachers, classes, onSubmit, initialData }) => {
   const [teacherId, setTeacherId] = useState('');
   const [classId, setClassId] = useState('');
-  const [dayOfWeek, setDayOfWeek] = useState<DayOfWeek>('Monday');
+  const [dayOfWeek, setDayOfWeek] = useState<DayOfWeek>('Senin');
   const [hours, setHours] = useState<number[]>([]);
   const [conflicts, setConflicts] = useState<Conflict[]>([]);
   const { roster } = useRoster();
@@ -142,6 +142,7 @@ const RosterForm: React.FC<RosterFormProps> = ({ teachers, classes, onSubmit, in
         className="w-full p-2 border rounded"
         required
       >
+        <option value="">Pilih hari</option>
         {Object.keys(daySchedule).map((day) => (
           <option key={day} value={day}>{day}</option>
         ))}

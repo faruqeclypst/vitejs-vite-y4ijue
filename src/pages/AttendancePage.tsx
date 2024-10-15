@@ -9,12 +9,13 @@ import ConfirmationModal from '../components/ConfirmationModal';
 import useAlert from '../hooks/useAlert';
 import useConfirmation from '../hooks/useConfirmation';
 import DatePicker from '../components/DatePicker';
+import { utils, writeFile, WorkBook, WorkSheet } from 'xlsx';
 
 const AttendancePage: React.FC = () => {
   const { attendanceRecords, addOrUpdateAttendanceRecord } = useAttendance();
   const { roster } = useRoster();
   const { teachers } = useTeachers();
-  const [currentDay, setCurrentDay] = useState<DayOfWeek | null>('Monday');
+  const [currentDay, setCurrentDay] = useState<DayOfWeek | null>('Senin');
   const [currentDate, setCurrentDate] = useState(
     new Date().toLocaleString('en-CA', { timeZone: 'Asia/Jakarta' }).split(',')[0]
   );
@@ -26,14 +27,8 @@ const AttendancePage: React.FC = () => {
   const [exportEndDate, setExportEndDate] = useState(new Date());
   const [exportMonth, setExportMonth] = useState(new Date().getMonth());
   const [exportYear, setExportYear] = useState(new Date().getFullYear());
-  const [absentDetails, setAbsentDetails] = useState<Array<{
-    teacherName: string;
-    date: string;
-    hours: string;
-    class: string;
-    keterangan: string;
-  }>>([]);
-  
+  const [confirmedTeachers, setConfirmedTeachers] = useState<string[]>([]);
+
   useEffect(() => {
     updateDayFromDate(new Date(currentDate));
   }, [currentDate]);
@@ -51,7 +46,7 @@ const AttendancePage: React.FC = () => {
   }, [attendanceRecords, currentDate]);
 
   const updateDayFromDate = (date: Date) => {
-    const days: DayOfWeek[] = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const days: DayOfWeek[] = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
     const jakartaDate = new Date(date.toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }));
     let dayIndex = jakartaDate.getDay() - 1;
     if (dayIndex === -1) {
@@ -77,14 +72,21 @@ const AttendancePage: React.FC = () => {
 
     if (shouldSubmit) {
       try {
-        Object.entries(attendanceData).forEach(([rosterId, data]) => {
+        const promises = Object.entries(attendanceData).map(([rosterId, data]) => 
           addOrUpdateAttendanceRecord({
             rosterId,
             date: currentDate,
             presentHours: data.presentHours,
             keterangan: data.keterangan
-          });
-        });
+          })
+        );
+
+        await Promise.all(promises);
+
+        // Update confirmed teachers
+        const newConfirmedTeachers = [...new Set([...confirmedTeachers, ...Object.keys(attendanceData)])];
+        setConfirmedTeachers(newConfirmedTeachers);
+
         showAlert({ type: 'success', message: 'Data kehadiran berhasil disimpan.' });
       } catch (error) {
         showAlert({ type: 'error', message: 'Gagal menyimpan data kehadiran. Silakan coba lagi.' });
@@ -115,38 +117,52 @@ const AttendancePage: React.FC = () => {
       startDate.setHours(0, 0, 0, 0);
       endDate.setHours(23, 59, 59, 999);
   
-      console.log('Start Date:', startDate);
-      console.log('End Date:', endDate);
-  
       const filteredRecords = attendanceRecords.filter(record => {
         const recordDate = new Date(record.date);
         return recordDate >= startDate && recordDate <= endDate;
       });
   
-      console.log('Filtered Records:', filteredRecords);
-  
       const teacherAttendance: { [teacherId: string]: { hadir: number, tidakHadir: number } } = {};
-      const absentDetailsTemp: typeof absentDetails = [];
-  
+      const absentDetailsTemp: {
+        [teacherId: string]: {
+          teacherName: string;
+          teacherCode: string;
+          absences: Array<{
+            date: string;
+            absentHours: number;
+            class: string;
+            keterangan: string;
+          }>;
+        };
+      } = {};
+      
       filteredRecords.forEach(record => {
         const rosterEntry = roster.find(r => r.id === record.rosterId);
         if (rosterEntry) {
-          if (!teacherAttendance[rosterEntry.teacherId]) {
-            teacherAttendance[rosterEntry.teacherId] = { hadir: 0, tidakHadir: 0 };
+          const teacherId = rosterEntry.teacherId;
+          const teacher = teachers.find(t => t.id === teacherId);
+          if (!teacherAttendance[teacherId]) {
+            teacherAttendance[teacherId] = { hadir: 0, tidakHadir: 0 };
           }
+          if (!absentDetailsTemp[teacherId]) {
+            absentDetailsTemp[teacherId] = {
+              teacherName: teacher?.name || 'Unknown',
+              teacherCode: teacher?.code || 'N/A',
+              absences: []
+            };
+          }
+          
           const scheduledHours = rosterEntry.hours.length;
           const presentHours = record.presentHours || [];
-          teacherAttendance[rosterEntry.teacherId].hadir += presentHours.length;
-          teacherAttendance[rosterEntry.teacherId].tidakHadir += scheduledHours - presentHours.length;
+          teacherAttendance[teacherId].hadir += presentHours.length;
+          teacherAttendance[teacherId].tidakHadir += scheduledHours - presentHours.length;
   
           // Add absent details
           const absentHours = rosterEntry.hours.filter(h => !presentHours.includes(h));
           if (absentHours.length > 0) {
-            const teacher = teachers.find(t => t.id === rosterEntry.teacherId);
-            absentDetailsTemp.push({
-              teacherName: teacher?.name || 'Unknown',
+            absentDetailsTemp[teacherId].absences.push({
               date: record.date,
-              hours: absentHours.join(', '),
+              absentHours: absentHours.length,
               class: rosterEntry.classId,
               keterangan: record.keterangan || ''
             });
@@ -154,35 +170,112 @@ const AttendancePage: React.FC = () => {
         }
       });
   
-      setAbsentDetails(absentDetailsTemp);
-  
-      let csvContent = "data:text/csv;charset=utf-8,";
-      csvContent += `Data Kehadiran ${type === 'custom' ? 'Kustom' : 'Bulanan'}\n`;
-      csvContent += `Periode: ${startDate.toLocaleDateString('id-ID')} - ${endDate.toLocaleDateString('id-ID')}\n\n`;
-      csvContent += "No.,Nama Guru,Hadir,Tidak Hadir\n";
-  
+      // Create a new workbook
+      const wb: WorkBook = utils.book_new();
+
+      // Helper function to apply styles to a worksheet
+      const applyStyles = (ws: WorkSheet) => {
+        const range = utils.decode_range(ws['!ref'] || 'A1');
+        for (let R = range.s.r; R <= range.e.r; ++R) {
+          for (let C = range.s.c; C <= range.e.c; ++C) {
+            const cell_address = utils.encode_cell({ r: R, c: C });
+            if (!ws[cell_address]) continue;
+            ws[cell_address].s = {
+              font: { name: "Arial", sz: 11 },
+              alignment: { vertical: "center", horizontal: "center", wrapText: true },
+              border: {
+                top: { style: "thin" },
+                bottom: { style: "thin" },
+                left: { style: "thin" },
+                right: { style: "thin" }
+              }
+            };
+          }
+        }
+      };
+
+      // Create the main summary sheet
+      let summaryData = [
+        ["Data Kehadiran " + (type === 'custom' ? 'Kustom' : 'Bulanan')],
+        [`Periode: ${startDate.toLocaleDateString('id-ID')} - ${endDate.toLocaleDateString('id-ID')}`],
+        [],
+        ["No.", "Nama Guru", "Kode Guru", "Jam Hadir", "Jam Tidak Hadir"]
+      ];
+
       Object.entries(teacherAttendance).forEach(([teacherId, attendance], index) => {
         const teacher = teachers.find(t => t.id === teacherId);
         if (teacher) {
-          csvContent += `${index + 1},${teacher.name},${attendance.hadir},${attendance.tidakHadir}\n`;
+          summaryData.push([
+            (index + 1).toString(), // Ubah menjadi string
+            teacher.name,
+            teacher.code,
+            attendance.hadir.toString(), // Ubah menjadi string
+            attendance.tidakHadir.toString() // Ubah menjadi string
+          ]);
         }
       });
-  
-      // Add detailed absence information
-      csvContent += "\nDetail Ketidakhadiran\n";
-      csvContent += "Nama Guru,Tanggal,Jam Tidak Hadir,Kelas,Keterangan\n";
-      absentDetailsTemp.forEach(detail => {
-        csvContent += `${detail.teacherName},${detail.date},${detail.hours},${detail.class},${detail.keterangan}\n`;
+
+      const summaryWs = utils.aoa_to_sheet(summaryData);
+      applyStyles(summaryWs);
+
+      // Set column widths
+      summaryWs['!cols'] = [
+        { wch: 5 },  // No.
+        { wch: 30 }, // Nama Guru
+        { wch: 15 }, // Kode Guru
+        { wch: 15 }, // Jam Hadir
+        { wch: 15 }  // Jam Tidak Hadir
+      ];
+
+      // Merge cells for title and period
+      summaryWs['!merges'] = [
+        { s: { r: 0, c: 0 }, e: { r: 0, c: 4 } },
+        { s: { r: 1, c: 0 }, e: { r: 1, c: 4 } }
+      ];
+
+      utils.book_append_sheet(wb, summaryWs, "Ringkasan");
+
+      // Create individual teacher sheets
+      Object.entries(absentDetailsTemp).forEach(([, details]) => {
+        const teacherName = details.teacherName;
+        const teacherCode = details.teacherCode;
+        let teacherData = [
+          [`Data Ketidakhadiran: ${teacherName} (${teacherCode})`],
+          [],
+          ["Tanggal", "Jam Tidak Hadir", "Kelas", "Keterangan"]
+        ];
+
+        details.absences.forEach(absence => {
+          teacherData.push([
+            absence.date,
+            absence.absentHours.toString(), // Ubah menjadi string
+            absence.class,
+            absence.keterangan
+          ]);
+        });
+
+        const teacherWs = utils.aoa_to_sheet(teacherData);
+        applyStyles(teacherWs);
+
+        // Set column widths for teacher sheets
+        teacherWs['!cols'] = [
+          { wch: 15 }, // Tanggal
+          { wch: 20 }, // Jam Tidak Hadir
+          { wch: 15 }, // Kelas
+          { wch: 40 }  // Keterangan
+        ];
+
+        // Merge cells for title
+        teacherWs['!merges'] = [
+          { s: { r: 0, c: 0 }, e: { r: 0, c: 3 } }
+        ];
+
+        utils.book_append_sheet(wb, teacherWs, `${teacherName} (${teacherCode})`);
       });
-  
-      const encodedUri = encodeURI(csvContent);
-      const link = document.createElement("a");
-      link.setAttribute("href", encodedUri);
-      link.setAttribute("download", `kehadiran_${type === 'custom' ? 'kustom' : 'bulanan'}_${startDate.toISOString().split('T')[0]}_${endDate.toISOString().split('T')[0]}.csv`);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-  
+
+      // Generate and download the Excel file
+      writeFile(wb, `kehadiran_${type === 'custom' ? 'kustom' : 'bulanan'}_${startDate.toISOString().split('T')[0]}_${endDate.toISOString().split('T')[0]}.xlsx`);
+
       showAlert({ type: 'success', message: `Data kehadiran ${type === 'custom' ? 'kustom' : 'bulanan'} berhasil diekspor.` });
     }
   };
@@ -226,19 +319,20 @@ const AttendancePage: React.FC = () => {
           </div>
         </div>
         {currentDay ? (
-          currentRoster.length > 0 ? (
-            <AttendanceTable
-              roster={currentRoster}
-              teachers={teachers}
-              onSubmit={handleAttendanceSubmit}
-              existingAttendance={filteredAttendanceRecords}
-            />
-          ) : (
-            <p className="text-gray-500 italic">Tidak ada entri roster untuk hari ini.</p>
-          )
+        currentRoster.length > 0 ? (
+          <AttendanceTable
+            roster={currentRoster}
+            teachers={teachers}
+            onSubmit={handleAttendanceSubmit}
+            existingAttendance={filteredAttendanceRecords}
+            confirmedTeachers={confirmedTeachers}
+          />
         ) : (
-          <p className="text-gray-500 italic">Tidak ada jadwal untuk hari Minggu.</p>
-        )}
+          <p className="text-gray-500 italic">Tidak ada entri roster untuk hari ini.</p>
+        )
+      ) : (
+        <p className="text-gray-500 italic">Tidak ada jadwal untuk hari Minggu.</p>
+      )}
       </div>
       <div className="bg-white shadow overflow-hidden sm:rounded-lg p-4 sm:p-6">
         <h2 className="text-xl sm:text-2xl font-semibold mb-4">Ekspor Data Kehadiran</h2>
@@ -299,45 +393,6 @@ const AttendancePage: React.FC = () => {
           </div>
         </div>
       </div>
-      {absentDetails.length > 0 && (
-        <div className="bg-white shadow overflow-hidden sm:rounded-lg p-4 sm:p-6">
-          <h2 className="text-xl sm:text-2xl font-semibold mb-4">Detail Ketidakhadiran</h2>
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Nama Guru
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Tanggal
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Jam Tidak Hadir
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Kelas
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Keterangan
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {absentDetails.map((detail, index) => (
-                  <tr key={index}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{detail.teacherName}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{detail.date}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{detail.hours}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{detail.class}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{detail.keterangan}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
       {alert && (
         <Alert
           type={alert.type}

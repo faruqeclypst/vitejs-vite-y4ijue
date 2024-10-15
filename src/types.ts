@@ -36,15 +36,15 @@ export interface StudentLeaveRequest {
   status: 'Pending' | 'Approved' | 'Rejected';
 }
 
-export type DayOfWeek = 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday';
+export type DayOfWeek = 'Senin' | 'Selasa' | 'Rabu' | 'Kamis' | 'Jumat' | 'Sabtu';
 
 export const daySchedule: Record<DayOfWeek, number> = {
-  Monday: 8,
-  Tuesday: 8,
-  Wednesday: 8,
-  Thursday: 8,
-  Friday: 6,
-  Saturday: 7
+  Senin: 8,
+  Selasa: 8,
+  Rabu: 8,
+  Kamis: 8,
+  Jumat: 6,
+  Sabtu: 7
 };
 
 

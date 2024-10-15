@@ -19,18 +19,20 @@ import { ref, get } from 'firebase/database';
 import { db } from './firebase';
 
 function AppContent() {
-  const [isInitialSetup, setIsInitialSetup] = useState(true);
+  const [isInitialSetup, setIsInitialSetup] = useState<boolean | null>(null);
 
   useEffect(() => {
     const checkUsers = async () => {
       const usersRef = ref(db, 'users');
       const snapshot = await get(usersRef);
-      if (snapshot.exists()) {
-        setIsInitialSetup(false);
-      }
+      setIsInitialSetup(!snapshot.exists());
     };
     checkUsers();
   }, []);
+
+  if (isInitialSetup === null) {
+    return <div>loading</div>; // Or a more sophisticated loading component
+  }
 
   if (isInitialSetup) {
     return (
