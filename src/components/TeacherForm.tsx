@@ -1,20 +1,28 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Teacher } from '../types';
 
 interface TeacherFormProps {
   onSubmit: (teacher: Omit<Teacher, 'id'>) => void;
-  initialTeacher?: Teacher;
+  initialTeacher?: Teacher | null;
 }
 
 const TeacherForm: React.FC<TeacherFormProps> = ({ onSubmit, initialTeacher }) => {
-  const [name, setName] = useState(initialTeacher?.name || '');
-  const [code, setCode] = useState(initialTeacher?.code || '');
+  const [name, setName] = useState('');
+  const [code, setCode] = useState('');
+
+  useEffect(() => {
+    if (initialTeacher) {
+      setName(initialTeacher.name);
+      setCode(initialTeacher.code);
+    } else {
+      setName('');
+      setCode('');
+    }
+  }, [initialTeacher]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSubmit({ name, code });
-    setName('');
-    setCode('');
   };
 
   return (

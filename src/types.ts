@@ -4,11 +4,6 @@ export interface Teacher {
   code: string;
 }
 
-export interface Class {
-  id: string;
-  name: string;
-}
-
 export interface RosterEntry {
   id: string;
   teacherId: string;

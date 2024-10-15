@@ -1,28 +1,113 @@
-import React, { useState } from 'react';
-import { Teacher, DayOfWeek, daySchedule } from '../types';
+import React, { useState, useEffect } from 'react';
+import { Teacher, DayOfWeek, daySchedule, RosterEntry } from '../types';
+import { useRoster } from '../contexts/RosterContext';
 
 interface RosterFormProps {
   teachers: Teacher[];
   classes: string[];
-  onSubmit: (roster: { teacherId: string; classId: string; dayOfWeek: DayOfWeek; hours: number[] }) => void;
+  onSubmit: (roster: Omit<RosterEntry, 'id'>) => void;
+  initialData?: RosterEntry | null;
 }
 
-const RosterForm: React.FC<RosterFormProps> = ({ teachers, classes, onSubmit }) => {
+interface Conflict {
+  hour: number;
+  conflictType: 'class' | 'teacher';
+  conflictWith: string;
+}
+
+const RosterForm: React.FC<RosterFormProps> = ({ teachers, classes, onSubmit, initialData }) => {
   const [teacherId, setTeacherId] = useState('');
   const [classId, setClassId] = useState('');
   const [dayOfWeek, setDayOfWeek] = useState<DayOfWeek>('Monday');
   const [hours, setHours] = useState<number[]>([]);
+  const [conflicts, setConflicts] = useState<Conflict[]>([]);
+  const { roster } = useRoster();
+
+  useEffect(() => {
+    if (initialData) {
+      setTeacherId(initialData.teacherId);
+      setClassId(initialData.classId);
+      setDayOfWeek(initialData.dayOfWeek);
+      setHours(initialData.hours);
+    }
+  }, [initialData]);
+
+  useEffect(() => {
+    checkConflicts();
+  }, [teacherId, classId, dayOfWeek, hours, roster]);
+
+  const checkConflicts = () => {
+    const newConflicts: Conflict[] = [];
+    
+    hours.forEach(hour => {
+      const conflictingEntries = roster.filter(
+        entry => (
+          entry.dayOfWeek === dayOfWeek &&
+          entry.hours.includes(hour) &&
+          entry.id !== initialData?.id
+        )
+      );
+
+      conflictingEntries.forEach(entry => {
+        if (entry.classId === classId) {
+          newConflicts.push({
+            hour,
+            conflictType: 'class',
+            conflictWith: teachers.find(t => t.id === entry.teacherId)?.name || 'Unknown Teacher'
+          });
+        }
+        if (entry.teacherId === teacherId) {
+          newConflicts.push({
+            hour,
+            conflictType: 'teacher',
+            conflictWith: entry.classId
+          });
+        }
+      });
+    });
+
+    setConflicts(newConflicts);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (conflicts.length > 0) {
+      alert('Tidak dapat menyimpan jadwal karena ada konflik. Harap selesaikan konflik terlebih dahulu.');
+      return;
+    }
     onSubmit({ teacherId, classId, dayOfWeek, hours });
-    setHours([]);
+    if (!initialData) {
+      setHours([]);
+    }
   };
 
   const toggleHour = (hour: number) => {
     setHours(prev =>
       prev.includes(hour) ? prev.filter(h => h !== hour) : [...prev, hour]
     );
+  };
+
+  const getConflictMessage = () => {
+    if (conflicts.length === 0) return '';
+
+    const conflictHours = [...new Set(conflicts.map(c => c.hour))].sort((a, b) => a - b).join(', ');
+    const classConflicts = conflicts.filter(c => c.conflictType === 'class');
+    const teacherConflicts = conflicts.filter(c => c.conflictType === 'teacher');
+    
+    let message = `Konflik jadwal pada jam ${conflictHours}: `;
+    
+    if (classConflicts.length > 0) {
+      const conflictingTeachers = [...new Set(classConflicts.map(c => c.conflictWith))].join(', ');
+      message += `Kelas ${classId} sudah ada jadwal dengan ${conflictingTeachers}. `;
+    }
+    
+    if (teacherConflicts.length > 0) {
+      const conflictingClasses = [...new Set(teacherConflicts.map(c => c.conflictWith))].join(', ');
+      const teacherName = teachers.find(t => t.id === teacherId)?.name || 'Unknown Teacher';
+      message += `${teacherName} sudah mengajar kelas ${conflictingClasses}.`;
+    }
+    
+    return message.trim();
   };
 
   return (
@@ -33,7 +118,7 @@ const RosterForm: React.FC<RosterFormProps> = ({ teachers, classes, onSubmit }) 
         className="w-full p-2 border rounded"
         required
       >
-        <option value="">Select a teacher</option>
+        <option value="">Pilih guru</option>
         {teachers.map((teacher) => (
           <option key={teacher.id} value={teacher.id}>{teacher.name}</option>
         ))}
@@ -45,7 +130,7 @@ const RosterForm: React.FC<RosterFormProps> = ({ teachers, classes, onSubmit }) 
         className="w-full p-2 border rounded"
         required
       >
-        <option value="">Select a class</option>
+        <option value="">Pilih kelas</option>
         {classes.map((cls) => (
           <option key={cls} value={cls}>{cls}</option>
         ))}
@@ -63,7 +148,7 @@ const RosterForm: React.FC<RosterFormProps> = ({ teachers, classes, onSubmit }) 
       </select>
 
       <div className="space-y-2">
-        <label className="block text-sm font-medium text-gray-700">Hours</label>
+        <label className="block text-sm font-medium text-gray-700">Jam</label>
         <div className="grid grid-cols-4 gap-2">
           {Array.from({ length: daySchedule[dayOfWeek] }, (_, i) => i + 1).map((hour) => (
             <button
@@ -71,20 +156,35 @@ const RosterForm: React.FC<RosterFormProps> = ({ teachers, classes, onSubmit }) 
               type="button"
               onClick={() => toggleHour(hour)}
               className={`p-2 rounded ${
-                hours.includes(hour) ? 'bg-blue-500 text-white' : 'bg-gray-200 hover:bg-gray-300'
+                hours.includes(hour)
+                  ? conflicts.some(c => c.hour === hour)
+                    ? 'bg-red-500 text-white'
+                    : 'bg-green-500 text-white'
+                  : 'bg-gray-200 hover:bg-gray-300'
               }`}
             >
-              Hour {hour}
+              Jam {hour}
             </button>
           ))}
         </div>
       </div>
 
+      {conflicts.length > 0 && (
+        <p className="text-red-500 font-bold">
+          {getConflictMessage()}
+        </p>
+      )}
+
       <button
         type="submit"
-        className="w-full p-2 bg-blue-500 text-white rounded hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
+        className={`w-full p-2 text-white rounded focus:outline-none focus:ring-2 focus:ring-opacity-50 ${
+          conflicts.length > 0
+            ? 'bg-gray-400 cursor-not-allowed'
+            : 'bg-blue-500 hover:bg-blue-600 focus:ring-blue-500'
+        }`}
+        disabled={conflicts.length > 0}
       >
-        Add to Roster
+        {initialData ? 'Perbarui Jadwal' : 'Tambah ke Jadwal'}
       </button>
     </form>
   );

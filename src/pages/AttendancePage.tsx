@@ -5,20 +5,25 @@ import { useTeachers } from '../contexts/TeachersContext';
 import { useClasses } from '../contexts/ClassesContext';
 import { DayOfWeek, RosterEntry, Attendance } from '../types';
 import AttendanceTable from '../components/AttendanceTable';
+import Alert from '../components/Alert';
+import ConfirmationModal from '../components/ConfirmationModal';
+import useAlert from '../hooks/useAlert';
+import useConfirmation from '../hooks/useConfirmation';
 
 const AttendancePage: React.FC = () => {
   const { attendanceRecords, addOrUpdateAttendanceRecord } = useAttendance();
   const { roster } = useRoster();
   const { teachers } = useTeachers();
   const { classes } = useClasses();
-  const [currentDay, setCurrentDay] = useState<DayOfWeek>('Monday');
+  const [currentDay, setCurrentDay] = useState<DayOfWeek | null>('Monday');
   const [currentDate, setCurrentDate] = useState(
     new Date().toLocaleString('en-CA', { timeZone: 'Asia/Jakarta' }).split(',')[0]
   );
-  const [error, setError] = useState<string | null>(null);
   const [currentRoster, setCurrentRoster] = useState<RosterEntry[]>([]);
   const [filteredAttendanceRecords, setFilteredAttendanceRecords] = useState<Attendance[]>([]);
-
+  const { alert, showAlert, hideAlert } = useAlert();
+  const { isOpen, options, confirm, handleConfirm, handleCancel } = useConfirmation();
+  
   useEffect(() => {
     updateDayFromDate(new Date(currentDate));
   }, [currentDate]);
@@ -39,9 +44,12 @@ const AttendancePage: React.FC = () => {
     const days: DayOfWeek[] = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     const jakartaDate = new Date(date.toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }));
     let dayIndex = jakartaDate.getDay() - 1;
-    if (dayIndex === -1) dayIndex = 5;
-    const day = days[dayIndex];
-    setCurrentDay(day);
+    if (dayIndex === -1) {
+      setCurrentDay(null);
+    } else {
+      const day = days[dayIndex];
+      setCurrentDay(day);
+    }
   };
 
   const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -49,7 +57,7 @@ const AttendancePage: React.FC = () => {
     setCurrentDate(newDate);
   };
 
-  const handleAttendanceSubmit = (attendanceData: { [rosterId: string]: { presentHours: number[], keterangan: string } }) => {
+  const handleAttendanceSubmit = async (attendanceData: { [rosterId: string]: { presentHours: number[], keterangan: string } }) => {
     try {
       Object.entries(attendanceData).forEach(([rosterId, data]) => {
         addOrUpdateAttendanceRecord({
@@ -59,86 +67,94 @@ const AttendancePage: React.FC = () => {
           keterangan: data.keterangan
         });
       });
-      alert('Attendance data submitted successfully.');
+      showAlert({ type: 'success', message: 'Data kehadiran berhasil disimpan.' });
     } catch (error) {
-      setError('Failed to submit attendance data. Please try again.');
+      showAlert({ type: 'error', message: 'Gagal menyimpan data kehadiran. Silakan coba lagi.' });
       console.error('Error submitting attendance:', error);
     }
   };
 
-  const handleExport = (type: 'weekly' | 'monthly') => {
-    const currentSelectedDate = new Date(currentDate);
-    const today = new Date();
-    const startDate = new Date(currentSelectedDate);
-    let endDate: Date;
-
-    if (type === 'weekly') {
-      startDate.setDate(startDate.getDate() - startDate.getDay() + 1);
-      endDate = new Date(startDate);
-      endDate.setDate(endDate.getDate() + 6);
-    } else {
-      startDate.setDate(1);
-      endDate = new Date(startDate.getFullYear(), startDate.getMonth() + 1, 0);
-    }
-
-    // Ensure endDate doesn't exceed the current selected date or today
-    endDate = new Date(Math.min(endDate.getTime(), currentSelectedDate.getTime(), today.getTime()));
-
-    const filteredRecords = attendanceRecords.filter(record => {
-      const recordDate = new Date(record.date);
-      return recordDate >= startDate && recordDate <= endDate;
+  const handleExport = async (type: 'weekly' | 'monthly') => {
+    const shouldExport = await confirm({
+      title: 'Konfirmasi Ekspor',
+      message: `Apakah Anda yakin ingin mengekspor data kehadiran ${type === 'weekly' ? 'mingguan' : 'bulanan'}?`,
+      confirmText: 'Ekspor',
+      cancelText: 'Batal',
     });
 
-    const teacherAttendance: { [teacherId: string]: { hadir: number, tidakHadir: number } } = {};
+    if (shouldExport) {
+      const currentSelectedDate = new Date(currentDate);
+      const today = new Date();
+      const startDate = new Date(currentSelectedDate);
+      let endDate: Date;
 
-    filteredRecords.forEach(record => {
-      const rosterEntry = roster.find(r => r.id === record.rosterId);
-      if (rosterEntry) {
-        if (!teacherAttendance[rosterEntry.teacherId]) {
-          teacherAttendance[rosterEntry.teacherId] = { hadir: 0, tidakHadir: 0 };
+      if (type === 'weekly') {
+        startDate.setDate(startDate.getDate() - startDate.getDay() + 1);
+        endDate = new Date(startDate);
+        endDate.setDate(endDate.getDate() + 6);
+      } else {
+        startDate.setDate(1);
+        endDate = new Date(startDate.getFullYear(), startDate.getMonth() + 1, 0);
+      }
+
+      endDate = new Date(Math.min(endDate.getTime(), currentSelectedDate.getTime(), today.getTime()));
+
+      const filteredRecords = attendanceRecords.filter(record => {
+        const recordDate = new Date(record.date);
+        return recordDate >= startDate && recordDate <= endDate;
+      });
+
+      const teacherAttendance: { [teacherId: string]: { hadir: number, tidakHadir: number } } = {};
+
+      filteredRecords.forEach(record => {
+        const rosterEntry = roster.find(r => r.id === record.rosterId);
+        if (rosterEntry) {
+          if (!teacherAttendance[rosterEntry.teacherId]) {
+            teacherAttendance[rosterEntry.teacherId] = { hadir: 0, tidakHadir: 0 };
+          }
+          const scheduledHours = rosterEntry.hours.length;
+          teacherAttendance[rosterEntry.teacherId].hadir += record.presentHours.length;
+          teacherAttendance[rosterEntry.teacherId].tidakHadir += scheduledHours - record.presentHours.length;
         }
-        const scheduledHours = rosterEntry.hours.length;
-        teacherAttendance[rosterEntry.teacherId].hadir += record.presentHours.length;
-        teacherAttendance[rosterEntry.teacherId].tidakHadir += scheduledHours - record.presentHours.length;
-      }
-    });
+      });
 
-    let csvContent = "data:text/csv;charset=utf-8,";
-    csvContent += `Data Kehadiran ${type === 'weekly' ? 'Mingguan' : 'Bulanan'}\n`;
-    csvContent += `Periode: ${startDate.toLocaleDateString('id-ID')} - ${endDate.toLocaleDateString('id-ID')}\n\n`;
-    csvContent += "Nama Guru,Hadir,Tidak Hadir\n";
+      let csvContent = "data:text/csv;charset=utf-8,";
+      csvContent += `Data Kehadiran ${type === 'weekly' ? 'Mingguan' : 'Bulanan'}\n`;
+      csvContent += `Periode: ${startDate.toLocaleDateString('id-ID')} - ${endDate.toLocaleDateString('id-ID')}\n\n`;
+      csvContent += "Nama Guru,Hadir,Tidak Hadir\n";
 
-    Object.entries(teacherAttendance).forEach(([teacherId, attendance]) => {
-      const teacher = teachers.find(t => t.id === teacherId);
-      if (teacher) {
-        csvContent += `${teacher.name},${attendance.hadir},${attendance.tidakHadir}\n`;
-      }
-    });
+      Object.entries(teacherAttendance).forEach(([teacherId, attendance]) => {
+        const teacher = teachers.find(t => t.id === teacherId);
+        if (teacher) {
+          csvContent += `${teacher.name},${attendance.hadir},${attendance.tidakHadir}\n`;
+        }
+      });
 
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `kehadiran_${type === 'weekly' ? 'mingguan' : 'bulanan'}_${startDate.toISOString().split('T')[0]}_${endDate.toISOString().split('T')[0]}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", `kehadiran_${type === 'weekly' ? 'mingguan' : 'bulanan'}_${startDate.toISOString().split('T')[0]}_${endDate.toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      showAlert({ type: 'success', message: `Data kehadiran ${type === 'weekly' ? 'mingguan' : 'bulanan'} berhasil diekspor.` });
+    }
   };
 
   if (!roster || !teachers || !classes) {
     return <div>Loading...</div>;
   }
 
-  if (error) {
-    return <div className="text-red-500">{error}</div>;
-  }
-
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-      <h1 className="text-2xl sm:text-3xl font-bold mb-4">Attendance Page</h1>
+      <h1 className="text-2xl sm:text-3xl font-bold mb-4">Halaman Kehadiran</h1>
       <div className="bg-white shadow overflow-hidden sm:rounded-lg p-4 sm:p-6">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl sm:text-2xl font-semibold">Take Attendance</h2>
-          <span className="text-lg font-medium text-gray-600">{currentDay}</span>
+          <h2 className="text-xl sm:text-2xl font-semibold">Catat Kehadiran</h2>
+          <span className="text-lg font-medium text-gray-600">
+            {currentDay || 'Minggu'}
+          </span>
         </div>
         <div className="mb-4 flex flex-wrap gap-4">
           <div className="flex-1 min-w-[200px]">
@@ -166,17 +182,38 @@ const AttendancePage: React.FC = () => {
             </button>
           </div>
         </div>
-        {currentRoster.length > 0 ? (
-          <AttendanceTable
-            roster={currentRoster}
-            teachers={teachers}
-            onSubmit={handleAttendanceSubmit}
-            existingAttendance={filteredAttendanceRecords}
-          />
+        {currentDay ? (
+          currentRoster.length > 0 ? (
+            <AttendanceTable
+              roster={currentRoster}
+              teachers={teachers}
+              onSubmit={handleAttendanceSubmit}
+              existingAttendance={filteredAttendanceRecords}
+            />
+          ) : (
+            <p className="text-gray-500 italic">Tidak ada entri roster untuk hari ini.</p>
+          )
         ) : (
-          <p className="text-gray-500 italic">No roster entries for this day.</p>
+          <p className="text-gray-500 italic">Tidak ada jadwal untuk hari Minggu.</p>
         )}
       </div>
+      {alert && (
+        <Alert
+          type={alert.type}
+          message={alert.message}
+          duration={alert.duration}
+          onClose={hideAlert}
+        />
+      )}
+      <ConfirmationModal
+        isOpen={isOpen}
+        onClose={handleCancel}
+        onConfirm={handleConfirm}
+        title={options?.title || ''}
+        message={options?.message || ''}
+        confirmText={options?.confirmText}
+        cancelText={options?.cancelText}
+      />
     </div>
   );
 };

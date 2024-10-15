@@ -8,14 +8,15 @@ interface RosterTableProps {
   teachers: Teacher[];
   onDelete: (id: string) => void;
   onAdd: (entry: Omit<RosterEntry, 'id'>) => void;
+  onUpdate: (id: string, entry: Omit<RosterEntry, 'id'>) => void;
   classes: string[];
 }
 
-const RosterTable: React.FC<RosterTableProps> = ({ roster, teachers, onDelete, onAdd, classes }) => {
+const RosterTable: React.FC<RosterTableProps> = ({ roster, teachers, onDelete, onAdd, onUpdate, classes }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [openTeachers, setOpenTeachers] = useState<string[]>([]);
+  const [editingEntry, setEditingEntry] = useState<RosterEntry | null>(null);
 
-  // Group roster entries by teacher
   const groupedRoster = roster.reduce((acc, entry) => {
     if (!acc[entry.teacherId]) {
       acc[entry.teacherId] = [];
@@ -32,13 +33,31 @@ const RosterTable: React.FC<RosterTableProps> = ({ roster, teachers, onDelete, o
     );
   };
 
+  const handleEdit = (entry: RosterEntry) => {
+    setEditingEntry(entry);
+    setIsModalOpen(true);
+  };
+
+  const handleSubmit = (entry: Omit<RosterEntry, 'id'>) => {
+    if (editingEntry) {
+      onUpdate(editingEntry.id, entry);
+    } else {
+      onAdd(entry);
+    }
+    setIsModalOpen(false);
+    setEditingEntry(null);
+  };
+
   return (
     <div className="overflow-x-auto">
       <button
-        onClick={() => setIsModalOpen(true)}
+        onClick={() => {
+          setEditingEntry(null);
+          setIsModalOpen(true);
+        }}
         className="mb-4 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
       >
-        Add New Entry
+        Tambah Entri Baru
       </button>
       <div className="space-y-2">
         {Object.entries(groupedRoster).map(([teacherId, entries]) => {
@@ -62,13 +81,21 @@ const RosterTable: React.FC<RosterTableProps> = ({ roster, teachers, onDelete, o
                   {entries.map((entry) => (
                     <div key={entry.id} className="mb-2 p-2 bg-white rounded shadow">
                       <p><span className="font-semibold">{entry.dayOfWeek}:</span> {entry.classId}</p>
-                      <p>Hours: {entry.hours.join(', ')}</p>
-                      <button
-                        onClick={() => onDelete(entry.id)}
-                        className="mt-2 bg-red-500 text-white text-xs px-2 py-1 rounded hover:bg-red-600"
-                      >
-                        Delete
-                      </button>
+                      <p>Jam: {entry.hours.join(', ')}</p>
+                      <div className="mt-2 space-x-2">
+                        <button
+                          onClick={() => handleEdit(entry)}
+                          className="bg-yellow-500 text-white text-xs px-2 py-1 rounded hover:bg-yellow-600"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => onDelete(entry.id)}
+                          className="bg-red-500 text-white text-xs px-2 py-1 rounded hover:bg-red-600"
+                        >
+                          Hapus
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -80,20 +107,23 @@ const RosterTable: React.FC<RosterTableProps> = ({ roster, teachers, onDelete, o
       {isModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <h2 className="text-xl font-bold mb-4">Add New Roster Entry</h2>
+            <h2 className="text-xl font-bold mb-4">
+              {editingEntry ? 'Edit Entri Jadwal' : 'Tambah Entri Jadwal Baru'}
+            </h2>
             <RosterForm
               teachers={teachers}
               classes={classes}
-              onSubmit={(entry) => {
-                onAdd(entry);
-                setIsModalOpen(false);
-              }}
+              onSubmit={handleSubmit}
+              initialData={editingEntry}
             />
             <button
-              onClick={() => setIsModalOpen(false)}
+              onClick={() => {
+                setIsModalOpen(false);
+                setEditingEntry(null);
+              }}
               className="mt-4 bg-gray-300 text-gray-800 px-4 py-2 rounded hover:bg-gray-400"
             >
-              Cancel
+              Batal
             </button>
           </div>
         </div>
