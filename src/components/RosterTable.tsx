@@ -102,7 +102,7 @@ const RosterTable: React.FC<RosterTableProps> = ({ roster, teachers, onDelete, o
           </div>
         );
       })}
-        {isModalOpen && (
+      {isModalOpen && (
         <div className="fixed inset-0 z-50 overflow-auto bg-smoke-light flex">
           <div className="fixed inset-0 bg-black opacity-50"></div>
           <div className="relative p-8 bg-white w-full max-w-md m-auto flex-col flex rounded-lg">
@@ -110,7 +110,10 @@ const RosterTable: React.FC<RosterTableProps> = ({ roster, teachers, onDelete, o
               {editingEntry ? 'Edit Entri Jadwal' : 'Tambah Entri Jadwal Baru'}
             </h2>
             <RosterForm
-              teachers={teachers}
+              teachers={teachers.map(teacher => ({
+                ...teacher,
+                name: `${teacher.name} (${teacher.code})`
+              }))}
               classes={classes}
               onSubmit={handleSubmit}
               initialData={editingEntry}
