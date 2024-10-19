@@ -13,6 +13,7 @@
     "@heroicons/react": "^2.1.5",
     "@react-navigation/bottom-tabs": "^6.6.1",
     "@types/react-datepicker": "^7.0.0",
+    "exceljs": "^4.4.0",
     "firebase": "^10.14.1",
     "glob": "^11.0.0",
     "lucide-react": "^0.453.0",

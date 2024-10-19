@@ -31,7 +31,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
     <div className="w-full p-4 sm:p-6 lg:p-8">
       <div className="bg-white shadow-md rounded-lg w-full max-w-lg mx-auto">
         <div className="px-4 py-5 sm:p-6">
-          <h2 className="text-2xl font-bold text-gray-800 mb-6">Add New User</h2>
+          <h2 className="text-2xl font-bold text-gray-800 mb-6">Tambah Piket / Admin Baru!</h2>
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
               <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
@@ -61,7 +61,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
             </div>
             <div>
               <label htmlFor="role" className="block text-sm font-medium text-gray-700 mb-1">
-                Role
+                Hak Akses
               </label>
               <select
                 id="role"
@@ -71,7 +71,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
               >
                 <option value="admin">Admin</option>
                 <option value="piket">Piket</option>
-                <option value="wakil_kepala">Wakil Kepala</option>
+                {/* <option value="wakil_kepala">Wakil Kepala</option> */}
               </select>
             </div>
             <button

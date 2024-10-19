@@ -2,14 +2,24 @@ import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Users, ClipboardList, Calendar, LogOut, UserCog, Home } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import ConfirmationModal from './ConfirmationModal';
+import useConfirmation from '../hooks/useConfirmation';
 
 const Sidebar: React.FC = () => {
   const location = useLocation();
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const { confirm, isOpen, options, handleConfirm, handleCancel } = useConfirmation();
 
-  const handleLogout = () => {
-    if (window.confirm('Are you sure you want to log out?')) {
+  const handleLogout = async () => {
+    const confirmed = await confirm({
+      title: 'Konfirmasi Logout',
+      message: 'Apakah Anda yakin ingin keluar?',
+      confirmText: 'Ya, Keluar',
+      cancelText: 'Batal'
+    });
+
+    if (confirmed) {
       logout();
       navigate('/login');
     }
@@ -22,8 +32,6 @@ const Sidebar: React.FC = () => {
     { path: '/teachers', icon: Users, label: 'Guru', roles: ['admin'] },
     { path: '/roster', icon: ClipboardList, label: 'Roster', roles: ['admin'] },
     { path: '/attendance', icon: Calendar, label: 'Absen', roles: ['admin', 'piket', 'wakil_kepala'] },
-    // { path: '/students', icon: UserPlus, label: 'Students', roles: ['admin'] },
-    // { path: '/leave-request', icon: FileText, label: 'Perizinan', roles: ['admin', 'piket', 'wakil_kepala'] },
     { path: '/user-management', icon: UserCog, label: 'User', roles: ['admin'] },
   ];
 
@@ -80,6 +88,15 @@ const Sidebar: React.FC = () => {
           </li>
         </ul>
       </nav>
+      <ConfirmationModal
+        isOpen={isOpen}
+        onClose={handleCancel}
+        onConfirm={handleConfirm}
+        title={options?.title || ''}
+        message={options?.message || ''}
+        confirmText={options?.confirmText}
+        cancelText={options?.cancelText}
+      />
     </>
   );
 };

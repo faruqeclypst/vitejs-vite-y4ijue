@@ -11,6 +11,7 @@ import useConfirmation from '../hooks/useConfirmation';
 const TeachersPage: React.FC = () => {
   const { teachers, addTeacher, updateTeacher, deleteTeacher } = useTeachers();
   const [editingTeacher, setEditingTeacher] = useState<Teacher | null>(null);
+  const [isFormOpen, setIsFormOpen] = useState(false);
   const { alert, showAlert, hideAlert } = useAlert();
   const { isOpen, options, confirm, handleConfirm, handleCancel } = useConfirmation();
 
@@ -18,15 +19,17 @@ const TeachersPage: React.FC = () => {
     if (editingTeacher) {
       updateTeacher(editingTeacher.id, teacher);
       showAlert({ type: 'success', message: 'Guru berhasil diperbarui' });
-      setEditingTeacher(null);
     } else {
       addTeacher(teacher);
       showAlert({ type: 'success', message: 'Guru berhasil ditambahkan' });
     }
+    setIsFormOpen(false);
+    setEditingTeacher(null);
   };
 
   const handleEdit = (teacher: Teacher) => {
     setEditingTeacher(teacher);
+    setIsFormOpen(true);
   };
 
   const handleDelete = async (id: string) => {
@@ -43,37 +46,37 @@ const TeachersPage: React.FC = () => {
     }
   };
 
-  return (
-    <div className="p-2 sm:p-4">
-      <h1 className="text-2xl sm:text-3xl font-bold mb-4 text-gray-800">Kelola Guru</h1>
-      
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-        <div>
-          <h2 className="text-xl sm:text-2xl font-semibold mb-3 text-gray-700">
-            {editingTeacher ? 'Edit Guru' : 'Tambah Guru'}
-          </h2>
-          <div className="bg-white rounded-lg shadow-md p-3 sm:p-4">
-            <TeacherForm onSubmit={handleSubmit} initialTeacher={editingTeacher} />
-          </div>
-        </div>
+  const handleAdd = () => {
+    setEditingTeacher(null);
+    setIsFormOpen(true);
+  };
 
-        <div>
-          <h2 className="text-xl sm:text-2xl font-semibold mb-3 text-gray-700">Daftar Guru</h2>
-          <div className="bg-white rounded-lg shadow-md overflow-hidden">
-            <TeacherList teachers={teachers} onEdit={handleEdit} onDelete={handleDelete} />
-          </div>
-        </div>
-      </div>
+  return (
+    <div className="p-4">
+      <h1 className="text-3xl font-bold mb-4 text-gray-800">Kelola Guru</h1>
+      
+      <TeacherList
+        teachers={teachers}
+        onEdit={handleEdit}
+        onDelete={handleDelete}
+        onAdd={handleAdd}
+      />
+
+      {isFormOpen && (
+        <TeacherForm
+          onSubmit={handleSubmit}
+          initialTeacher={editingTeacher}
+          onClose={() => setIsFormOpen(false)}
+        />
+      )}
 
       {alert && (
-        <div className="mt-4">
-          <Alert
-            type={alert.type}
-            message={alert.message}
-            duration={alert.duration}
-            onClose={hideAlert}
-          />
-        </div>
+        <Alert
+          type={alert.type}
+          message={alert.message}
+          duration={alert.duration}
+          onClose={hideAlert}
+        />
       )}
 
       <ConfirmationModal

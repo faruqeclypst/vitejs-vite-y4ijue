@@ -48,6 +48,19 @@ const RosterTable: React.FC<RosterTableProps> = ({ roster, teachers, onDelete, o
     setEditingEntry(null);
   };
 
+  // Define the order of days
+  const dayOrder = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
+
+  // Sort function for entries
+  const sortEntries = (a: RosterEntry, b: RosterEntry) => {
+    const dayDiff = dayOrder.indexOf(a.dayOfWeek) - dayOrder.indexOf(b.dayOfWeek);
+    if (dayDiff !== 0) return dayDiff;
+    return a.classId.localeCompare(b.classId);
+  };
+
+  // Sort teachers alphabetically
+  const sortedTeachers = [...teachers].sort((a, b) => a.name.localeCompare(b.name));
+
   return (
     <div className="space-y-4">
       <button
@@ -59,16 +72,19 @@ const RosterTable: React.FC<RosterTableProps> = ({ roster, teachers, onDelete, o
       >
         Tambah Entri Baru
       </button>
-      {Object.entries(groupedRoster).map(([teacherId, entries]) => {
-        const teacher = teachers.find(t => t.id === teacherId);
-        const isOpen = openTeachers.includes(teacherId);
+      {sortedTeachers.map((teacher) => {
+        const entries = groupedRoster[teacher.id] || [];
+        const isOpen = openTeachers.includes(teacher.id);
+        const sortedEntries = entries.sort(sortEntries);
         return (
-          <div key={teacherId} className="border rounded-lg overflow-hidden">
+          <div key={teacher.id} className="border rounded-lg overflow-hidden">
             <button
-              onClick={() => toggleTeacher(teacherId)}
+              onClick={() => toggleTeacher(teacher.id)}
               className="w-full flex justify-between items-center p-4 bg-gray-100 hover:bg-gray-200"
             >
-              <h3 className="font-bold text-lg">{teacher?.name}</h3>
+              <h3 className="font-bold text-lg">
+                {teacher.name} <span className="text-sm font-normal text-gray-600">({teacher.code})</span>
+              </h3>
               {isOpen ? (
                 <ChevronUp className="h-5 w-5" />
               ) : (
@@ -77,26 +93,32 @@ const RosterTable: React.FC<RosterTableProps> = ({ roster, teachers, onDelete, o
             </button>
             {isOpen && (
               <div className="p-4 bg-white">
-                {entries.map((entry) => (
-                  <div key={entry.id} className="mb-2 p-2 bg-gray-50 rounded shadow">
-                    <p><span className="font-semibold">{entry.dayOfWeek}:</span> {entry.classId}</p>
-                    <p>Jam: {entry.hours.join(', ')}</p>
-                    <div className="mt-2 space-x-2">
-                      <button
-                        onClick={() => handleEdit(entry)}
-                        className="bg-yellow-500 text-white text-xs px-2 py-1 rounded hover:bg-yellow-600"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => onDelete(entry.id)}
-                        className="bg-red-500 text-white text-xs px-2 py-1 rounded hover:bg-red-600"
-                      >
-                        Hapus
-                      </button>
-                    </div>
+                {sortedEntries.length > 0 ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {sortedEntries.map((entry) => (
+                      <div key={entry.id} className="p-2 bg-gray-50 rounded shadow">
+                        <p><span className="font-semibold">{entry.dayOfWeek}:</span> {entry.classId}</p>
+                        <p>Jam: {entry.hours.join(', ')}</p>
+                        <div className="mt-2 space-x-2">
+                          <button
+                            onClick={() => handleEdit(entry)}
+                            className="bg-yellow-500 text-white text-xs px-2 py-1 rounded hover:bg-yellow-600"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => onDelete(entry.id)}
+                            className="bg-red-500 text-white text-xs px-2 py-1 rounded hover:bg-red-600"
+                          >
+                            Hapus
+                          </button>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                ))}
+                ) : (
+                  <p className="text-gray-500 italic">Belum ada jadwal untuk guru ini.</p>
+                )}
               </div>
             )}
           </div>
