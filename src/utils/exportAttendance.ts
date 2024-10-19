@@ -48,6 +48,7 @@ export const exportAttendance = async ({
       absences: Array<{
         date: string;
         absentHours: number;
+        jamAbsensi: string[]; // Field baru
         class: string;
         keterangan: string;
       }>;
@@ -75,12 +76,13 @@ export const exportAttendance = async ({
       teacherAttendance[teacherId].hadir += presentHours.length;
       teacherAttendance[teacherId].tidakHadir += scheduledHours - presentHours.length;
 
-      // Add absent details
+      // Tambah jamAbsensi sebagai string
       const absentHours = rosterEntry.hours.filter(h => !presentHours.includes(h));
       if (absentHours.length > 0) {
         absentDetailsTemp[teacherId].absences.push({
           date: record.date,
           absentHours: absentHours.length,
+          jamAbsensi: absentHours.map(String), // Konversi ke string
           class: rosterEntry.classId,
           keterangan: record.keterangan || ''
         });
@@ -143,7 +145,7 @@ export const exportAttendance = async ({
   sortedTeachers.forEach((teacher) => {
     const teacherSheet = workbook.addWorksheet(`${teacher.name} (${teacher.code})`);
     
-    teacherSheet.mergeCells('A1:D1');
+    teacherSheet.mergeCells('A1:E1');
     teacherSheet.getCell('A1').value = `Rekap Tidak Hadir: ${teacher.name} (${teacher.code})`;
     teacherSheet.getCell('A1').font = { bold: true, size: 14 };
     teacherSheet.getCell('A1').alignment = { horizontal: 'center' };
@@ -155,7 +157,7 @@ export const exportAttendance = async ({
     };
     teacherSheet.getCell('A2').font = { color: { argb: 'FF0000FF' }, underline: true };
 
-    teacherSheet.addRow(['Tanggal', 'Jam Tidak Hadir', 'Kelas', 'Keterangan']);
+    teacherSheet.addRow(['Tanggal', 'Jam Tidak Hadir', 'Jam Absensi', 'Kelas', 'Keterangan']);
     teacherSheet.getRow(3).font = { bold: true };
     teacherSheet.getRow(3).alignment = { horizontal: 'center' };
 
@@ -165,11 +167,12 @@ export const exportAttendance = async ({
         const row = teacherSheet.addRow([
           absence.date,
           absence.absentHours,
+          absence.jamAbsensi.join(', '), // Tampilkan jam yang tidak hadir
           absence.class,
           absence.keterangan
         ]);
         row.eachCell((cell, colNumber) => {
-          if (colNumber !== 4) { // Don't center the 'Keterangan' column
+          if (colNumber !== 5) { // Jangan center kolom 'Keterangan'
             cell.alignment = { horizontal: 'center' };
           }
         });
@@ -182,6 +185,7 @@ export const exportAttendance = async ({
     teacherSheet.columns = [
       { width: 15 }, // Tanggal
       { width: 20 }, // Jam Tidak Hadir
+      { width: 20 }, // Jam Absensi
       { width: 15 }, // Kelas
       { width: 40 }  // Keterangan
     ];

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { RosterEntry, Teacher, Attendance, daySchedule } from '../types';
 import { Check } from 'lucide-react';
 
@@ -12,6 +12,8 @@ interface AttendanceTableProps {
 
 const AttendanceTable: React.FC<AttendanceTableProps> = ({ roster, teachers, onSubmit, existingAttendance, confirmedTeachers }) => {
   const [attendanceData, setAttendanceData] = useState<{ [rosterId: string]: { presentHours: number[], keterangan: string } }>({});
+  const [initialData, setInitialData] = useState<{ [rosterId: string]: { presentHours: number[], keterangan: string } }>({});
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
   useEffect(() => {
     const initialData: { [rosterId: string]: { presentHours: number[], keterangan: string } } = {};
@@ -22,7 +24,21 @@ const AttendanceTable: React.FC<AttendanceTableProps> = ({ roster, teachers, onS
         : { presentHours: [], keterangan: '' };
     });
     setAttendanceData(initialData);
+    setInitialData(initialData);
+    setHasUnsavedChanges(false);
   }, [roster, existingAttendance]);
+
+  const checkForChanges = useCallback(() => {
+    const hasChanges = Object.keys(attendanceData).some(rosterId => {
+      const current = attendanceData[rosterId];
+      const initial = initialData[rosterId];
+      return !initial ||
+        current.presentHours.length !== initial.presentHours.length ||
+        current.presentHours.some(hour => !initial.presentHours.includes(hour)) ||
+        current.keterangan !== initial.keterangan;
+    });
+    setHasUnsavedChanges(hasChanges);
+  }, [attendanceData, initialData]);
 
   const handleToggle = (rosterId: string, hour: number) => {
     setAttendanceData(prev => {
@@ -47,8 +63,14 @@ const AttendanceTable: React.FC<AttendanceTableProps> = ({ roster, teachers, onS
     }));
   };
 
+  useEffect(() => {
+    checkForChanges();
+  }, [attendanceData, checkForChanges]);
+
   const handleSubmit = () => {
     onSubmit(attendanceData);
+    setInitialData(attendanceData);
+    setHasUnsavedChanges(false);
   };
 
   if (!roster.length) {
@@ -90,33 +112,33 @@ const AttendanceTable: React.FC<AttendanceTableProps> = ({ roster, teachers, onS
                   </div>
                 </td>
                 {Array.from({ length: 8 }, (_, i) => (
-  <td key={i} className="py-2 px-3 border-b text-center">
-    {i < maxHours ? (
-      <div className="flex flex-col space-y-1">
-        {entries.map(entry => {
-          if (entry.hours.includes(i + 1)) {
-            const currentData = attendanceData[entry.id] || { presentHours: [], keterangan: '' };
-            return (
-              <button
-                key={entry.id}
-                onClick={() => handleToggle(entry.id, i + 1)}
-                className={`px-1 py-1 text-xs rounded truncate ${
-                  currentData.presentHours.includes(i + 1)
-                    ? 'bg-green-500 text-white'
-                    : 'bg-gray-200 text-gray-700'
-                }`}
-                style={{ maxWidth: '100%', whiteSpace: 'nowrap', overflow: 'hidden' }}
-              >
-                {entry.classId}
-              </button>
-            );
-          }
-          return null;
-        })}
-      </div>
-    ) : null}
-  </td>
-))}
+                  <td key={i} className="py-2 px-3 border-b text-center">
+                    {i < maxHours ? (
+                      <div className="flex flex-col space-y-1">
+                        {entries.map(entry => {
+                          if (entry.hours.includes(i + 1)) {
+                            const currentData = attendanceData[entry.id] || { presentHours: [], keterangan: '' };
+                            return (
+                              <button
+                                key={entry.id}
+                                onClick={() => handleToggle(entry.id, i + 1)}
+                                className={`px-1 py-1 text-xs rounded truncate ${
+                                  currentData.presentHours.includes(i + 1)
+                                    ? 'bg-green-500 text-white'
+                                    : 'bg-gray-200 text-gray-700'
+                                }`}
+                                style={{ maxWidth: '100%', whiteSpace: 'nowrap', overflow: 'hidden' }}
+                              >
+                                {entry.classId}
+                              </button>
+                            );
+                          }
+                          return null;
+                        })}
+                      </div>
+                    ) : null}
+                  </td>
+                ))}
                 <td className="py-2 px-3 border-b">
                   {entries.map(entry => {
                     const currentData = attendanceData[entry.id] || { presentHours: [], keterangan: '' };
@@ -141,9 +163,12 @@ const AttendanceTable: React.FC<AttendanceTableProps> = ({ roster, teachers, onS
       </table>
       <button
         onClick={handleSubmit}
-        className="mt-4 w-full sm:w-auto px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+        className={`mt-4 w-full sm:w-auto px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white ${
+          hasUnsavedChanges ? 'bg-green-600 hover:bg-green-700' : 'bg-indigo-600 hover:bg-indigo-700'
+        } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500`}
+        disabled={!hasUnsavedChanges}
       >
-        Kirim Absensi {new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+        {hasUnsavedChanges ? 'Kirim Absensi' : 'Absensi'} {new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
       </button>
     </div>
   );

@@ -18,7 +18,7 @@ interface Conflict {
 const RosterForm: React.FC<RosterFormProps> = ({ teachers, classes, onSubmit, initialData }) => {
   const [teacherId, setTeacherId] = useState('');
   const [classId, setClassId] = useState('');
-  const [dayOfWeek, setDayOfWeek] = useState<DayOfWeek>('Senin');
+  const [dayOfWeek, setDayOfWeek] = useState<DayOfWeek | ''>('');
   const [hours, setHours] = useState<number[]>([]);
   const [conflicts, setConflicts] = useState<Conflict[]>([]);
   const { roster } = useRoster();
@@ -33,7 +33,9 @@ const RosterForm: React.FC<RosterFormProps> = ({ teachers, classes, onSubmit, in
   }, [initialData]);
 
   useEffect(() => {
-    checkConflicts();
+    if(dayOfWeek) {
+      checkConflicts();
+    }
   }, [teacherId, classId, dayOfWeek, hours, roster]);
 
   const checkConflicts = () => {
@@ -75,7 +77,11 @@ const RosterForm: React.FC<RosterFormProps> = ({ teachers, classes, onSubmit, in
       alert('Tidak dapat menyimpan jadwal karena ada konflik. Harap selesaikan konflik terlebih dahulu.');
       return;
     }
-    onSubmit({ teacherId, classId, dayOfWeek, hours });
+    if (dayOfWeek === '') {
+      alert('Harap pilih hari.');
+      return;
+    }
+    onSubmit({ teacherId, classId, dayOfWeek: dayOfWeek as DayOfWeek, hours });
     if (!initialData) {
       setHours([]);
     }
@@ -138,7 +144,7 @@ const RosterForm: React.FC<RosterFormProps> = ({ teachers, classes, onSubmit, in
 
       <select
         value={dayOfWeek}
-        onChange={(e) => setDayOfWeek(e.target.value as DayOfWeek)}
+        onChange={(e) => setDayOfWeek(e.target.value as DayOfWeek || '')}
         className="w-full p-2 border rounded"
         required
       >
@@ -151,7 +157,7 @@ const RosterForm: React.FC<RosterFormProps> = ({ teachers, classes, onSubmit, in
       <div className="space-y-2">
         <label className="block text-sm font-medium text-gray-700">Jam</label>
         <div className="grid grid-cols-4 gap-2">
-          {Array.from({ length: daySchedule[dayOfWeek] }, (_, i) => i + 1).map((hour) => (
+          {dayOfWeek && Array.from({ length: daySchedule[dayOfWeek] }, (_, i) => i + 1).map((hour) => (
             <button
               key={hour}
               type="button"
