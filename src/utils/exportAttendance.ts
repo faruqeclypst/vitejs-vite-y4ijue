@@ -28,7 +28,7 @@ export const exportAttendance = async ({
   summarySheet.getCell('A1').alignment = { horizontal: 'center' };
 
   summarySheet.mergeCells('A2:E2');
-  const periodText = `Periode: ${startDate.toLocaleString('id-ID', { month: 'long', year: 'numeric' })} - ${endDate.toLocaleString('id-ID', { month: 'long', year: 'numeric' })}`;
+  const periodText = `Periode: ${startDate.getDate()} ${startDate.toLocaleString('id-ID', { month: 'long' })} - ${endDate.getDate()} ${endDate.toLocaleString('id-ID', { month: 'long' })} ${endDate.getFullYear()}`;
   summarySheet.getCell('A2').value = periodText;
   summarySheet.getCell('A2').alignment = { horizontal: 'center' };
 

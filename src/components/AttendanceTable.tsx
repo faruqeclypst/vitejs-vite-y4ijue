@@ -55,7 +55,6 @@ const AttendanceTable: React.FC<AttendanceTableProps> = ({ roster, teachers, onS
     return <div>No roster data available.</div>;
   }
 
-  // Group roster entries by teacher
   const groupedRoster = roster.reduce((acc, entry) => {
     const teacherId = entry.teacherId;
     if (!acc[teacherId]) {
@@ -66,7 +65,7 @@ const AttendanceTable: React.FC<AttendanceTableProps> = ({ roster, teachers, onS
   }, {} as { [teacherId: string]: RosterEntry[] });
 
   return (
-<div className="overflow-x-auto w-full">
+    <div className="overflow-x-auto w-full">
       <table className="w-full table-auto divide-y divide-gray-200">
         <thead className="bg-gray-50">
           <tr>
@@ -91,33 +90,33 @@ const AttendanceTable: React.FC<AttendanceTableProps> = ({ roster, teachers, onS
                   </div>
                 </td>
                 {Array.from({ length: 8 }, (_, i) => (
-                  <td key={i} className="py-2 px-3 border-b text-center">
-                    {i < maxHours ? (
-                      <div className="flex flex-col space-y-1">
-                        {entries.map(entry => {
-                          if (entry.hours.includes(i + 1)) {
-                            const currentData = attendanceData[entry.id] || { presentHours: [], keterangan: '' };
-                            return (
-                              <button
-                                key={entry.id}
-                                onClick={() => handleToggle(entry.id, i + 1)}
-                                className={`px-1 py-1 text-xs rounded truncate ${
-                                  currentData.presentHours.includes(i + 1)
-                                    ? 'bg-green-500 text-white'
-                                    : 'bg-gray-200 text-gray-700'
-                                }`}
-                                style={{ maxWidth: '100%', whiteSpace: 'nowrap', overflow: 'hidden' }}
-                              >
-                                {entry.classId}
-                              </button>
-                            );
-                          }
-                          return null;
-                        })}
-                      </div>
-                    ) : null}
-                  </td>
-                ))}
+  <td key={i} className="py-2 px-3 border-b text-center">
+    {i < maxHours ? (
+      <div className="flex flex-col space-y-1">
+        {entries.map(entry => {
+          if (entry.hours.includes(i + 1)) {
+            const currentData = attendanceData[entry.id] || { presentHours: [], keterangan: '' };
+            return (
+              <button
+                key={entry.id}
+                onClick={() => handleToggle(entry.id, i + 1)}
+                className={`px-1 py-1 text-xs rounded truncate ${
+                  currentData.presentHours.includes(i + 1)
+                    ? 'bg-green-500 text-white'
+                    : 'bg-gray-200 text-gray-700'
+                }`}
+                style={{ maxWidth: '100%', whiteSpace: 'nowrap', overflow: 'hidden' }}
+              >
+                {entry.classId}
+              </button>
+            );
+          }
+          return null;
+        })}
+      </div>
+    ) : null}
+  </td>
+))}
                 <td className="py-2 px-3 border-b">
                   {entries.map(entry => {
                     const currentData = attendanceData[entry.id] || { presentHours: [], keterangan: '' };

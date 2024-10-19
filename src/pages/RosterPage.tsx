@@ -51,8 +51,9 @@ const RosterPage: React.FC = () => {
   };
 
   return (
-    <div>
-      <h2 className="text-2xl font-bold mb-4">Kelola Jadwal</h2>
+    <div className="p-4">
+      <h1 className="text-3xl font-bold mb-4 text-gray-800">Kelola Jadwal</h1>
+      
       <RosterTable
         roster={roster}
         teachers={teachers}
@@ -61,6 +62,7 @@ const RosterPage: React.FC = () => {
         onUpdate={handleUpdateRosterEntry}
         classes={availableClasses}
       />
+
       {alert && (
         <Alert
           type={alert.type}
@@ -69,6 +71,7 @@ const RosterPage: React.FC = () => {
           onClose={hideAlert}
         />
       )}
+
       <ConfirmationModal
         isOpen={isOpen}
         onClose={handleCancel}

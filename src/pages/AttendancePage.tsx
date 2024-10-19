@@ -88,7 +88,6 @@ const AttendancePage: React.FC = () => {
 
         await Promise.all(promises);
 
-        // Update confirmed teachers
         const newConfirmedTeachers = [...new Set([...confirmedTeachers, ...Object.keys(attendanceData)])];
         setConfirmedTeachers(newConfirmedTeachers);
 
@@ -160,18 +159,19 @@ const AttendancePage: React.FC = () => {
   }
 
   return (
-    <div className="space-y-8">
-      <h1 className="text-2xl sm:text-3xl font-bold mb-4">Halaman Kehadiran</h1>
-      <div className="bg-white shadow overflow-hidden sm:rounded-lg p-4 sm:p-6">
+    <div className="p-4 space-y-8">
+      <h1 className="text-3xl font-bold mb-4 text-gray-800">Halaman Kehadiran</h1>
+      
+      <div className="bg-white shadow-md rounded-lg p-6">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl sm:text-2xl font-semibold">Catat Kehadiran</h2>
+          <h2 className="text-xl font-semibold">Catat Kehadiran</h2>
           <span className="text-lg font-medium text-gray-600">
             {currentDay || 'Minggu'}
           </span>
         </div>
         <div className="mb-4 flex flex-wrap gap-4">
           <div className="flex-1 min-w-[200px]">
-            <label htmlFor="date" className="block text-sm font-medium text-gray-700">Date:</label>
+            <label htmlFor="date" className="block text-sm font-medium text-gray-700">Tanggal:</label>
             <input
               type="date"
               id="date"
@@ -200,8 +200,8 @@ const AttendancePage: React.FC = () => {
       </div>
 
       {isAdmin && (
-        <div className="bg-white shadow overflow-hidden sm:rounded-lg p-4 sm:p-6">
-          <h2 className="text-xl sm:text-2xl font-semibold mb-6">Ekspor Data Kehadiran</h2>
+        <div className="bg-white shadow-md rounded-lg p-6">
+          <h2 className="text-xl font-semibold mb-6">Ekspor Data Kehadiran</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="bg-gray-50 p-4 rounded-lg">
               <h3 className="text-lg font-medium mb-4">Ekspor Kustom</h3>
@@ -278,6 +278,7 @@ const AttendancePage: React.FC = () => {
           </div>
         </div>
       )}
+
       {alert && (
         <Alert
           type={alert.type}
@@ -286,6 +287,7 @@ const AttendancePage: React.FC = () => {
           onClose={hideAlert}
         />
       )}
+
       <ConfirmationModal
         isOpen={isOpen}
         onClose={handleCancel}

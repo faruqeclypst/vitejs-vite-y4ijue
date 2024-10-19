@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { RosterEntry, Teacher } from '../types';
 import RosterForm from './RosterForm';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { ChevronDown, ChevronUp, Edit, Trash2, Plus } from 'lucide-react';
 
 interface RosterTableProps {
   roster: RosterEntry[];
@@ -48,36 +48,39 @@ const RosterTable: React.FC<RosterTableProps> = ({ roster, teachers, onDelete, o
     setEditingEntry(null);
   };
 
-  // Define the order of days
   const dayOrder = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
 
-  // Sort function for entries
   const sortEntries = (a: RosterEntry, b: RosterEntry) => {
     const dayDiff = dayOrder.indexOf(a.dayOfWeek) - dayOrder.indexOf(b.dayOfWeek);
     if (dayDiff !== 0) return dayDiff;
     return a.classId.localeCompare(b.classId);
   };
 
-  // Sort teachers alphabetically
   const sortedTeachers = [...teachers].sort((a, b) => a.name.localeCompare(b.name));
 
   return (
-    <div className="space-y-4">
-      <button
-        onClick={() => {
-          setEditingEntry(null);
-          setIsModalOpen(true);
-        }}
-        className="mb-4 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-      >
-        Tambah Entri Baru
-      </button>
+    <div className="bg-white shadow-md rounded-lg p-4">
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-xl font-semibold flex items-center">
+          Jadwal Guru
+        </h2>
+        <button
+          onClick={() => {
+            setEditingEntry(null);
+            setIsModalOpen(true);
+          }}
+          className="bg-blue-500 text-white p-2 rounded-full hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
+        >
+          <Plus size={20} />
+        </button>
+      </div>
+
       {sortedTeachers.map((teacher) => {
         const entries = groupedRoster[teacher.id] || [];
         const isOpen = openTeachers.includes(teacher.id);
         const sortedEntries = entries.sort(sortEntries);
         return (
-          <div key={teacher.id} className="border rounded-lg overflow-hidden">
+          <div key={teacher.id} className="border rounded-lg overflow-hidden mb-4">
             <button
               onClick={() => toggleTeacher(teacher.id)}
               className="w-full flex justify-between items-center p-4 bg-gray-100 hover:bg-gray-200"
@@ -104,12 +107,14 @@ const RosterTable: React.FC<RosterTableProps> = ({ roster, teachers, onDelete, o
                             onClick={() => handleEdit(entry)}
                             className="bg-yellow-500 text-white text-xs px-2 py-1 rounded hover:bg-yellow-600"
                           >
+                            <Edit size={12} className="inline mr-1" />
                             Edit
                           </button>
                           <button
                             onClick={() => onDelete(entry.id)}
                             className="bg-red-500 text-white text-xs px-2 py-1 rounded hover:bg-red-600"
                           >
+                            <Trash2 size={12} className="inline mr-1" />
                             Hapus
                           </button>
                         </div>
@@ -124,6 +129,7 @@ const RosterTable: React.FC<RosterTableProps> = ({ roster, teachers, onDelete, o
           </div>
         );
       })}
+
       {isModalOpen && (
         <div className="fixed inset-0 z-50 overflow-auto bg-smoke-light flex">
           <div className="fixed inset-0 bg-black opacity-50"></div>
