@@ -18,6 +18,7 @@ interface User {
   role: UserRole;
   asramaId?: string;
   email: string;
+  isDefaultAccount: boolean;
 }
 
 interface AuthContextType {
@@ -70,7 +71,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         email: adminEmail,
         fullName: 'Administrator',
         role: 'admin',
-        asramaId: null
+        asramaId: null,
+        isDefaultAccount: true // Tambahkan penanda
       });
 
       // Sign out setelah membuat admin
@@ -87,7 +89,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         email: adminAsramaEmail,
         fullName: 'Admin Asrama',
         role: 'admin_asrama',
-        asramaId: null
+        asramaId: null,
+        isDefaultAccount: true // Tambahkan penanda
       });
 
       // Sign out setelah membuat admin_asrama
@@ -116,7 +119,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             username: userData.username,
             fullName: userData.fullName,
             role: userData.role,
-            asramaId: userData.asramaId
+            asramaId: userData.asramaId,
+            isDefaultAccount: userData.isDefaultAccount
           });
         }
       } else {
@@ -299,7 +303,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       username: userData.username,
       fullName: userData.fullName,
       role: userData.role,
-      asramaId: userData.asramaId
+      asramaId: userData.asramaId,
+      isDefaultAccount: userData.isDefaultAccount
     }));
   };
 

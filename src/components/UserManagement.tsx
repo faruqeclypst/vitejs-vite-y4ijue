@@ -62,9 +62,13 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
       // Admin asrama hanya melihat pengasuh
       setUsers(fetchedUsers.filter(user => user.role === 'pengasuh'));
     } else {
-      // Admin biasa tidak melihat admin_asrama dan pengasuh
+      // Admin biasa tidak melihat admin_asrama, pengasuh, dan admin default
       setUsers(fetchedUsers.filter(user => 
-        user.role !== 'admin_asrama' && user.role !== 'pengasuh'
+        user.role !== 'admin_asrama' && 
+        user.role !== 'pengasuh' &&
+        // Tambahkan filter untuk menyembunyikan admin default
+        user.id !== currentUser?.id && // Sembunyikan diri sendiri jika admin
+        !user.username.match(/^(admin|admin_asrama)$/) // Sembunyikan akun default
       ));
     }
   };
