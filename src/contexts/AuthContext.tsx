@@ -1,5 +1,5 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import { ref, get, push } from 'firebase/database';
+import { ref, get, push, set, remove } from 'firebase/database';
 import { db } from '../firebase';
 
 type UserRole = 'admin' | 'piket' | 'wakil_kepala';
@@ -15,6 +15,9 @@ interface AuthContextType {
   login: (username: string, password: string) => Promise<void>;
   logout: () => void;
   addUser: (username: string, password: string, role: UserRole) => Promise<void>;
+  getUsers: () => Promise<User[]>;
+  updateUser: (id: string, username: string, password: string, role: UserRole) => Promise<void>;
+  deleteUser: (id: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -68,8 +71,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await push(usersRef, { username, password, role });
   };
 
+  const getUsers = async (): Promise<User[]> => {
+    const usersRef = ref(db, 'users');
+    const snapshot = await get(usersRef);
+    const users = snapshot.val();
+    return Object.entries(users).map(([id, userData]: [string, any]) => ({
+      id,
+      username: userData.username,
+      role: userData.role,
+    }));
+  };
+
+  const updateUser = async (id: string, username: string, password: string, role: UserRole) => {
+    const userRef = ref(db, `users/${id}`);
+    await set(userRef, { username, password, role });
+  };
+
+  const deleteUser = async (id: string) => {
+    const userRef = ref(db, `users/${id}`);
+    await remove(userRef);
+  };
+
   return (
-    <AuthContext.Provider value={{ user, login, logout, addUser }}>
+    <AuthContext.Provider value={{ user, login, logout, addUser, getUsers, updateUser, deleteUser }}>
       {children}
     </AuthContext.Provider>
   );
