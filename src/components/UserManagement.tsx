@@ -175,12 +175,12 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
   };
 
   return (
-    <div className="space-y-6 p-2 sm:p-4">
+    <div className="w-full">
       {/* Tombol tambah */}
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between items-center mb-6">
         <button
           onClick={() => setIsModalOpen(true)}
-          className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center"
+          className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-lg flex items-center text-base"
         >
           <Plus className="h-5 w-5 mr-2" />
           Tambah User Baru
@@ -190,9 +190,9 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
       {/* Modal Ganti Password */}
       {isChangePasswordModalOpen && (
         <div className="fixed inset-0 z-50 overflow-auto bg-black bg-opacity-50 flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-3xl rounded-lg shadow-xl overflow-hidden">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold">
+          <div className="bg-white w-full max-w-5xl rounded-lg shadow-xl overflow-hidden">
+            <div className="p-6 bg-gray-50 border-b flex justify-between items-center">
+              <h3 className="text-2xl font-bold text-gray-800">
                 Ganti Password - {userForPasswordChange?.username}
               </h3>
               <button
@@ -205,133 +205,138 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
                 <X className="h-6 w-6" />
               </button>
             </div>
-            <form onSubmit={handleChangePassword} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Password Baru
-                </label>
-                <input
-                  type="password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                />
-              </div>
-              <div className="flex justify-end space-x-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsChangePasswordModalOpen(false);
-                    setUserForPasswordChange(null);
-                  }}
-                  className="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-                >
-                  Simpan
-                </button>
-              </div>
-            </form>
+            <div className="p-6">
+              <form onSubmit={handleChangePassword} className="space-y-6">
+                <div>
+                  <label className="block text-base font-medium text-gray-700 mb-2">
+                    Password Baru
+                  </label>
+                  <input
+                    type="password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    required
+                    className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div className="flex justify-end space-x-4">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsChangePasswordModalOpen(false);
+                      setUserForPasswordChange(null);
+                    }}
+                    className="px-6 py-3 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 font-medium"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 font-medium"
+                  >
+                    Simpan
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
         </div>
       )}
 
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 overflow-auto bg-black bg-opacity-50 flex items-center justify-center p-2 sm:p-4">
-          <div className="bg-white w-full max-w-4xl rounded-lg shadow-xl overflow-hidden">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
-              {editingUser ? 'Edit User' : 'Tambah User Baru'}
-            </h3>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
-                  Username
-                </label>
-                <input
-                  type="text"
-                  id="username"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                />
-              </div>
-              <div>
-                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-                  Password
-                </label>
-                <input
-                  type="password"
-                  id="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required={!editingUser}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                />
-              </div>
-              <div>
-                <label htmlFor="role" className="block text-sm font-medium text-gray-700 mb-1">
-                  Hak Akses
-                </label>
-                <select
-                  id="role"
-                  value={role}
-                  onChange={(e) => {
-                    const newRole = e.target.value as UserRole;
-                    setRole(newRole);
-                    if (newRole !== 'pengasuh') {
-                      setSelectedAsrama('');
-                    }
-                  }}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                >
-                  {getAvailableRoles().map(({ value, label }) => (
-                    <option key={value} value={value}>{label}</option>
-                  ))}
-                </select>
-              </div>
-              {role === 'pengasuh' && (
+        <div className="fixed inset-0 z-50 overflow-auto bg-black bg-opacity-50 flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-5xl rounded-lg shadow-xl overflow-hidden">
+            <div className="p-6 bg-gray-50 border-b flex justify-between items-center">
+              <h3 className="text-2xl font-bold text-gray-800">
+                {editingUser ? 'Edit User' : 'Tambah User Baru'}
+              </h3>
+              <button onClick={() => setIsModalOpen(false)} className="text-gray-500 hover:text-gray-700">
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+            <div className="p-6">
+              <form onSubmit={handleSubmit} className="space-y-6">
                 <div>
-                  <label htmlFor="asrama" className="block text-sm font-medium text-gray-700 mb-1">
-                    Asrama
+                  <label className="block text-base font-medium text-gray-700 mb-2">
+                    Username
+                  </label>
+                  <input
+                    type="text"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    required
+                    className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-base font-medium text-gray-700 mb-2">
+                    Password
+                  </label>
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required={!editingUser}
+                    className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-base font-medium text-gray-700 mb-2">
+                    Hak Akses
                   </label>
                   <select
-                    id="asrama"
-                    value={selectedAsrama}
-                    onChange={(e) => setSelectedAsrama(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                    required={role === 'pengasuh'}
+                    value={role}
+                    onChange={(e) => {
+                      const newRole = e.target.value as UserRole;
+                      setRole(newRole);
+                      if (newRole !== 'pengasuh') {
+                        setSelectedAsrama('');
+                      }
+                    }}
+                    className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
                   >
-                    <option value="">Pilih Asrama</option>
-                    {asramas.map((asrama) => (
-                      <option key={asrama.id} value={asrama.id}>
-                        {asrama.name}
-                      </option>
+                    {getAvailableRoles().map(({ value, label }) => (
+                      <option key={value} value={value}>{label}</option>
                     ))}
                   </select>
                 </div>
-              )}
-              <div className="flex justify-end space-x-2 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  {editingUser ? 'Update' : 'Tambah'}
-                </button>
-              </div>
-            </form>
+                {role === 'pengasuh' && (
+                  <div>
+                    <label className="block text-base font-medium text-gray-700 mb-2">
+                      Asrama
+                    </label>
+                    <select
+                      value={selectedAsrama}
+                      onChange={(e) => setSelectedAsrama(e.target.value)}
+                      required={role === 'pengasuh'}
+                      className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="">Pilih Asrama</option>
+                      {asramas.map((asrama) => (
+                        <option key={asrama.id} value={asrama.id}>
+                          {asrama.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+                <div className="flex justify-end space-x-4 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setIsModalOpen(false)}
+                    className="px-6 py-3 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 font-medium"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 font-medium"
+                  >
+                    {editingUser ? 'Update' : 'Simpan'}
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
         </div>
       )}

@@ -41,8 +41,8 @@ const AppRoutes = () => {
               </div>
             </header>
           )}
-          <main className="flex-1 py-6">
-            <div className="max-w-full mx-4 sm:mx-6 lg:mx-8">
+          <main className="flex-1">
+            <div className="w-full h-full">
               <Routes>
                 <Route path="/login" element={user ? <Navigate to="/" /> : <Login />} />
                 <Route path="/" element={

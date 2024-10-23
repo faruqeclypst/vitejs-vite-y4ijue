@@ -42,8 +42,8 @@ const LandingPage: React.FC = () => {
   }, [teachers, attendanceRecords, roster]);
     
   return (
-    <div className="p-2 sm:p-4">
-      <div className="max-w-full">
+    <div className="flex items-center justify-center min-h-[calc(100vh-4rem)]">
+      <div className="w-full max-w-7xl px-4 sm:px-6 lg:px-8">
         <Header />
         <StatsGrid stats={stats} />
       </div>
@@ -52,37 +52,37 @@ const LandingPage: React.FC = () => {
 };
 
 const Header: React.FC = () => (
-  <div className="text-center mb-8">
-    <h1 className="text-4xl font-extrabold text-gray-900 sm:text-5xl md:text-6xl">
+  <div className="text-center mb-12">
+    <h1 className="text-5xl font-extrabold text-gray-900 sm:text-6xl md:text-7xl">
       Piket MOSA
     </h1>
-    <p className="mt-3 max-w-md mx-auto text-base text-gray-500 sm:text-lg md:mt-5 md:text-xl md:max-w-3xl">
+    <p className="mt-6 text-xl text-gray-600 sm:text-2xl max-w-3xl mx-auto">
       Kelola Jam dan kehadiran Guru dengan mudah dalam satu platform.
     </p>
   </div>
 );
 
 const StatsGrid: React.FC<{ stats: Array<{ title: string; value: number; icon: React.ElementType; color: string }> }> = ({ stats }) => (
-  <div className="mt-10">
-    <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+  <div className="mt-12">
+    <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
       {stats.map((item, index) => (
         <div
           key={item.title}
-          className={`relative overflow-hidden rounded-lg ${item.color} shadow-md transition-all duration-300 hover:shadow-xl hover:-translate-y-1 ${
+          className={`relative overflow-hidden rounded-xl ${item.color} shadow-lg transition-all duration-300 hover:shadow-xl hover:-translate-y-1 ${
             item.title.startsWith('Jam') ? 'block' : 'hidden sm:block'
           }`}
           style={{animation: `fadeInUp 0.5s ease-out ${index * 0.1}s both`}}
         >
-          <div className="px-4 py-5 sm:p-6">
+          <div className="px-6 py-8">
             <div className="flex items-center">
-              <div className="flex-shrink-0 rounded-md bg-opacity-20 bg-white p-3">
-                <item.icon className="h-6 w-6 text-white" />
+              <div className="flex-shrink-0 rounded-lg bg-opacity-20 bg-white p-4">
+                <item.icon className="h-8 w-8 text-white" />
               </div>
-              <div className="ml-5 w-0 flex-1">
-                <dt className="truncate text-sm font-bold text-gray-100">
+              <div className="ml-6 w-0 flex-1">
+                <dt className="truncate text-lg font-bold text-gray-100">
                   {item.title}
                 </dt>
-                <dd className="mt-1 text-3xl font-semibold text-white">
+                <dd className="mt-2 text-4xl font-semibold text-white">
                   {item.value}
                 </dd>
               </div>
