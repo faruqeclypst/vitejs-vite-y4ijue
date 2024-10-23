@@ -89,8 +89,15 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
     setFullName('');
     setRole(currentUser?.role === 'admin_asrama' ? 'pengasuh' : 'admin');
     setSelectedAsrama('');
-    setSelectedAsramas([]); // Reset multiple asrama
+    setSelectedAsramas([]);
     setEditingUser(null);
+    setIsModalOpen(false);
+  };
+
+  // Tambahkan fungsi untuk membuka modal tambah
+  const openModal = () => {
+    resetForm(); // Reset form terlebih dahulu
+    setIsModalOpen(true); // Kemudian buka modal
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -190,11 +197,13 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
     }
   };
 
+  // Update fungsi handleEdit
   const handleEdit = (user: User) => {
     setEditingUser(user);
     setUsername(user.username);
     setFullName(user.fullName);
     setRole(user.role);
+    setPassword(''); // Reset password saat edit
     if (user.asramaId) {
       if (user.role === 'pengasuh') {
         setSelectedAsramas(user.asramaId.split(','));
@@ -202,7 +211,6 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
         setSelectedAsrama(user.asramaId);
       }
     }
-    setPassword(''); // Reset password saat edit
     setIsModalOpen(true);
   };
 
@@ -342,11 +350,11 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
       {/* Tombol tambah */}
       <div className="flex justify-between items-center mb-6">
         <button
-          onClick={() => setIsModalOpen(true)}
-          className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-lg flex items-center text-base"
+          onClick={openModal} // Gunakan fungsi openModal yang baru
+          className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center"
         >
           <Plus className="h-5 w-5 mr-2" />
-          Tambah User Baru
+          Tambah User
         </button>
       </div>
 

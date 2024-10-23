@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Student, availableClasses } from '../types';
 import { useStudents } from '../contexts/StudentContext';
 import { useAsrama } from '../contexts/AsramaContext';
@@ -8,6 +8,8 @@ import StudentLeaveHistory from './StudentLeaveHistory';
 import { useAuth } from '../contexts/AuthContext';
 import Alert from '../components/Alert';
 import useAlert from '../hooks/useAlert';
+import { ref, onValue, get } from 'firebase/database';
+import { db } from '../firebase';
 
 const StudentManagement: React.FC = () => {
   const { students, addStudent, updateStudent, deleteStudent } = useStudents();
@@ -26,32 +28,45 @@ const StudentManagement: React.FC = () => {
   const { alert, showAlert, hideAlert } = useAlert();
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [groupedStudents, setGroupedStudents] = useState<Record<string, Student[]>>({ 'Semua Siswa': students });
 
-  // Modifikasi filteredStudents untuk admin_asrama dan pengasuh dengan multiple asrama
-  const groupedStudents = useMemo(() => {
-    if (currentUser?.role === 'admin_asrama') {
-      return students.reduce((acc, student) => {
-        if (!acc[student.asrama]) {
-          acc[student.asrama] = [];
-        }
-        acc[student.asrama].push(student);
-        return acc;
-      }, {} as Record<string, Student[]>);
-    } else if (currentUser?.role === 'pengasuh' && currentUser?.asramaId) {
-      // Split asramaId jika ada multiple asrama
-      const asramaIds = currentUser.asramaId.split(',');
-      const asramaNames = asramaIds.map(id => asramas.find(a => a.id === id)?.name || '');
+  // Tambahkan useEffect untuk memantau perubahan user
+  useEffect(() => {
+    const usersRef = ref(db, 'users');
+    const unsubscribe = onValue(usersRef, async () => {
+      // Refresh currentUser dari AuthContext
+      const userRef = ref(db, `users/${currentUser?.id}`);
+      const snapshot = await get(userRef);
+      const userData = snapshot.val();
       
-      // Buat grup untuk setiap asrama yang dimiliki pengasuh
-      return asramaNames.reduce((acc, asramaName) => {
-        if (asramaName) {
-          acc[asramaName] = students.filter(student => student.asrama === asramaName);
+      if (userData) {
+        // Update groupedStudents berdasarkan data asrama terbaru
+        if (userData.role === 'admin_asrama') {
+          const groupedByAsrama = students.reduce((acc, student) => {
+            if (!acc[student.asrama]) {
+              acc[student.asrama] = [];
+            }
+            acc[student.asrama].push(student);
+            return acc;
+          }, {} as Record<string, Student[]>);
+          setGroupedStudents(groupedByAsrama);
+        } else if (userData.role === 'pengasuh' && userData.asramaId) {
+          const asramaIds = userData.asramaId.split(',');
+          const asramaNames = asramaIds.map((id: string) => asramas.find(a => a.id === id)?.name || '');
+          
+          const newGroupedStudents = asramaNames.reduce((acc: Record<string, Student[]>, asramaName: string) => {
+            if (asramaName) {
+              acc[asramaName] = students.filter(student => student.asrama === asramaName);
+            }
+            return acc;
+          }, {} as Record<string, Student[]>);
+          setGroupedStudents(newGroupedStudents);
         }
-        return acc;
-      }, {} as Record<string, Student[]>);
-    }
-    return { 'Semua Siswa': students };
-  }, [students, currentUser, asramas]);
+      }
+    });
+
+    return () => unsubscribe();
+  }, [currentUser?.id, students, asramas]);
 
   // Filter asrama yang bisa dipilih saat menambah/edit siswa
   const availableAsramas = useMemo(() => {
@@ -277,10 +292,10 @@ const StudentManagement: React.FC = () => {
         </div>
       </div>
 
-      {/* Render tables for each asrama */}
-      <div className="space-y-8">
+      {/* Render tables for each asrama in 2 columns */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {Object.entries(groupedStudents).map(([asramaName, students]) => (
-          <div key={asramaName} className="bg-white shadow-md rounded-lg overflow-hidden">
+          <div key={asramaName} className="bg-white shadow-md rounded-lg overflow-hidden h-fit">
             <div className="px-6 py-4 bg-gray-50 border-b">
               <h3 className="text-lg font-semibold text-gray-800">{asramaName}</h3>
             </div>

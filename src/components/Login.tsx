@@ -6,17 +6,22 @@ const Login: React.FC = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setIsLoading(true);
+
     try {
       await login(username, password);
       navigate('/');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An unexpected error occurred');
+      setError(err instanceof Error ? err.message : 'Terjadi kesalahan saat login');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -36,6 +41,7 @@ const Login: React.FC = () => {
               name="username"
               type="text"
               required
+              disabled={isLoading}
               className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-base"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
@@ -50,6 +56,7 @@ const Login: React.FC = () => {
               name="password"
               type="password"
               required
+              disabled={isLoading}
               className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-base"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -64,9 +71,12 @@ const Login: React.FC = () => {
 
           <button
             type="submit"
-            className="w-full py-3 px-4 mt-6 border border-transparent rounded-md shadow-sm text-base font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            disabled={isLoading}
+            className={`w-full py-3 px-4 mt-6 border border-transparent rounded-md shadow-sm text-base font-medium text-white ${
+              isLoading ? 'bg-blue-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'
+            } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500`}
           >
-            Sign in
+            {isLoading ? 'Logging in...' : 'Sign in'}
           </button>
         </form>
       </div>

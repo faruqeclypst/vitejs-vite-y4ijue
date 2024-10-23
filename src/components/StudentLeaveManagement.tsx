@@ -31,17 +31,17 @@ const StudentLeaveManagement: React.FC = () => {
   const [isDocumentModalOpen, setIsDocumentModalOpen] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState<string | null>(null);
   const [selectedLeave, setSelectedLeave] = useState<StudentLeave | null>(null);
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
-  const [showConfirmModal, setShowConfirmModal] = useState(false);
-  const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [showAsramaAlert, setShowAsramaAlert] = useState(false);
-  const [alertMessage, setAlertMessage] = useState('');
-  const { alert, showAlert, hideAlert } = useAlert();
   const [showStatusConfirmModal, setShowStatusConfirmModal] = useState(false);
   const [selectedLeaveForStatus, setSelectedLeaveForStatus] = useState<StudentLeave | null>(null);
   const [newStatus, setNewStatus] = useState<ReturnStatus | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [alertMessage, setAlertMessage] = useState('');
+  const [showAsramaAlert, setShowAsramaAlert] = useState(false);
+  const { alert, showAlert, hideAlert } = useAlert();
 
   const leaveTypes: LeaveType[] = ['Sakit', 'Izin', 'Pulang', 'Tanpa Keterangan', 'Lomba'];
 
@@ -109,22 +109,9 @@ const StudentLeaveManagement: React.FC = () => {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    const leave = leaves.find(l => l.id === id);
-    const student = students.find(s => s.id === leave?.studentId);
-
-    // Cek apakah pengasuh memiliki akses untuk menghapus
-    if (currentUser?.role === 'pengasuh' && currentUser?.asramaId) {
-      const userAsrama = asramas.find(a => a.id === currentUser.asramaId)?.name;
-      if (student?.asrama !== userAsrama) {
-        setAlertMessage('Anda hanya dapat menghapus perizinan siswa dari asrama Anda');
-        setShowAsramaAlert(true);
-        return;
-      }
-    }
-
-    setDeleteId(id);
-    setShowConfirmModal(true);
+  const handleDelete = (leaveId: string) => {
+    setDeleteId(leaveId);
+    setShowDeleteConfirmModal(true);
   };
 
   const confirmDelete = async () => {
@@ -133,16 +120,18 @@ const StudentLeaveManagement: React.FC = () => {
         await deleteLeave(deleteId);
         showAlert({
           type: 'success',
-          message: 'Data perizinan berhasil dihapus'
+          message: 'Perizinan berhasil dihapus',
+          duration: 3000
         });
       } catch (error) {
         showAlert({
           type: 'error',
-          message: 'Gagal menghapus data perizinan'
+          message: 'Gagal menghapus perizinan',
+          duration: 3000
         });
       }
     }
-    setShowConfirmModal(false);
+    setShowDeleteConfirmModal(false);
     setDeleteId(null);
   };
 
@@ -238,6 +227,7 @@ const StudentLeaveManagement: React.FC = () => {
       }
     }
 
+    // Set state untuk mode edit
     setEditingLeave(leave);
     setSelectedStudents(student ? [student] : []);
     setNewLeave({
@@ -256,7 +246,7 @@ const StudentLeaveManagement: React.FC = () => {
   // Tambahkan fungsi untuk membuka modal tambah
   const openModal = () => {
     resetForm(); // Reset form terlebih dahulu
-    setIsModalOpen(true);
+    setIsModalOpen(true); // Kemudian buka modal
   };
 
   // Fungsi untuk mengirim pesan WhatsApp
@@ -342,6 +332,13 @@ const StudentLeaveManagement: React.FC = () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [isDropdownOpen]);
+
+  // Pastikan useAlert digunakan
+  useEffect(() => {
+    if (alert) {
+      // Optional: Tambahkan logika tambahan saat alert berubah
+    }
+  }, [alert]);
 
   return (
     <div className="space-y-6">
@@ -858,16 +855,19 @@ const StudentLeaveManagement: React.FC = () => {
       )}
 
       {/* Modal Konfirmasi Delete */}
-      {showConfirmModal && (
+      {showDeleteConfirmModal && (
         <div className="fixed inset-0 z-50 overflow-auto bg-black bg-opacity-50 flex items-center justify-center">
           <div className="bg-white rounded-lg p-8 max-w-md mx-auto">
             <h3 className="text-xl font-bold mb-4">Konfirmasi Hapus</h3>
             <p className="text-gray-600 mb-6">
-              Apakah Anda yakin ingin menghapus data perizinan ini?
+              Apakah Anda yakin ingin menghapus perizinan ini?
             </p>
             <div className="flex justify-end space-x-4">
               <button
-                onClick={() => setShowConfirmModal(false)}
+                onClick={() => {
+                  setShowDeleteConfirmModal(false);
+                  setDeleteId(null);
+                }}
                 className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300"
               >
                 Batal
