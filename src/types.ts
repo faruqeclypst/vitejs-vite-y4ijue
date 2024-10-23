@@ -26,6 +26,7 @@ export interface Student {
   gender: 'Laki-laki' | 'Perempuan';
   class: string;
   asrama: string;
+  barak: string;
 }
 
 export interface StudentLeaveRequest {
@@ -47,7 +48,6 @@ export const daySchedule: Record<DayOfWeek, number> = {
   Sabtu: 7
 };
 
-
 export const availableClasses = [
   'X-1', 'X-2', 'X-3', 'X-4', 'X-5', 'X-6',
   'XI-1', 'XI-2', 'XI-3', 'XI-4', 'XI-5', 'XI-6',
@@ -55,11 +55,8 @@ export const availableClasses = [
 ];
 
 export type LeaveType = 'Sakit' | 'Izin' | 'Pulang' | 'Tanpa Keterangan' | 'Lomba';
-
-// Tambahkan tipe untuk status kembali
 export type ReturnStatus = 'Sudah Kembali' | 'Belum Kembali';
 
-// Update interface StudentLeave
 export interface StudentLeave {
   id: string;
   studentId: string;
@@ -70,5 +67,28 @@ export interface StudentLeave {
   endTime: string;
   keterangan: string;
   documentUrl?: string;
-  returnStatus?: ReturnStatus; // Tambah field baru
+  returnStatus?: ReturnStatus;
 }
+
+export type UserRole = 'admin' | 'admin_barak' | 'admin_asrama' | 'pengasuh' | 'piket' | 'wakil_kepala';
+
+export interface User {
+  id: string;
+  username: string;
+  fullName: string;
+  role: UserRole;
+  asramaId?: string;
+  barakId?: string;
+  email: string;
+  isDefaultAccount?: boolean;
+}
+
+export interface Barak {
+  id: string;
+  name: string;
+  capacity: number;
+  currentOccupancy: number;
+}
+
+// Untuk backward compatibility
+export interface Asrama extends Barak {}

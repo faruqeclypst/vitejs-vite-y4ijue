@@ -8,7 +8,7 @@ import StudentLeaveHistory from './StudentLeaveHistory';
 import { useAuth } from '../contexts/AuthContext';
 import Alert from '../components/Alert';
 import useAlert from '../hooks/useAlert';
-import { ref, onValue, get } from 'firebase/database';
+import { ref, onValue, get } from 'firebase/database'; // Hapus 'get' karena tidak digunakan
 import { db } from '../firebase';
 
 const StudentManagement: React.FC = () => {
@@ -21,7 +21,8 @@ const StudentManagement: React.FC = () => {
     fullName: '',
     gender: 'Laki-laki',
     class: availableClasses[0],
-    asrama: ''
+    asrama: '',
+    barak: '' // Tambahkan properti barak
   });
   const [selectedGrade, setSelectedGrade] = useState<'X' | 'XI' | 'XII' | ''>('');
   const [selectedStudentForHistory, setSelectedStudentForHistory] = useState<Student | null>(null);
@@ -30,37 +31,47 @@ const StudentManagement: React.FC = () => {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [groupedStudents, setGroupedStudents] = useState<Record<string, Student[]>>({ 'Semua Siswa': students });
 
-  // Tambahkan useEffect untuk memantau perubahan user
+  // Tambahkan useEffect untuk memantau perubahan user dan barakId
   useEffect(() => {
     const usersRef = ref(db, 'users');
     const unsubscribe = onValue(usersRef, async () => {
-      // Refresh currentUser dari AuthContext
-      const userRef = ref(db, `users/${currentUser?.id}`);
-      const snapshot = await get(userRef);
-      const userData = snapshot.val();
-      
-      if (userData) {
-        // Update groupedStudents berdasarkan data asrama terbaru
-        if (userData.role === 'admin_asrama') {
-          const groupedByAsrama = students.reduce((acc, student) => {
-            if (!acc[student.asrama]) {
-              acc[student.asrama] = [];
-            }
-            acc[student.asrama].push(student);
-            return acc;
-          }, {} as Record<string, Student[]>);
-          setGroupedStudents(groupedByAsrama);
-        } else if (userData.role === 'pengasuh' && userData.asramaId) {
-          const asramaIds = userData.asramaId.split(',');
-          const asramaNames = asramaIds.map((id: string) => asramas.find(a => a.id === id)?.name || '');
-          
-          const newGroupedStudents = asramaNames.reduce((acc: Record<string, Student[]>, asramaName: string) => {
-            if (asramaName) {
-              acc[asramaName] = students.filter(student => student.asrama === asramaName);
-            }
-            return acc;
-          }, {} as Record<string, Student[]>);
-          setGroupedStudents(newGroupedStudents);
+      if (currentUser) {
+        // Ambil data user terbaru dari database
+        const userRef = ref(db, `users/${currentUser.id}`);
+        const snapshot = await get(userRef);
+        const userData = snapshot.val();
+        
+        if (userData) {
+          if (userData.role === 'admin_asrama') {
+            // Admin asrama melihat semua barak
+            const groupedByBarak = students.reduce((acc, student) => {
+              if (!acc[student.barak]) {
+                acc[student.barak] = [];
+              }
+              acc[student.barak].push(student);
+              return acc;
+            }, {} as Record<string, Student[]>);
+            setGroupedStudents(groupedByBarak);
+          } else if (userData.role === 'pengasuh' && userData.barakId) {
+            // Pengasuh melihat barak yang dia kelola berdasarkan barakId terbaru
+            const barakIds = userData.barakId.split(',');
+            
+            // Buat object untuk menyimpan siswa per barak
+            const groupedStudents: Record<string, Student[]> = {};
+            // Untuk setiap barak yang dikelola pengasuh
+            barakIds.forEach((barakId: string) => {
+              const barak = asramas.find(a => a.id === barakId);
+              if (barak) {
+                // Filter siswa untuk barak ini
+                const barakStudents = students.filter(student => student.barak === barak.name);
+                if (barakStudents.length > 0) {
+                  groupedStudents[barak.name] = barakStudents;
+                }
+              }
+            });
+
+            setGroupedStudents(groupedStudents);
+          }
         }
       }
     });
@@ -70,9 +81,16 @@ const StudentManagement: React.FC = () => {
 
   // Filter asrama yang bisa dipilih saat menambah/edit siswa
   const availableAsramas = useMemo(() => {
-    if (currentUser?.role === 'pengasuh' && currentUser?.asramaId) {
-      const asramaIds = currentUser.asramaId.split(',');
-      return asramas.filter(asrama => asramaIds.includes(asrama.id));
+    if (currentUser?.role === 'pengasuh') {
+      // Ambil data user terbaru dari database setiap kali memo dijalankan
+      const userRef = ref(db, `users/${currentUser.id}`);
+      onValue(userRef, (snapshot) => {
+        const userData = snapshot.val();
+        if (userData && userData.barakId) {
+          const barakIds = userData.barakId.split(',');
+          return asramas.filter(asrama => barakIds.includes(asrama.id));
+        }
+      });
     }
     return asramas;
   }, [asramas, currentUser]);
@@ -80,20 +98,32 @@ const StudentManagement: React.FC = () => {
   const handleAddOrUpdateStudent = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      // Pastikan barak sama dengan asrama untuk backward compatibility
+      const studentData = {
+        ...newStudent,
+        barak: newStudent.asrama
+      };
+
       if (editingStudent) {
-        await updateStudent(editingStudent.id, newStudent);
+        await updateStudent(editingStudent.id, studentData);
         showAlert({
           type: 'success',
           message: 'Data siswa berhasil diperbarui'
         });
       } else {
-        await addStudent(newStudent);
+        await addStudent(studentData);
         showAlert({
           type: 'success',
           message: 'Data siswa berhasil ditambahkan'
         });
       }
-      setNewStudent({ fullName: '', gender: 'Laki-laki', class: availableClasses[0], asrama: '' });
+      setNewStudent({
+        fullName: '',
+        gender: 'Laki-laki',
+        class: availableClasses[0],
+        asrama: '',
+        barak: ''
+      });
       setIsModalOpen(false);
     } catch (error) {
       showAlert({
@@ -181,18 +211,71 @@ const StudentManagement: React.FC = () => {
 
   const openModal = () => {
     setEditingStudent(null);
-    setNewStudent({ fullName: '', gender: 'Laki-laki', class: availableClasses[0], asrama: '' });
+    setNewStudent({
+      fullName: '',
+      gender: 'Laki-laki',
+      class: availableClasses[0],
+      asrama: '',
+      barak: ''
+    });
     setIsModalOpen(true);
   };
 
-  const renderStudentTable = (students2: Student[]) => {
-    if (!students2 || students2.length === 0) {
+  // Update fungsi hasAccessToBarak
+  const hasAccessToBarak = (barakName: string) => {
+    if (!currentUser) return false;
+    
+    if (currentUser.role === 'admin_asrama') {
+      return true; // Admin asrama punya akses ke semua barak
+    }
+    
+    if (currentUser.role === 'pengasuh' && currentUser.barakId) {
+      const userBarakIds = currentUser.barakId.split(',');
+      // Cari barak berdasarkan nama dan cek apakah pengasuh punya akses
+      const barak = asramas.find((b: { id: string; name: string }) => b.name === barakName);
+      return barak ? userBarakIds.includes(barak.id) : false;
+    }
+    
+    return false;
+  };
+
+  // Update renderStudentTable
+  const renderStudentTable = (students: Student[], barakName: string) => {
+    if (!students || students.length === 0) {
+      // Tampilkan 10 baris kosong jika tidak ada data
       return (
-        <div className="text-center py-4 text-gray-500">
-          Tidak ada data siswa untuk asrama ini
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50 sticky top-0 z-10">
+              <tr>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-16">No</th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama</th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-28">Kelas</th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Asrama</th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32">Jenis Kelamin</th>
+                <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-32">Aksi</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {[...Array(10)].map((_, index) => (
+                <tr key={index}>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{index + 1}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">-</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">-</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">-</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">-</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-500">-</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       );
     }
+
+    const canEditBarak = hasAccessToBarak(barakName);
+    // Hitung berapa baris kosong yang perlu ditambahkan
+    const emptyRows = Math.max(0, 10 - students.length);
 
     return (
       <div className="overflow-x-auto">
@@ -208,7 +291,7 @@ const StudentManagement: React.FC = () => {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {students2.map((student, index) => (
+            {students.map((student, index) => (
               <tr key={student.id} className="group hover:bg-gray-50">
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{index + 1}</td>
                 <td className="px-6 py-4 whitespace-nowrap">
@@ -227,20 +310,28 @@ const StudentManagement: React.FC = () => {
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium bg-white group-hover:bg-gray-50 transition-colors">
                   <div className="flex justify-end space-x-3">
-                    <button
-                      onClick={() => handleEditStudent(student)}
-                      className="text-blue-600 hover:text-blue-900 transition-colors"
-                      title="Edit"
-                    >
-                      <Edit className="h-5 w-5" />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(student.id)}
-                      className="text-red-600 hover:text-red-900 transition-colors"
-                      title="Hapus"
-                    >
-                      <Trash2 className="h-5 w-5" />
-                    </button>
+                    {canEditBarak ? (
+                      <>
+                        <button
+                          onClick={() => handleEditStudent(student)}
+                          className="text-blue-600 hover:text-blue-900 transition-colors"
+                          title="Edit"
+                        >
+                          <Edit className="h-5 w-5" />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(student.id)}
+                          className="text-red-600 hover:text-red-900 transition-colors"
+                          title="Hapus"
+                        >
+                          <Trash2 className="h-5 w-5" />
+                        </button>
+                      </>
+                    ) : (
+                      <span className="text-sm text-gray-500 italic">
+                        Tidak ada akses
+                      </span>
+                    )}
                     <button
                       onClick={() => setSelectedStudentForHistory(student)}
                       className="text-indigo-600 hover:text-indigo-900 transition-colors"
@@ -252,13 +343,17 @@ const StudentManagement: React.FC = () => {
                 </td>
               </tr>
             ))}
-            {students2.length === 0 && (
-              <tr>
-                <td colSpan={6} className="px-6 py-4 text-center text-gray-500 text-sm">
-                  Tidak ada data siswa
-                </td>
+            {/* Tambahkan baris kosong jika data kurang dari 10 */}
+            {[...Array(emptyRows)].map((_, index) => (
+              <tr key={`empty-${index}`}>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{students.length + index + 1}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">-</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">-</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">-</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">-</td>
+                <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-500">-</td>
               </tr>
-            )}
+            ))}
           </tbody>
         </table>
       </div>
@@ -292,16 +387,24 @@ const StudentManagement: React.FC = () => {
         </div>
       </div>
 
-      {/* Render tables for each asrama in 2 columns */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {Object.entries(groupedStudents).map(([asramaName, students]) => (
-          <div key={asramaName} className="bg-white shadow-md rounded-lg overflow-hidden h-fit">
-            <div className="px-6 py-4 bg-gray-50 border-b">
-              <h3 className="text-lg font-semibold text-gray-800">{asramaName}</h3>
+      {/* Render tables with dynamic columns */}
+      <div className={`grid grid-cols-1 ${Object.keys(groupedStudents).length > 1 ? 'lg:grid-cols-2' : ''} gap-6`}>
+        {Object.keys(groupedStudents).length > 0 ? (
+          Object.entries(groupedStudents).map(([barakName, students]) => (
+            <div key={barakName} className={`bg-white shadow-md rounded-lg overflow-hidden h-fit ${
+              Object.keys(groupedStudents).length === 1 ? 'lg:col-span-1' : ''
+            }`}>
+              <div className="px-6 py-4 bg-gray-50 border-b">
+                <h3 className="text-lg font-semibold text-gray-800">{barakName}</h3>
+              </div>
+              {renderStudentTable(students, barakName)}
             </div>
-            {renderStudentTable(students)}
+          ))
+        ) : (
+          <div className="col-span-full text-center py-8 bg-white rounded-lg shadow">
+            <p className="text-gray-500">Tidak ada data siswa yang tersedia</p>
           </div>
-        ))}
+        )}
       </div>
 
       {/* Modal form */}

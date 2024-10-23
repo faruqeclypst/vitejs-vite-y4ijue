@@ -19,6 +19,7 @@ import StudentLeavePage from './pages/StudentLeavePage';
 import Login from './components/Login';
 import Header from './components/Header';
 import { useState } from 'react';
+import BarakPage from './pages/BarakPage';
 
 const AppRoutes = () => {
   const { user, isLoading } = useAuth();
@@ -70,6 +71,7 @@ const AppRoutes = () => {
                     <StudentLeavePage />
                   </ProtectedRoute>
                 } />
+                <Route path="/barak" element={<BarakPage />} />
                 <Route path="*" element={<Navigate to="/" />} />
               </Routes>
             </div>

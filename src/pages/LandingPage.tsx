@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Users, ClipboardList, UserCheck, Clock, Home, UserCircle } from 'lucide-react';
+import { Users, ClipboardList, UserCheck, Clock } from 'lucide-react';
 import { useTeachers } from '../contexts/TeachersContext';
 import { useAttendance } from '../contexts/AttendanceContext';
 import { useRoster } from '../contexts/RosterContext';
@@ -7,7 +7,14 @@ import { useAuth } from '../contexts/AuthContext';
 import { useStudents } from '../contexts/StudentContext';
 import { useAsrama } from '../contexts/AsramaContext';
 import { useStudentLeave } from '../contexts/StudentLeaveContext';
-import { DayOfWeek, Student, StudentLeave } from '../types';
+import { DayOfWeek, StudentLeave } from '../types';
+
+interface StatsItem {
+  title: string;
+  value: number;
+  icon: React.ElementType;
+  color: string;
+}
 
 const LandingPage: React.FC = () => {
   const { user } = useAuth();
@@ -17,23 +24,19 @@ const LandingPage: React.FC = () => {
   const { students } = useStudents();
   const { asramas } = useAsrama();
   const { leaves } = useStudentLeave();
-  const [stats, setStats] = useState<Array<{ 
-    title: string; 
-    value: number; 
-    icon: React.ElementType; 
-    color: string 
-  }>>([]);
+  const [stats, setStats] = useState<StatsItem[]>([]);
 
   useEffect(() => {
     if (user?.role === 'admin' || user?.role === 'piket' || user?.role === 'wakil_kepala') {
       // Stats untuk admin dan piket
-      const today = new Date().toLocaleString('en-CA', { timeZone: 'Asia/Jakarta' }).split(',')[0];
       const dayOfWeek = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'][new Date().getDay() - 1] as DayOfWeek;
     
       const todayRoster = roster.filter(entry => entry.dayOfWeek === dayOfWeek);
       const teachersWithRosterToday = new Set(todayRoster.map(entry => entry.teacherId));
     
-      const todayAttendance = attendanceRecords.filter(record => record.date === today);
+      const todayAttendance = attendanceRecords.filter(record => 
+        record.date === new Date().toISOString().split('T')[0]
+      );
     
       const totalAvailableHours = todayRoster.reduce((sum, entry) => sum + entry.hours.length, 0);
       const totalPresentHours = todayAttendance.reduce((sum, record) => sum + (record.presentHours?.length || 0), 0);
@@ -49,63 +52,53 @@ const LandingPage: React.FC = () => {
       ]);
     } else if (user?.role === 'admin_asrama' || user?.role === 'pengasuh') {
       // Stats untuk admin asrama dan pengasuh
-      const today = new Date().toLocaleString('en-CA', { timeZone: 'Asia/Jakarta' }).split(',')[0];
-      
       let relevantStudents = students;
       let relevantAsramas = asramas;
+      let userBaraks: string[] = [];
       
-      // Jika pengasuh, filter berdasarkan asrama yang ditangani
-      if (user.role === 'pengasuh' && user.asramaId) {
-        relevantStudents = students.filter((s: Student) => s.asrama === user.asramaId);
-        relevantAsramas = asramas.filter(a => a.id === user.asramaId);
+      if (user.role === 'pengasuh' && user.barakId) {
+        // Dapatkan nama-nama barak yang dikelola pengasuh
+        const barakIds = user.barakId.split(',');
+        userBaraks = asramas
+          .filter(a => barakIds.includes(a.id))
+          .map(a => a.name);
+        
+        // Filter siswa berdasarkan barak yang dikelola
+        relevantStudents = students.filter(s => userBaraks.includes(s.barak));
+        relevantAsramas = asramas.filter(a => barakIds.includes(a.id));
       }
 
       const activeLeavesToday = leaves.filter((leave: StudentLeave) => {
-        const startDate = new Date(leave.startDate);
-        const endDate = new Date(leave.endDate);
-        const todayDate = new Date(today);
-        return startDate <= todayDate && endDate >= todayDate;
+        const today = new Date().toISOString().split('T')[0];
+        const student = students.find(s => s.id === leave.studentId);
+        // Untuk pengasuh, hanya hitung perizinan dari barak yang dikelola
+        if (user.role === 'pengasuh') {
+          return leave.startDate === today && student && userBaraks.includes(student.barak);
+        }
+        return leave.startDate === today;
       });
 
+      // Hitung perizinan yang sudah selesai
+      const completedLeaves = leaves.filter((leave: StudentLeave) => {
+        const student = students.find(s => s.id === leave.studentId);
+        // Untuk pengasuh, hanya hitung perizinan dari barak yang dikelola
+        if (user.role === 'pengasuh') {
+          return leave.returnStatus === 'Sudah Kembali' && student && userBaraks.includes(student.barak);
+        }
+        return leave.returnStatus === 'Sudah Kembali';
+      });
+
+      // Hitung jumlah siswa berdasarkan jenis kelamin
+      const maleStudents = relevantStudents.filter(s => s.gender === 'Laki-laki').length;
+      const femaleStudents = relevantStudents.filter(s => s.gender === 'Perempuan').length;
+
       setStats([
-        { 
-          title: "Total Asrama", 
-          value: relevantAsramas.length, 
-          icon: Home, 
-          color: "bg-blue-500 text-white" 
-        },
-        { 
-          title: "Total Siswa", 
-          value: relevantStudents.length, 
-          icon: Users, 
-          color: "bg-green-500 text-white" 
-        },
-        { 
-          title: "Siswa Laki-laki", 
-          value: relevantStudents.filter((s: Student) => s.gender === 'Laki-laki').length, 
-          icon: UserCircle, 
-          color: "bg-yellow-500 text-white" 
-        },
-        { 
-          title: "Siswi Perempuan", 
-          value: relevantStudents.filter((s: Student) => s.gender === 'Perempuan').length, 
-          icon: UserCircle, 
-          color: "bg-indigo-500 text-white" 
-        },
-        { 
-          title: "Izin Aktif", 
-          value: activeLeavesToday.length, 
-          icon: Clock, 
-          color: "bg-purple-500 text-white" 
-        },
-        { 
-          title: "Total Izin Bulan Ini", 
-          value: leaves.filter((leave: StudentLeave) => 
-            new Date(leave.startDate).getMonth() === new Date().getMonth()
-          ).length, 
-          icon: Clock, 
-          color: "bg-pink-500 text-white" 
-        },
+        { title: 'Total Siswa', value: relevantStudents.length, icon: Users, color: "bg-blue-500 text-white" },
+        { title: 'Total Barak', value: relevantAsramas.length, icon: ClipboardList, color: "bg-green-500 text-white" },
+        { title: 'Perizinan Aktif', value: activeLeavesToday.length, icon: UserCheck, color: "bg-yellow-500 text-white" },
+        { title: 'Siswa Laki-laki', value: maleStudents, icon: Users, color: "bg-indigo-500 text-white" },
+        { title: 'Siswa Perempuan', value: femaleStudents, icon: Users, color: "bg-pink-500 text-white" },
+        { title: 'Perizinan Selesai', value: completedLeaves.length, icon: UserCheck, color: "bg-purple-500 text-white" }
       ]);
     }
   }, [user, teachers, attendanceRecords, roster, students, asramas, leaves]);
@@ -126,7 +119,7 @@ const Header: React.FC<{ userRole?: string }> = ({ userRole }) => {
     : "Piket MOSA";
   
   const subtitle = userRole === 'admin_asrama' || userRole === 'pengasuh'
-    ? "Kelola data siswa dan asrama dalam satu platform."
+    ? "Kelola data siswa dan barak dalam satu platform."
     : "Kelola Jam dan kehadiran Guru dengan mudah dalam satu platform.";
 
   return (
@@ -141,8 +134,7 @@ const Header: React.FC<{ userRole?: string }> = ({ userRole }) => {
   );
 };
 
-// StatsGrid component tetap sama
-const StatsGrid: React.FC<{ stats: Array<{ title: string; value: number; icon: React.ElementType; color: string }> }> = ({ stats }) => (
+const StatsGrid: React.FC<{ stats: StatsItem[] }> = ({ stats }) => (
   <div className="mt-12">
     <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
       {stats.map((item, index) => (

@@ -9,14 +9,15 @@ import {
 import { ref, get, set, remove } from 'firebase/database';
 import { db } from '../firebase';
 
-type UserRole = 'admin' | 'piket' | 'wakil_kepala' | 'pengasuh' | 'admin_asrama';
+// Gunakan type yang sama dengan yang ada di types.ts
+type UserRole = 'admin' | 'piket' | 'wakil_kepala' | 'pengasuh' | 'admin_asrama' | 'admin_barak';
 
 interface User {
   id: string;
   username: string;
   fullName: string;
   role: UserRole;
-  asramaId?: string;
+  barakId?: string; // Ganti asramaId menjadi barakId
   email: string;
   isDefaultAccount: boolean;
 }
@@ -25,9 +26,22 @@ interface AuthContextType {
   user: User | null;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
-  addUser: (email: string, password: string, fullName: string, role: UserRole, asramaId?: string) => Promise<void>;
+  addUser: (
+    username: string,
+    password: string,
+    fullName: string,
+    role: UserRole,
+    barakId?: string
+  ) => Promise<void>;
   getUsers: () => Promise<User[]>;
-  updateUser: (id: string, email: string, password: string | null, fullName: string, role: UserRole, asramaId?: string) => Promise<void>;
+  updateUser: (
+    userId: string,
+    username: string,
+    password: string | null,
+    fullName: string,
+    role: UserRole,
+    barakId?: string
+  ) => Promise<void>;
   deleteUser: (id: string) => Promise<void>;
   isLoading: boolean;
 }
@@ -56,8 +70,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const initialSetup = async (
     adminUsername: string,
     adminPassword: string,
-    adminAsramaUsername: string,
-    adminAsramaPassword: string
+    adminBarakUsername: string,
+    adminBarakPassword: string
   ) => {
     try {
       // Buat akun admin
@@ -71,7 +85,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         email: adminEmail,
         fullName: 'Administrator',
         role: 'admin',
-        asramaId: null,
+        barakId: null,
         isDefaultAccount: true // Tambahkan penanda
       });
 
@@ -79,17 +93,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await signOut(auth);
 
       // Buat akun admin_asrama
-      const adminAsramaEmail = `${adminAsramaUsername.toLowerCase()}@piketmosa.com`;
-      const adminAsramaCredential = await createUserWithEmailAndPassword(auth, adminAsramaEmail, adminAsramaPassword);
-      await updateProfile(adminAsramaCredential.user, {
+      const adminBarakEmail = `${adminBarakUsername.toLowerCase()}@piketmosa.com`;
+      const adminBarakCredential = await createUserWithEmailAndPassword(auth, adminBarakEmail, adminBarakPassword);
+      await updateProfile(adminBarakCredential.user, {
         displayName: 'Admin Asrama'
       });
-      await set(ref(db, `users/${adminAsramaCredential.user.uid}`), {
-        username: adminAsramaUsername,
-        email: adminAsramaEmail,
+      await set(ref(db, `users/${adminBarakCredential.user.uid}`), {
+        username: adminBarakUsername,
+        email: adminBarakEmail,
         fullName: 'Admin Asrama',
         role: 'admin_asrama',
-        asramaId: null,
+        barakId: null,
         isDefaultAccount: true // Tambahkan penanda
       });
 
@@ -119,7 +133,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             username: userData.username,
             fullName: userData.fullName,
             role: userData.role,
-            asramaId: userData.asramaId,
+            barakId: userData.barakId,
             isDefaultAccount: userData.isDefaultAccount
           });
         }
@@ -184,7 +198,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     password: string,
     fullName: string,
     role: UserRole,
-    asramaId?: string
+    barakId?: string
   ) => {
     try {
       // Buat email dari username dengan menambahkan domain
@@ -224,7 +238,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         email,
         fullName,
         role,
-        asramaId: asramaId || null
+        barakId: barakId || null
       });
 
       // Sign in kembali dengan akun sebelumnya
@@ -251,7 +265,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     password: string | null,
     fullName: string,
     role: UserRole,
-    asramaId?: string
+    barakId?: string
   ) => {
     try {
       const userRef = ref(db, `users/${id}`);
@@ -260,7 +274,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         email,
         fullName,
         role,
-        asramaId: asramaId || null
+        barakId: barakId || null
       };
 
       await set(userRef, userData);
@@ -303,7 +317,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       username: userData.username,
       fullName: userData.fullName,
       role: userData.role,
-      asramaId: userData.asramaId,
+      barakId: userData.barakId,
       isDefaultAccount: userData.isDefaultAccount
     }));
   };
@@ -343,14 +357,14 @@ const InitialSetup: React.FC<{
   onSetupComplete: (
     adminUsername: string,
     adminPassword: string,
-    adminAsramaUsername: string,
-    adminAsramaPassword: string
+    adminBarakUsername: string,
+    adminBarakPassword: string
   ) => Promise<boolean>;
 }> = ({ onSetupComplete }) => {
   const [adminUsername, setAdminUsername] = useState('');
   const [adminPassword, setAdminPassword] = useState('');
-  const [adminAsramaUsername, setAdminAsramaUsername] = useState('');
-  const [adminAsramaPassword, setAdminAsramaPassword] = useState('');
+  const [adminBarakUsername, setAdminBarakUsername] = useState('');
+  const [adminBarakPassword, setAdminBarakPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
@@ -363,8 +377,8 @@ const InitialSetup: React.FC<{
       await onSetupComplete(
         adminUsername,
         adminPassword,
-        adminAsramaUsername,
-        adminAsramaPassword
+        adminBarakUsername,
+        adminBarakPassword
       );
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Terjadi kesalahan saat setup');
@@ -422,8 +436,8 @@ const InitialSetup: React.FC<{
                 </label>
                 <input
                   type="text"
-                  value={adminAsramaUsername}
-                  onChange={(e) => setAdminAsramaUsername(e.target.value)}
+                  value={adminBarakUsername}
+                  onChange={(e) => setAdminBarakUsername(e.target.value)}
                   required
                   className="w-full px-4 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
                 />
@@ -434,8 +448,8 @@ const InitialSetup: React.FC<{
                 </label>
                 <input
                   type="password"
-                  value={adminAsramaPassword}
-                  onChange={(e) => setAdminAsramaPassword(e.target.value)}
+                  value={adminBarakPassword}
+                  onChange={(e) => setAdminBarakPassword(e.target.value)}
                   required
                   className="w-full px-4 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
                 />

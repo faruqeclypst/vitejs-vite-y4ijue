@@ -2,36 +2,36 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useAsrama } from '../contexts/AsramaContext';
 import { X, Plus } from 'lucide-react';
-import { ref, get, onValue } from 'firebase/database';
+import { ref, onValue } from 'firebase/database'; // Hapus 'get' karena tidak digunakan
 import { db } from '../firebase';
 import Alert from './Alert';
 import ConfirmationModal from './ConfirmationModal';
 import useAlert from '../hooks/useAlert';
 import useConfirmation from '../hooks/useConfirmation';
+import { UserRole } from '../types';
 
 interface UserManagementProps {
   onUserAdded?: () => void;
 }
 
 // Gunakan tipe User yang sama dengan AuthContext
-type UserRole = 'admin' | 'piket' | 'wakil_kepala' | 'pengasuh' | 'admin_asrama';
-
 interface User {
   id: string;
   username: string;
   fullName: string;
   role: UserRole;
-  asramaId?: string;
+  barakId?: string;
+  email: string;
+  isDefaultAccount?: boolean;
 }
 
 const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
-  const { asramas } = useAsrama();
+  const { asramas: baraks } = useAsrama(); // Rename untuk kejelasan
   const { user: currentUser } = useAuth();
   const [username, setUsername] = useState('');
-  const [fullName, setFullName] = useState(''); // Tambah state
+  const [fullName, setFullName] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState<UserRole>('admin');
-  const [selectedAsrama, setSelectedAsrama] = useState<string>('');
   const [users, setUsers] = useState<User[]>([]);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -41,7 +41,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
   const [userForPasswordChange, setUserForPasswordChange] = useState<User | null>(null);
   const { alert, showAlert, hideAlert } = useAlert();
   const { isOpen, options, confirm, handleConfirm, handleCancel } = useConfirmation();
-  const [selectedAsramas, setSelectedAsramas] = useState<string[]>([]);
+  const [selectedBaraks, setSelectedBaraks] = useState<string[]>([]);
 
   useEffect(() => {
     fetchUsers();
@@ -51,7 +51,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
     // Set default role berdasarkan currentUser.role
     if (currentUser?.role === 'admin_asrama') {
       setRole('pengasuh');
-    } else {
+    } else if (currentUser?.role === 'admin') {
       setRole('admin');
     }
   }, [currentUser]);
@@ -59,41 +59,49 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
   const fetchUsers = async () => {
     const fetchedUsers = await getUsers();
     if (currentUser?.role === 'admin_asrama') {
-      // Admin asrama hanya melihat pengasuh
-      setUsers(fetchedUsers.filter(user => user.role === 'pengasuh'));
-    } else {
-      // Admin biasa tidak melihat admin_asrama, pengasuh, dan admin default
-      setUsers(fetchedUsers.filter(user => 
-        user.role !== 'admin_asrama' && 
-        user.role !== 'pengasuh' &&
-        // Tambahkan filter untuk menyembunyikan admin default
-        user.id !== currentUser?.id && // Sembunyikan diri sendiri jika admin
-        !user.username.match(/^(admin|admin_asrama)$/) // Sembunyikan akun default
-      ));
+      // Admin asrama melihat pengasuh dan admin_asrama lain
+      setUsers(
+        fetchedUsers.filter((user) => 
+          ['pengasuh', 'admin_asrama'].includes(user.role) &&
+          user.id !== currentUser?.id
+        ) as User[]
+      );
+    } else if (currentUser?.role === 'admin') {
+      // Admin biasa melihat admin, piket, dan wakil_kepala
+      setUsers(
+        fetchedUsers.filter((user) => 
+          ['admin', 'piket', 'wakil_kepala'].includes(user.role) &&
+          user.id !== currentUser?.id && 
+          !user.username.match(/^(admin)$/)
+        ) as User[]
+      );
     }
   };
 
-  // Fungsi untuk mendapatkan available roles berdasarkan current user role
+  // Update fungsi getAvailableRoles
   const getAvailableRoles = () => {
     if (currentUser?.role === 'admin_asrama') {
       return [
-        { value: 'pengasuh', label: 'Pengasuh' }
+        { value: 'admin_asrama' as UserRole, label: 'Admin Asrama' },
+        { value: 'pengasuh' as UserRole, label: 'Pengasuh' }
       ];
     }
-    return [
-      { value: 'admin', label: 'Admin' },
-      { value: 'piket', label: 'Piket' },
-      { value: 'wakil_kepala', label: 'Wakil Kepala' }
-    ];
+    if (currentUser?.role === 'admin') {
+      return [
+        { value: 'admin' as UserRole, label: 'Admin' },
+        { value: 'piket' as UserRole, label: 'Piket' },
+        { value: 'wakil_kepala' as UserRole, label: 'Wakil Kepala' }
+      ];
+    }
+    return [];
   };
 
   const resetForm = () => {
     setUsername('');
     setPassword('');
     setFullName('');
-    setRole(currentUser?.role === 'admin_asrama' ? 'pengasuh' : 'admin');
-    setSelectedAsrama('');
-    setSelectedAsramas([]);
+    setRole(currentUser?.role === 'admin_barak' ? 'pengasuh' : 'admin');
+    setSelectedBaraks([]);
     setEditingUser(null);
     setIsModalOpen(false);
   };
@@ -107,65 +115,49 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const needsAsrama = role === 'pengasuh' || role === 'admin_asrama';
+      const needsBarak = role === 'pengasuh' || role === 'admin_barak';
       
-      const asramaIdToUse = role === 'admin_asrama' ? selectedAsrama : 
-                           role === 'pengasuh' ? selectedAsramas.join(',') : undefined;
+      const barakIdToUse = needsBarak ? selectedBaraks.join(',') : undefined;
 
-      if (needsAsrama && (role === 'admin_asrama' ? !selectedAsrama : selectedAsramas.length === 0)) {
+      if (needsBarak && selectedBaraks.length === 0) {
         showAlert({
           type: 'error',
-          message: 'Asrama harus dipilih'
+          message: `Pilih minimal satu barak untuk ${role === 'pengasuh' ? 'pengasuh' : 'admin barak'}`
         });
         return;
       }
 
-      if (editingUser) {
-        const usersRef = ref(db, `users/${editingUser.id}`);
-        const snapshot = await get(usersRef);
-        const currentUserData = snapshot.val();
-        
-        if (!currentUserData) {
-          throw new Error('User tidak ditemukan');
+      // Validasi untuk admin_barak yang menambah pengasuh
+      if (currentUser?.role === 'admin_barak' && role === 'pengasuh') {
+        const adminBarakIds = currentUser.barakId?.split(',') || [];
+        const hasAccess = selectedBaraks.every(id => adminBarakIds.includes(id));
+        if (!hasAccess) {
+          showAlert({
+            type: 'error',
+            message: 'Anda hanya dapat menambahkan pengasuh untuk barak yang Anda kelola'
+          });
+          return;
         }
+      }
 
+      if (editingUser) {
         await updateUser(
           editingUser.id,
           username,
-          password || currentUserData.password,
+          password || null,
           fullName,
-          role as UserRole,
-          asramaIdToUse
+          role,
+          barakIdToUse
         );
-
-        // Update localStorage jika user yang diedit adalah user yang sedang login
-        const storedUser = localStorage.getItem('user');
-        if (storedUser) {
-          const currentUser = JSON.parse(storedUser);
-          if (currentUser.id === editingUser.id) {
-            const updatedUser = {
-              ...currentUser,
-              username,
-              fullName,
-              role,
-              asramaId: asramaIdToUse
-            };
-            localStorage.setItem('user', JSON.stringify(updatedUser));
-            window.dispatchEvent(new Event('storage')); // Trigger storage event untuk update state
-          }
-        }
-
         showAlert({
           type: 'success',
-          message: 'User berhasil diperbarui',
-          duration: 3000
+          message: 'User berhasil diperbarui'
         });
       } else {
         if (!password) {
           showAlert({
             type: 'error',
-            message: 'Password harus diisi untuk user baru',
-            duration: 3000
+            message: 'Password harus diisi untuk user baru'
           });
           return;
         }
@@ -174,29 +166,24 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
           username,
           password,
           fullName,
-          role as UserRole,
-          asramaIdToUse
+          role,
+          barakIdToUse
         );
         showAlert({
           type: 'success',
-          message: 'User baru berhasil ditambahkan',
-          duration: 3000
+          message: 'User baru berhasil ditambahkan'
         });
       }
 
-      await fetchUsers();
       resetForm();
-      setIsModalOpen(false);
-      
+      await fetchUsers();
       if (onUserAdded) {
         onUserAdded();
       }
     } catch (error) {
-      console.error('Error dalam handleSubmit:', error);
       showAlert({
         type: 'error',
-        message: error instanceof Error ? error.message : 'Gagal menambahkan/memperbarui user',
-        duration: 3000
+        message: error instanceof Error ? error.message : 'Gagal menyimpan data user'
       });
     }
   };
@@ -208,12 +195,10 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
     setFullName(user.fullName);
     setRole(user.role);
     setPassword(''); // Reset password saat edit
-    if (user.asramaId) {
-      if (user.role === 'pengasuh') {
-        setSelectedAsramas(user.asramaId.split(','));
-      } else {
-        setSelectedAsrama(user.asramaId);
-      }
+    if (user.barakId) {
+      setSelectedBaraks(user.barakId.split(','));
+    } else {
+      setSelectedBaraks([]);
     }
     setIsModalOpen(true);
   };
@@ -256,7 +241,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
           newPassword,
           userForPasswordChange.fullName,
           userForPasswordChange.role as UserRole,
-          userForPasswordChange.asramaId
+          userForPasswordChange.barakId
         );
         showAlert({
           type: 'success',
@@ -286,18 +271,15 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
   // Fungsi untuk menentukan apakah user bisa mengganti password
   const canChangePassword = (targetUser: User) => {
     if (!currentUser) return false;
-    // Admin tidak perlu tombol ganti password karena sudah ada di edit
     if (currentUser.role === 'admin') return false;
-    // Admin asrama hanya bisa ganti password sendiri dan pengasuh
     if (currentUser.role === 'admin_asrama') {
       return targetUser.role === 'pengasuh' || targetUser.id === currentUser.id;
     }
-    // User lain hanya bisa ganti password sendiri
     return targetUser.id === currentUser.id;
   };
 
-  // Update fungsi untuk menampilkan field asrama
-  const showAsramaField = (selectedRole: UserRole) => {
+  // Update fungsi showBarakField
+  const showBarakField = (selectedRole: UserRole) => {
     return selectedRole === 'pengasuh' || selectedRole === 'admin_asrama';
   };
 
@@ -311,22 +293,35 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
     return () => unsubscribe();
   }, []);
 
-  // Tambahkan fungsi untuk format tampilan asrama
-  const formatAsramaDisplay = (asramaId: string | undefined) => {
-    if (!asramaId) return '-';
+  // Ganti formatAsramaDisplay menjadi formatBarakDisplay
+  const formatBarakDisplay = (barakId: string | undefined) => {
+    if (!barakId) return '-';
     
-    // Jika ada multiple asrama (dipisahkan koma)
-    if (asramaId.includes(',')) {
-      const asramaIds = asramaId.split(',');
-      return asramaIds
-        .map(id => asramas.find(a => a.id === id)?.name)
+    if (barakId.includes(',')) {
+      const barakIds = barakId.split(',');
+      return barakIds
+        .map(id => baraks.find(b => b.id === id)?.name)
         .filter(Boolean)
         .join(', ');
     }
     
-    // Jika single asrama
-    const asrama = asramas.find(a => a.id === asramaId);
-    return asrama ? asrama.name : '-';
+    const barak = baraks.find(b => b.id === barakId);
+    return barak ? barak.name : '-';
+  };
+
+  // Update fungsi canManageUser
+  const canManageUser = (user: User) => {
+    if (!currentUser) return false;
+    
+    if (currentUser.role === 'admin_asrama') {
+      return ['pengasuh', 'admin_asrama'].includes(user.role);
+    }
+    
+    if (currentUser.role === 'admin') {
+      return ['admin', 'piket', 'wakil_kepala'].includes(user.role);
+    }
+    
+    return false;
   };
 
   return (
@@ -477,8 +472,8 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
                     onChange={(e) => {
                       const newRole = e.target.value as UserRole;
                       setRole(newRole);
-                      if (!showAsramaField(newRole)) {
-                        setSelectedAsrama('');
+                      if (!showBarakField(newRole)) {
+                        setSelectedBaraks([]);
                       }
                     }}
                     className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
@@ -488,50 +483,39 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
                     ))}
                   </select>
                 </div>
-                {showAsramaField(role) && (
+                {showBarakField(role) && (
                   <div>
                     <label className="block text-base font-medium text-gray-700 mb-2">
-                      Asrama
+                      {role === 'pengasuh' ? 'Barak yang Diawasi' : 'Barak yang Dikelola'}
                     </label>
-                    {role === 'pengasuh' ? (
-                      // Multiple select dengan button untuk pengasuh
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                        {asramas.map((asrama) => (
-                          <button
-                            key={asrama.id}
-                            type="button"
-                            onClick={() => {
-                              if (selectedAsramas.includes(asrama.id)) {
-                                setSelectedAsramas(prev => prev.filter(id => id !== asrama.id));
-                              } else {
-                                setSelectedAsramas(prev => [...prev, asrama.id]);
-                              }
-                            }}
-                            className={`p-2 rounded-lg transition-colors ${
-                              selectedAsramas.includes(asrama.id)
-                                ? 'bg-blue-500 text-white'
-                                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                            }`}
-                          >
-                            {asrama.name}
-                          </button>
-                        ))}
-                      </div>
-                    ) : (
-                      // Single select untuk admin_asrama
-                      <select
-                        value={selectedAsrama}
-                        onChange={(e) => setSelectedAsrama(e.target.value)}
-                        required={role === 'admin_asrama'}
-                        className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                      >
-                        <option value="">Pilih Asrama</option>
-                        {asramas.map((asrama) => (
-                          <option key={asrama.id} value={asrama.id}>
-                            {asrama.name}
-                          </option>
-                        ))}
-                      </select>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                      {baraks.map((barak) => (
+                        <button
+                          key={barak.id}
+                          type="button"
+                          onClick={() => {
+                            if (selectedBaraks.includes(barak.id)) {
+                              setSelectedBaraks(prev => prev.filter(id => id !== barak.id));
+                            } else {
+                              setSelectedBaraks(prev => [...prev, barak.id]);
+                            }
+                          }}
+                          className={`p-2 rounded-lg transition-colors ${
+                            selectedBaraks.includes(barak.id)
+                              ? 'bg-blue-500 text-white'
+                              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                          }`}
+                        >
+                          {barak.name}
+                        </button>
+                      ))}
+                    </div>
+                    {selectedBaraks.length === 0 && (
+                      <p className="mt-2 text-sm text-red-500">
+                        {role === 'pengasuh' 
+                          ? 'Pilih minimal satu barak yang akan diawasi' 
+                          : 'Pilih minimal satu barak yang akan dikelola'}
+                      </p>
                     )}
                   </div>
                 )}
@@ -565,56 +549,50 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Lengkap</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Username</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
-                {currentUser?.role === 'admin_asrama' && (
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Asrama</th>
+                {(currentUser?.role === 'admin_barak' || currentUser?.role === 'admin_asrama') && (
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Barak</th>
                 )}
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {users.map((user) => {
-                // Hapus variabel userAsrama yang tidak digunakan
-                const canManageUser = currentUser?.role === 'admin' || 
-                  (currentUser?.role === 'admin_asrama' && user.role === 'pengasuh');
-
-                return (
-                  <tr key={user.id}>
-                    <td className="px-6 py-4 whitespace-nowrap">{user.fullName}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">{user.username}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">{user.role}</td>
-                    {currentUser?.role === 'admin_asrama' && (
-                      <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {formatAsramaDisplay(user.asramaId)}
-                      </td>
-                    )}
-                    <td className="px-6 py-4 whitespace-nowrap space-x-2">
-                      {canManageUser ? (
-                        <>
-                          <button
-                            onClick={() => handleEdit(user)}
-                            className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-1 px-3 rounded text-sm"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => handleDelete(user.id)}
-                            className="bg-red-500 hover:bg-red-600 text-white font-bold py-1 px-3 rounded text-sm"
-                          >
-                            Delete
-                          </button>
-                        </>
-                      ) : canChangePassword(user) && (
-                        <button
-                          onClick={() => openChangePasswordModal(user)}
-                          className="bg-green-500 hover:bg-green-600 text-white font-bold py-1 px-3 rounded text-sm"
-                        >
-                          Ganti Password
-                        </button>
-                      )}
+              {users.map((user) => (
+                <tr key={user.id}>
+                  <td className="px-6 py-4 whitespace-nowrap">{user.fullName}</td>
+                  <td className="px-6 py-4 whitespace-nowrap">{user.username}</td>
+                  <td className="px-6 py-4 whitespace-nowrap">{user.role}</td>
+                  {(currentUser?.role === 'admin_barak' || currentUser?.role === 'admin_asrama') && (
+                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {formatBarakDisplay(user.barakId)}
                     </td>
-                  </tr>
-                );
-              })}
+                  )}
+                  <td className="px-6 py-4 whitespace-nowrap space-x-2">
+                    {canManageUser(user) ? (
+                      <>
+                        <button
+                          onClick={() => handleEdit(user)}
+                          className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-1 px-3 rounded text-sm"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleDelete(user.id)}
+                          className="bg-red-500 hover:bg-red-600 text-white font-bold py-1 px-3 rounded text-sm"
+                        >
+                          Delete
+                        </button>
+                      </>
+                    ) : canChangePassword(user) && (
+                      <button
+                        onClick={() => openChangePasswordModal(user)}
+                        className="bg-green-500 hover:bg-green-600 text-white font-bold py-1 px-3 rounded text-sm"
+                      >
+                        Ganti Password
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>

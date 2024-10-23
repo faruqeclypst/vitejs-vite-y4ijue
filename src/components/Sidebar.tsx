@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Users, ClipboardList, Calendar, LogOut, UserCog, Home, Menu, X, GraduationCap, FileText } from 'lucide-react';
+import { Users, ClipboardList, Calendar, LogOut, UserCog, Home, Menu, X, GraduationCap, FileText, Building, LucideIcon } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import ConfirmationModal from './ConfirmationModal';
 import useConfirmation from '../hooks/useConfirmation';
@@ -8,6 +8,14 @@ import useConfirmation from '../hooks/useConfirmation';
 interface SidebarProps {
   isExpanded: boolean;
   setIsExpanded: (expanded: boolean) => void;
+}
+
+// Perbaiki interface NavItem
+interface NavItem {
+  path: string;
+  icon: LucideIcon;  // Gunakan LucideIcon type
+  label: string;
+  roles: string[];
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ isExpanded, setIsExpanded }) => {
@@ -32,20 +40,65 @@ const Sidebar: React.FC<SidebarProps> = ({ isExpanded, setIsExpanded }) => {
 
   if (!user) return null;
 
-  const navItems = [
-    { path: '/', icon: Home, label: 'Home', roles: ['admin', 'piket', 'wakil_kepala', 'pengasuh', 'admin_asrama'] },
-    { path: '/teachers', icon: Users, label: 'Guru', roles: ['admin'] },
-    { path: '/roster', icon: ClipboardList, label: 'Roster', roles: ['admin', 'piket'] },
-    { path: '/attendance', icon: Calendar, label: 'Absen', roles: ['admin', 'piket', 'wakil_kepala'] },
-    { path: '/students', icon: GraduationCap, label: 'Siswa', roles: ['admin_asrama', 'pengasuh'] },
-    { path: '/asrama', icon: Home, label: 'Asrama', roles: ['admin_asrama'] },
-    { path: '/student-leave', icon: FileText, label: 'Perizinan', roles: ['admin_asrama', 'pengasuh'] },
-    { path: '/user-management', icon: UserCog, label: 'User', roles: ['admin', 'admin_asrama'] },
+  // Update navItems untuk mengatur akses menu
+  const navItems: NavItem[] = [
+    { 
+      path: '/', 
+      icon: Home, 
+      label: 'Home', 
+      roles: ['admin', 'piket', 'wakil_kepala', 'pengasuh', 'admin_asrama'] 
+    },
+    { 
+      path: '/teachers', 
+      icon: Users, 
+      label: 'Guru', 
+      roles: ['admin'] 
+    },
+    { 
+      path: '/roster', 
+      icon: ClipboardList, 
+      label: 'Roster', 
+      roles: ['admin', 'piket'] 
+    },
+    { 
+      path: '/attendance', 
+      icon: Calendar, 
+      label: 'Absen', 
+      roles: ['admin', 'piket', 'wakil_kepala'] 
+    },
+    { 
+      path: '/barak', 
+      icon: Building, 
+      label: 'Manajemen Barak', 
+      roles: ['admin_asrama', 'pengasuh'] 
+    },
+    { 
+      path: '/students', 
+      icon: GraduationCap, 
+      label: 'Siswa', 
+      roles: ['admin_asrama', 'pengasuh'] 
+    },
+    { 
+      path: '/student-leave', 
+      icon: FileText, 
+      label: 'Perizinan', 
+      roles: ['admin_asrama', 'pengasuh'] 
+    },
+    { 
+      path: '/user-management', 
+      icon: UserCog, 
+      label: 'User', 
+      roles: ['admin', 'admin_asrama'] 
+    }
   ];
 
   const filteredNavItems = navItems.filter(item => item.roles.includes(user.role));
 
-  const NavItem: React.FC<{ item: typeof navItems[0], onClick?: () => void, isMobile?: boolean }> = ({ item, onClick, isMobile }) => (
+  const NavItem: React.FC<{ 
+    item: NavItem, 
+    onClick?: () => void, 
+    isMobile?: boolean 
+  }> = ({ item, onClick, isMobile }) => (
     <li>
       <Link
         to={item.path}
