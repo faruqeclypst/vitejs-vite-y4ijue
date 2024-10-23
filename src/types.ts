@@ -23,7 +23,7 @@ export interface Attendance {
 export interface Student {
   id: string;
   fullName: string;
-  gender: 'Male' | 'Female';
+  gender: 'Laki-laki' | 'Perempuan';
   class: string;
   asrama: string;
 }
@@ -53,3 +53,17 @@ export const availableClasses = [
   'XI-1', 'XI-2', 'XI-3', 'XI-4', 'XI-5', 'XI-6',
   'XII-1', 'XII-2', 'XII-3', 'XII-4', 'XII-5', 'XII-6'
 ];
+
+export type LeaveType = 'Sakit' | 'Izin' | 'Pulang' | 'Tanpa Keterangan';
+
+export interface StudentLeave {
+  id: string;
+  studentId: string;
+  leaveType: LeaveType;
+  startDate: string;
+  startTime: string;
+  endDate: string;
+  endTime: string;
+  keterangan: string;
+  documentUrl?: string;
+}

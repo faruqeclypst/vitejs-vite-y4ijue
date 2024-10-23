@@ -42,8 +42,8 @@ const LandingPage: React.FC = () => {
   }, [teachers, attendanceRecords, roster]);
     
   return (
-    <div className="min-h-screen bg-gray-100 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto">
+    <div className="p-2 sm:p-4">
+      <div className="max-w-full">
         <Header />
         <StatsGrid stats={stats} />
       </div>
@@ -52,7 +52,7 @@ const LandingPage: React.FC = () => {
 };
 
 const Header: React.FC = () => (
-  <div className="text-center mb-12">
+  <div className="text-center mb-8">
     <h1 className="text-4xl font-extrabold text-gray-900 sm:text-5xl md:text-6xl">
       Piket MOSA
     </h1>

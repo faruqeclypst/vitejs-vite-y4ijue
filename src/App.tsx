@@ -1,115 +1,94 @@
-import { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { TeachersProvider } from './contexts/TeachersContext';
 import { RosterProvider } from './contexts/RosterContext';
 import { AttendanceProvider } from './contexts/AttendanceContext';
 import { StudentProvider } from './contexts/StudentContext';
-import { AuthProvider } from './contexts/AuthContext';
+import { AsramaProvider } from './contexts/AsramaContext';
+import ProtectedRoute from './components/ProtectedRoute';
 import Sidebar from './components/Sidebar';
+import LandingPage from './pages/LandingPage';
 import TeachersPage from './pages/TeachersPage';
 import RosterPage from './pages/RosterPage';
 import AttendancePage from './pages/AttendancePage';
-import StudentManagement from './components/StudentManagement';
-import StudentLeaveRequestForm from './components/StudentLeaveRequest';
-import LandingPage from './pages/LandingPage';
+import UserManagementPage from './pages/UserManagementPage';
+import StudentManagementPage from './pages/StudentManagementPage';
+import AsramaPage from './pages/AsramaPage';
 import Login from './components/Login';
-import ProtectedRoute from './components/ProtectedRoute';
-import UserManagement from './components/UserManagement';
-import { ref, get } from 'firebase/database';
-import { db } from './firebase';
+import StudentLeavePage from './pages/StudentLeavePage';
+import { StudentLeaveProvider } from './contexts/StudentLeaveContext';
+import { User } from 'lucide-react';
 
-function AppContent() {
-  const [isInitialSetup, setIsInitialSetup] = useState<boolean | null>(null);
+const AppRoutes = () => {
+  const { user, isLoading } = useAuth();
 
-  useEffect(() => {
-    const checkUsers = async () => {
-      const usersRef = ref(db, 'users');
-      const snapshot = await get(usersRef);
-      setIsInitialSetup(!snapshot.exists());
-    };
-    checkUsers();
-  }, []);
-
-  if (isInitialSetup === null) {
-    return <div className="h-screen flex items-center justify-center">Loading...</div>;
-  }
-
-  if (isInitialSetup) {
-    return (
-      <div className="h-screen flex flex-col items-center justify-center bg-gray-100">
-        <h1 className="text-2xl font-bold mb-4">Initial Setup</h1>
-        <p className="mb-4">Please create an admin user to get started:</p>
-        <UserManagement onUserAdded={() => setIsInitialSetup(false)} />
-      </div>
-    );
+  if (isLoading) {
+    return <div>Loading...</div>;
   }
 
   return (
     <Router>
-      <TeachersProvider>
-        <RosterProvider>
-          <AttendanceProvider>
-            <StudentProvider>
-              <div className="flex h-screen overflow-hidden bg-gray-100">
-                <Sidebar />
-                <div className="flex-1 overflow-hidden">
-                  <main className="h-full overflow-y-auto">
-                    <div className="container mx-auto p-4 pb-20 md:pb-4">
-                      <Routes>
-                        <Route path="/login" element={<Login />} />
-                        <Route path="/" element={
-                          <ProtectedRoute allowedRoles={['admin', 'piket', 'wakil_kepala']}>
-                            <LandingPage />
-                          </ProtectedRoute>
-                        } />
-                        <Route path="/teachers" element={
-                          <ProtectedRoute allowedRoles={['admin']}>
-                            <TeachersPage />
-                          </ProtectedRoute>
-                        } />
-                        <Route path="/roster" element={
-                          <ProtectedRoute allowedRoles={['admin', 'piket']}>
-                            <RosterPage />
-                          </ProtectedRoute>
-                        } />
-                        <Route path="/attendance" element={
-                          <ProtectedRoute allowedRoles={['admin', 'piket', 'wakil_kepala']}>
-                            <AttendancePage />
-                          </ProtectedRoute>
-                        } />
-                        <Route path="/students" element={
-                          <ProtectedRoute allowedRoles={['admin']}>
-                            <StudentManagement />
-                          </ProtectedRoute>
-                        } />
-                        <Route path="/leave-request" element={
-                          <ProtectedRoute allowedRoles={['admin', 'piket', 'wakil_kepala']}>
-                            <StudentLeaveRequestForm />
-                          </ProtectedRoute>
-                        } />
-                        <Route path="/user-management" element={
-                          <ProtectedRoute allowedRoles={['admin']}>
-                            <UserManagement />
-                          </ProtectedRoute>
-                        } />
-                         <Route path="*" element={<Navigate to="/" replace />} />
-                      </Routes>
-                    </div>
-                  </main>
+      <div className="flex flex-col md:flex-row min-h-screen bg-gray-50">
+        {user && <Sidebar />}
+        <div className="flex-1 flex flex-col min-h-screen">
+          {user && (
+            <header className="bg-white shadow-sm sticky top-0 z-10">
+              <div className="h-14 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-end">
+                <div className="flex items-center space-x-2">
+                  <User className="h-5 w-5 text-gray-500" />
+                  <span className="text-gray-700 font-medium">{user.username}</span>
                 </div>
               </div>
-            </StudentProvider>
-          </AttendanceProvider>
-        </RosterProvider>
-      </TeachersProvider>
+            </header>
+          )}
+          <main className="flex-1 py-6">
+            <div className="max-w-full mx-4 sm:mx-6 lg:mx-8">
+              <Routes>
+                <Route path="/login" element={user ? <Navigate to="/" /> : <Login />} />
+                <Route path="/" element={
+                  <ProtectedRoute allowedRoles={['admin', 'piket', 'wakil_kepala', 'pengasuh', 'admin_asrama']}>
+                    <LandingPage />
+                  </ProtectedRoute>
+                } />
+                <Route path="/teachers" element={<ProtectedRoute allowedRoles={['admin']}><TeachersPage /></ProtectedRoute>} />
+                <Route path="/roster" element={<ProtectedRoute allowedRoles={['admin', 'piket']}><RosterPage /></ProtectedRoute>} />
+                <Route path="/attendance" element={<ProtectedRoute allowedRoles={['admin', 'piket', 'wakil_kepala']}><AttendancePage /></ProtectedRoute>} />
+                <Route path="/user-management" element={<ProtectedRoute allowedRoles={['admin', 'admin_asrama']}><UserManagementPage /></ProtectedRoute>} />
+                <Route path="/students" element={<ProtectedRoute allowedRoles={['admin_asrama', 'pengasuh']}><StudentManagementPage /></ProtectedRoute>} />
+                <Route path="/asrama" element={<ProtectedRoute allowedRoles={['admin_asrama']}><AsramaPage /></ProtectedRoute>} />
+                <Route path="/student-leave" element={
+                  <ProtectedRoute allowedRoles={['admin_asrama', 'pengasuh']}>
+                    <StudentLeavePage />
+                  </ProtectedRoute>
+                } />
+                <Route path="*" element={<Navigate to="/" />} />
+              </Routes>
+            </div>
+          </main>
+          {/* Padding bottom untuk mobile navigation */}
+          <div className="h-16 md:hidden"></div>
+        </div>
+      </div>
     </Router>
   );
-}
+};
 
 function App() {
   return (
     <AuthProvider>
-      <AppContent />
+      <TeachersProvider>
+        <RosterProvider>
+          <AttendanceProvider>
+            <StudentProvider>
+              <AsramaProvider>
+                <StudentLeaveProvider>
+                  <AppRoutes />
+                </StudentLeaveProvider>
+              </AsramaProvider>
+            </StudentProvider>
+          </AttendanceProvider>
+        </RosterProvider>
+      </TeachersProvider>
     </AuthProvider>
   );
 }
