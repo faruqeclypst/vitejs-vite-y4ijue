@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useAsrama } from '../contexts/AsramaContext';
 import { X, Plus } from 'lucide-react';
-import { ref, get } from 'firebase/database';
+import { ref, get, onValue } from 'firebase/database';
 import { db } from '../firebase';
 import Alert from './Alert';
 import ConfirmationModal from './ConfirmationModal';
@@ -41,6 +41,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
   const [userForPasswordChange, setUserForPasswordChange] = useState<User | null>(null);
   const { alert, showAlert, hideAlert } = useAlert();
   const { isOpen, options, confirm, handleConfirm, handleCancel } = useConfirmation();
+  const [selectedAsramas, setSelectedAsramas] = useState<string[]>([]);
 
   useEffect(() => {
     fetchUsers();
@@ -82,17 +83,28 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
     ];
   };
 
+  const resetForm = () => {
+    setUsername('');
+    setPassword('');
+    setFullName('');
+    setRole(currentUser?.role === 'admin_asrama' ? 'pengasuh' : 'admin');
+    setSelectedAsrama('');
+    setSelectedAsramas([]); // Reset multiple asrama
+    setEditingUser(null);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       const needsAsrama = role === 'pengasuh' || role === 'admin_asrama';
-      const asramaIdToUse = needsAsrama ? selectedAsrama : undefined;
+      
+      const asramaIdToUse = role === 'admin_asrama' ? selectedAsrama : 
+                           role === 'pengasuh' ? selectedAsramas.join(',') : undefined;
 
-      if (needsAsrama && !selectedAsrama) {
+      if (needsAsrama && (role === 'admin_asrama' ? !selectedAsrama : selectedAsramas.length === 0)) {
         showAlert({
           type: 'error',
-          message: 'Asrama harus dipilih untuk role Pengasuh dan Admin Asrama',
-          duration: 3000
+          message: 'Asrama harus dipilih'
         });
         return;
       }
@@ -114,6 +126,24 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
           role as UserRole,
           asramaIdToUse
         );
+
+        // Update localStorage jika user yang diedit adalah user yang sedang login
+        const storedUser = localStorage.getItem('user');
+        if (storedUser) {
+          const currentUser = JSON.parse(storedUser);
+          if (currentUser.id === editingUser.id) {
+            const updatedUser = {
+              ...currentUser,
+              username,
+              fullName,
+              role,
+              asramaId: asramaIdToUse
+            };
+            localStorage.setItem('user', JSON.stringify(updatedUser));
+            window.dispatchEvent(new Event('storage')); // Trigger storage event untuk update state
+          }
+        }
+
         showAlert({
           type: 'success',
           message: 'User berhasil diperbarui',
@@ -161,13 +191,18 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
   };
 
   const handleEdit = (user: User) => {
-    console.log('Editing user:', user);
     setEditingUser(user);
     setUsername(user.username);
     setFullName(user.fullName);
     setRole(user.role);
-    setSelectedAsrama(user.asramaId || '');
-    setPassword(''); // Reset password field
+    if (user.asramaId) {
+      if (user.role === 'pengasuh') {
+        setSelectedAsramas(user.asramaId.split(','));
+      } else {
+        setSelectedAsrama(user.asramaId);
+      }
+    }
+    setPassword(''); // Reset password saat edit
     setIsModalOpen(true);
   };
 
@@ -196,15 +231,6 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
         });
       }
     }
-  };
-
-  const resetForm = () => {
-    setUsername('');
-    setPassword('');
-    setFullName(''); // Reset fullName
-    setRole('admin');
-    setSelectedAsrama('');
-    setEditingUser(null);
   };
 
   // Fungsi untuk mengganti password
@@ -261,6 +287,34 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
   // Update fungsi untuk menampilkan field asrama
   const showAsramaField = (selectedRole: UserRole) => {
     return selectedRole === 'pengasuh' || selectedRole === 'admin_asrama';
+  };
+
+  // Tambahkan useEffect untuk auto refresh data
+  useEffect(() => {
+    const usersRef = ref(db, 'users');
+    const unsubscribe = onValue(usersRef, () => {
+      fetchUsers();
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  // Tambahkan fungsi untuk format tampilan asrama
+  const formatAsramaDisplay = (asramaId: string | undefined) => {
+    if (!asramaId) return '-';
+    
+    // Jika ada multiple asrama (dipisahkan koma)
+    if (asramaId.includes(',')) {
+      const asramaIds = asramaId.split(',');
+      return asramaIds
+        .map(id => asramas.find(a => a.id === id)?.name)
+        .filter(Boolean)
+        .join(', ');
+    }
+    
+    // Jika single asrama
+    const asrama = asramas.find(a => a.id === asramaId);
+    return asrama ? asrama.name : '-';
   };
 
   return (
@@ -427,19 +481,46 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
                     <label className="block text-base font-medium text-gray-700 mb-2">
                       Asrama
                     </label>
-                    <select
-                      value={selectedAsrama}
-                      onChange={(e) => setSelectedAsrama(e.target.value)}
-                      required={showAsramaField(role)}
-                      className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="">Pilih Asrama</option>
-                      {asramas.map((asrama) => (
-                        <option key={asrama.id} value={asrama.id}>
-                          {asrama.name}
-                        </option>
-                      ))}
-                    </select>
+                    {role === 'pengasuh' ? (
+                      // Multiple select dengan button untuk pengasuh
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                        {asramas.map((asrama) => (
+                          <button
+                            key={asrama.id}
+                            type="button"
+                            onClick={() => {
+                              if (selectedAsramas.includes(asrama.id)) {
+                                setSelectedAsramas(prev => prev.filter(id => id !== asrama.id));
+                              } else {
+                                setSelectedAsramas(prev => [...prev, asrama.id]);
+                              }
+                            }}
+                            className={`p-2 rounded-lg transition-colors ${
+                              selectedAsramas.includes(asrama.id)
+                                ? 'bg-blue-500 text-white'
+                                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                            }`}
+                          >
+                            {asrama.name}
+                          </button>
+                        ))}
+                      </div>
+                    ) : (
+                      // Single select untuk admin_asrama
+                      <select
+                        value={selectedAsrama}
+                        onChange={(e) => setSelectedAsrama(e.target.value)}
+                        required={role === 'admin_asrama'}
+                        className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="">Pilih Asrama</option>
+                        {asramas.map((asrama) => (
+                          <option key={asrama.id} value={asrama.id}>
+                            {asrama.name}
+                          </option>
+                        ))}
+                      </select>
+                    )}
                   </div>
                 )}
                 <div className="flex justify-end space-x-4 pt-4">
@@ -480,7 +561,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {users.map((user) => {
-                const userAsrama = asramas.find(a => a.id === user.asramaId);
+                // Hapus variabel userAsrama yang tidak digunakan
                 const canManageUser = currentUser?.role === 'admin' || 
                   (currentUser?.role === 'admin_asrama' && user.role === 'pengasuh');
 
@@ -490,8 +571,8 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
                     <td className="px-6 py-4 whitespace-nowrap">{user.username}</td>
                     <td className="px-6 py-4 whitespace-nowrap">{user.role}</td>
                     {currentUser?.role === 'admin_asrama' && (
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        {userAsrama?.name || '-'}
+                      <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {formatAsramaDisplay(user.asramaId)}
                       </td>
                     )}
                     <td className="px-6 py-4 whitespace-nowrap space-x-2">

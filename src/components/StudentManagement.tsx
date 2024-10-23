@@ -27,7 +27,7 @@ const StudentManagement: React.FC = () => {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
-  // Modifikasi filteredStudents untuk admin_asrama
+  // Modifikasi filteredStudents untuk admin_asrama dan pengasuh dengan multiple asrama
   const groupedStudents = useMemo(() => {
     if (currentUser?.role === 'admin_asrama') {
       return students.reduce((acc, student) => {
@@ -38,9 +38,17 @@ const StudentManagement: React.FC = () => {
         return acc;
       }, {} as Record<string, Student[]>);
     } else if (currentUser?.role === 'pengasuh' && currentUser?.asramaId) {
-      const userAsrama = asramas.find(a => a.id === currentUser.asramaId)?.name;
-      const filtered = students.filter(student => student.asrama === userAsrama);
-      return { [userAsrama || '']: filtered };
+      // Split asramaId jika ada multiple asrama
+      const asramaIds = currentUser.asramaId.split(',');
+      const asramaNames = asramaIds.map(id => asramas.find(a => a.id === id)?.name || '');
+      
+      // Buat grup untuk setiap asrama yang dimiliki pengasuh
+      return asramaNames.reduce((acc, asramaName) => {
+        if (asramaName) {
+          acc[asramaName] = students.filter(student => student.asrama === asramaName);
+        }
+        return acc;
+      }, {} as Record<string, Student[]>);
     }
     return { 'Semua Siswa': students };
   }, [students, currentUser, asramas]);
@@ -48,7 +56,8 @@ const StudentManagement: React.FC = () => {
   // Filter asrama yang bisa dipilih saat menambah/edit siswa
   const availableAsramas = useMemo(() => {
     if (currentUser?.role === 'pengasuh' && currentUser?.asramaId) {
-      return asramas.filter(asrama => asrama.id === currentUser.asramaId);
+      const asramaIds = currentUser.asramaId.split(',');
+      return asramas.filter(asrama => asramaIds.includes(asrama.id));
     }
     return asramas;
   }, [asramas, currentUser]);
@@ -161,84 +170,85 @@ const StudentManagement: React.FC = () => {
     setIsModalOpen(true);
   };
 
-  const renderStudentTable = (students: Student[], title?: string) => (
-    <div className="overflow-hidden bg-white shadow-md rounded-lg h-full">
-      {title && (
-        <div className="px-6 py-4 bg-gray-50 border-b">
-          <h3 className="text-lg font-semibold text-gray-800">{title}</h3>
+  const renderStudentTable = (students2: Student[]) => {
+    if (!students2 || students2.length === 0) {
+      return (
+        <div className="text-center py-4 text-gray-500">
+          Tidak ada data siswa untuk asrama ini
         </div>
-      )}
+      );
+    }
+
+    return (
       <div className="overflow-x-auto">
-        <div className={`${students.length > 10 ? 'max-h-[600px] overflow-y-auto' : ''}`}>
-          <table className="w-full table-auto">
-            <thead className="bg-gray-50 sticky top-0 z-10">
-              <tr>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-16">No</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-28">Kelas</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Asrama</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32">Jenis Kelamin</th>
-                <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-32">Aksi</th>
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50 sticky top-0 z-10">
+            <tr>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-16">No</th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama</th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-28">Kelas</th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Asrama</th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32">Jenis Kelamin</th>
+              <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-32">Aksi</th>
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-200">
+            {students2.map((student, index) => (
+              <tr key={student.id} className="group hover:bg-gray-50">
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{index + 1}</td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="text-sm font-medium text-gray-900">{student.fullName}</div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{student.class}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{student.asrama}</td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                    student.gender === 'Laki-laki' 
+                      ? 'bg-blue-100 text-blue-800' 
+                      : 'bg-pink-100 text-pink-800'
+                  }`}>
+                    {student.gender}
+                  </span>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium bg-white group-hover:bg-gray-50 transition-colors">
+                  <div className="flex justify-end space-x-3">
+                    <button
+                      onClick={() => handleEditStudent(student)}
+                      className="text-blue-600 hover:text-blue-900 transition-colors"
+                      title="Edit"
+                    >
+                      <Edit className="h-5 w-5" />
+                    </button>
+                    <button
+                      onClick={() => handleDelete(student.id)}
+                      className="text-red-600 hover:text-red-900 transition-colors"
+                      title="Hapus"
+                    >
+                      <Trash2 className="h-5 w-5" />
+                    </button>
+                    <button
+                      onClick={() => setSelectedStudentForHistory(student)}
+                      className="text-indigo-600 hover:text-indigo-900 transition-colors"
+                      title="Lihat Riwayat Perizinan"
+                    >
+                      <FileText className="h-5 w-5" />
+                    </button>
+                  </div>
+                </td>
               </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {students.map((student, index) => (
-                <tr key={student.id} className="group hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{index + 1}</td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">{student.fullName}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{student.class}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{student.asrama}</td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                      student.gender === 'Laki-laki' 
-                        ? 'bg-blue-100 text-blue-800' 
-                        : 'bg-pink-100 text-pink-800'
-                    }`}>
-                      {student.gender}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium bg-white group-hover:bg-gray-50 transition-colors">
-                    <div className="flex justify-end space-x-3">
-                      <button
-                        onClick={() => handleEditStudent(student)}
-                        className="text-blue-600 hover:text-blue-900 transition-colors"
-                        title="Edit"
-                      >
-                        <Edit className="h-5 w-5" />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(student.id)}
-                        className="text-red-600 hover:text-red-900 transition-colors"
-                        title="Hapus"
-                      >
-                        <Trash2 className="h-5 w-5" />
-                      </button>
-                      <button
-                        onClick={() => setSelectedStudentForHistory(student)}
-                        className="text-indigo-600 hover:text-indigo-900 transition-colors"
-                        title="Lihat Riwayat Perizinan"
-                      >
-                        <FileText className="h-5 w-5" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-              {students.length === 0 && (
-                <tr>
-                  <td colSpan={6} className="px-6 py-4 text-center text-gray-500 text-sm">
-                    Tidak ada data siswa
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+            ))}
+            {students2.length === 0 && (
+              <tr>
+                <td colSpan={6} className="px-6 py-4 text-center text-gray-500 text-sm">
+                  Tidak ada data siswa
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <div className="w-full">
@@ -267,20 +277,17 @@ const StudentManagement: React.FC = () => {
         </div>
       </div>
 
-      {/* Render tabel berdasarkan role */}
-      {currentUser?.role === 'admin_asrama' ? (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {Object.entries(groupedStudents)
-            .sort(([asramaA], [asramaB]) => asramaA.localeCompare(asramaB))
-            .map(([asrama, students]) => (
-              <div key={asrama}>
-                {renderStudentTable(students, asrama || 'Belum Ada Asrama')}
-              </div>
-            ))}
-        </div>
-      ) : (
-        renderStudentTable(Object.values(groupedStudents)[0])
-      )}
+      {/* Render tables for each asrama */}
+      <div className="space-y-8">
+        {Object.entries(groupedStudents).map(([asramaName, students]) => (
+          <div key={asramaName} className="bg-white shadow-md rounded-lg overflow-hidden">
+            <div className="px-6 py-4 bg-gray-50 border-b">
+              <h3 className="text-lg font-semibold text-gray-800">{asramaName}</h3>
+            </div>
+            {renderStudentTable(students)}
+          </div>
+        ))}
+      </div>
 
       {/* Modal form */}
       {isModalOpen && (

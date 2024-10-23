@@ -18,9 +18,11 @@ import AsramaPage from './pages/AsramaPage';
 import StudentLeavePage from './pages/StudentLeavePage';
 import Login from './components/Login';
 import Header from './components/Header';
+import { useState } from 'react';
 
 const AppRoutes = () => {
   const { user, isLoading } = useAuth();
+  const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
 
   if (isLoading) {
     return <div>Loading...</div>;
@@ -28,9 +30,12 @@ const AppRoutes = () => {
 
   return (
     <Router>
-      <div className="flex flex-col md:flex-row min-h-screen bg-gray-50">
-        {user && <Sidebar />}
-        <div className="flex-1 flex flex-col min-h-screen">
+      <div className="flex min-h-screen bg-gray-50">
+        {user && <Sidebar isExpanded={isSidebarExpanded} setIsExpanded={setIsSidebarExpanded} />}
+        {/* Update margin left berdasarkan status sidebar */}
+        <div className={`flex-1 flex flex-col transition-all duration-300 ${
+          user ? (isSidebarExpanded ? 'md:ml-80' : 'md:ml-24') : ''
+        }`}>
           {user && <Header />}
           <main className="flex-1 p-2 sm:p-4 lg:p-6">
             <div className="w-full max-w-[2000px] mx-auto">

@@ -1,5 +1,5 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import { ref, get, push, set, remove } from 'firebase/database';
+import { ref, get, push, set, remove, onValue } from 'firebase/database';
 import { db } from '../firebase';
 
 type UserRole = 'admin' | 'piket' | 'wakil_kepala' | 'pengasuh' | 'admin_asrama';
@@ -7,9 +7,9 @@ type UserRole = 'admin' | 'piket' | 'wakil_kepala' | 'pengasuh' | 'admin_asrama'
 interface User {
   id: string;
   username: string;
-  fullName: string; // Tambah field fullName
+  fullName: string;
   role: UserRole;
-  asramaId?: string;
+  asramaId?: string; // Bisa berisi single ID atau multiple ID dengan pemisah koma
 }
 
 interface AuthContextType {
@@ -30,11 +30,42 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
-    setIsLoading(false);
+    const initializeAuth = async () => {
+      try {
+        const storedUser = localStorage.getItem('user');
+        if (storedUser) {
+          const userData = JSON.parse(storedUser);
+          setUser(userData);
+          
+          // Tambahkan listener untuk user yang sedang login
+          if (userData.id) {
+            const userRef = ref(db, `users/${userData.id}`);
+            const unsubscribe = onValue(userRef, (snapshot) => {
+              const updatedUserData = snapshot.val();
+              if (updatedUserData) {
+                const updatedUser = {
+                  id: userData.id,
+                  username: updatedUserData.username,
+                  fullName: updatedUserData.fullName,
+                  role: updatedUserData.role,
+                  asramaId: updatedUserData.asramaId
+                };
+                setUser(updatedUser);
+                localStorage.setItem('user', JSON.stringify(updatedUser));
+              }
+            });
+
+            return () => unsubscribe();
+          }
+        }
+      } catch (error) {
+        console.error('Error initializing auth:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    initializeAuth();
   }, []);
 
   const login = async (username: string, password: string) => {
@@ -142,7 +173,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   return (
     <AuthContext.Provider value={{ user, login, logout, addUser, getUsers, updateUser, deleteUser, isLoading }}>
-      {children}
+      {!isLoading ? children : (
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+        </div>
+      )}
     </AuthContext.Provider>
   );
 };

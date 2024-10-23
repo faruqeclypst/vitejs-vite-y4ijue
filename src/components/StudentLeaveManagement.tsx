@@ -344,18 +344,18 @@ const StudentLeaveManagement: React.FC = () => {
   }, [isDropdownOpen]);
 
   return (
-    <div className="w-full">
-      {/* Filter tanggal dan tombol-tombol */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+    <div className="space-y-6">
+      {/* Header dan Filter */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full sm:w-auto">
           <button
             onClick={openModal}
-            className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-lg flex items-center text-base"
+            className="w-full sm:w-auto bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center justify-center text-base"
           >
             <Plus className="h-5 w-5 mr-2" />
             Tambah Perizinan
           </button>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 w-full sm:w-auto">
             <Calendar className="h-5 w-5 text-gray-500" />
             <input
               type="date"
@@ -368,7 +368,7 @@ const StudentLeaveManagement: React.FC = () => {
         {filteredLeavesByDate.length > 0 && (
           <button
             onClick={shareToWhatsApp}
-            className="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg flex items-center text-base"
+            className="w-full sm:w-auto bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg flex items-center justify-center text-base"
           >
             <Share className="h-5 w-5 mr-2" />
             Share WhatsApp
@@ -376,150 +376,224 @@ const StudentLeaveManagement: React.FC = () => {
         )}
       </div>
 
-      {/* Tabel responsif */}
-      <div className="overflow-x-auto bg-white shadow-md rounded-lg">
-        <div className="min-w-full lg:min-w-[1000px]">
-          <table className="w-full table-auto">
-            <thead className="bg-gray-50">
-              <tr className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                <th className="px-4 py-3 hidden sm:table-cell">No</th>
-                <th className="px-4 py-3">Nama Siswa</th>
-                <th className="px-4 py-3 hidden md:table-cell">Kelas</th>
-                <th className="px-4 py-3 hidden md:table-cell">Asrama</th>
-                <th className="px-4 py-3">Jenis Izin</th>
-                <th className="px-4 py-3 hidden lg:table-cell">Tanggal & Jam Keluar</th>
-                <th className="px-4 py-3 hidden lg:table-cell">Tanggal & Jam Kembali</th>
-                <th className="px-4 py-3 hidden sm:table-cell">Keterangan</th>
-                <th className="px-4 py-3 hidden sm:table-cell">Status Kembali</th>
-                <th className="px-4 py-3 hidden sm:table-cell">Bukti</th>
-                <th className="px-4 py-3">Aksi</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {filteredLeavesByDate.map((leave, index) => {
-                const student = students.find(s => s.id === leave.studentId);
-                return (
-                  <tr key={leave.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-4 hidden sm:table-cell whitespace-nowrap">
-                      {index + 1}
-                    </td>
-                    <td className="px-4 py-4">
-                      <div>
-                        <div className="font-medium text-gray-900">{student?.fullName}</div>
-                        <div className="text-sm text-gray-500 md:hidden">
-                          {student?.class} - {student?.asrama}
+      {/* Tabel Responsif */}
+      <div className="bg-white shadow-md rounded-lg overflow-hidden">
+        <div className="overflow-x-auto">
+          <div className="inline-block min-w-full align-middle">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Siswa</th>
+                  <th className="hidden md:table-cell px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kelas</th>
+                  <th className="hidden md:table-cell px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Asrama</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Jenis Izin</th>
+                  <th className="hidden lg:table-cell px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tanggal & Jam Keluar</th>
+                  <th className="hidden lg:table-cell px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tanggal & Jam Kembali</th>
+                  <th className="hidden sm:table-cell px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Keterangan</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                  <th className="hidden sm:table-cell px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Bukti</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {filteredLeavesByDate.map((leave, index) => {
+                  const student = students.find(s => s.id === leave.studentId);
+                  return (
+                    <tr key={leave.id} className="hover:bg-gray-50">
+                      <td className="px-4 py-3 whitespace-nowrap text-sm">{index + 1}</td>
+                      <td className="px-4 py-3">
+                        <div>
+                          <div className="font-medium text-gray-900">{student?.fullName}</div>
+                          <div className="md:hidden text-sm text-gray-500">
+                            {student?.class} - {student?.asrama}
+                          </div>
+                          <div className="lg:hidden text-sm text-gray-500 mt-1">
+                            {leave.startDate} {leave.startTime}
+                          </div>
                         </div>
-                        <div className="text-sm text-gray-500 lg:hidden mt-1">
-                          {leave.startDate} {leave.startTime}
+                      </td>
+                      <td className="hidden md:table-cell px-4 py-3 text-sm">{student?.class}</td>
+                      <td className="hidden md:table-cell px-4 py-3 text-sm">{student?.asrama}</td>
+                      <td className="px-4 py-3">
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-md text-sm font-medium bg-blue-100 text-blue-800">
+                          {leave.leaveType}
+                        </span>
+                      </td>
+                      <td className="hidden lg:table-cell px-4 py-3 text-sm whitespace-nowrap">
+                        {leave.startDate} {leave.startTime}
+                      </td>
+                      <td className="hidden lg:table-cell px-4 py-3 text-sm whitespace-nowrap">
+                        {leave.endDate} {leave.endTime}
+                      </td>
+                      <td className="hidden sm:table-cell px-4 py-3 text-sm">
+                        <div className="max-w-xs truncate" title={leave.keterangan}>
+                          {leave.keterangan}
                         </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-4 hidden md:table-cell whitespace-nowrap">
-                      {student?.class}
-                    </td>
-                    <td className="px-4 py-4 hidden md:table-cell whitespace-nowrap">
-                      {student?.asrama}
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap">
-                      <span className="inline-flex items-center px-3 py-1.5 bg-blue-100 text-blue-700 rounded-lg">
-                        {leave.leaveType}
-                      </span>
-                    </td>
-                    <td className="px-4 py-4 hidden lg:table-cell whitespace-nowrap">
-                      {leave.startDate} {leave.startTime}
-                    </td>
-                    <td className="px-4 py-4 hidden lg:table-cell whitespace-nowrap">
-                      {leave.endDate} {leave.endTime}
-                    </td>
-                    <td className="px-4 py-4 hidden sm:table-cell">
-                      <div className="max-w-xs truncate" title={leave.keterangan}>
-                        {leave.keterangan}
-                      </div>
-                    </td>
-                    <td className="px-4 py-4 hidden sm:table-cell whitespace-nowrap">
-                      {(currentUser?.role === 'pengasuh' || currentUser?.role === 'admin_asrama') ? (
-                        <select
-                          value={leave.returnStatus || 'Belum Kembali'}
-                          onChange={(e) => handleStatusChange(leave, e.target.value as ReturnStatus)}
-                          className={`px-3 py-1.5 rounded-lg text-sm ${
+                      </td>
+                      <td className="px-4 py-3">
+                        {(currentUser?.role === 'pengasuh' || currentUser?.role === 'admin_asrama') ? (
+                          <select
+                            value={leave.returnStatus || 'Belum Kembali'}
+                            onChange={(e) => handleStatusChange(leave, e.target.value as ReturnStatus)}
+                            className={`px-3 py-1.5 rounded-lg text-sm ${
+                              leave.returnStatus === 'Sudah Kembali'
+                                ? 'bg-green-100 text-green-700'
+                                : 'bg-yellow-100 text-yellow-700'
+                            }`}
+                          >
+                            <option value="Belum Kembali">Belum Kembali</option>
+                            <option value="Sudah Kembali">Sudah Kembali</option>
+                          </select>
+                        ) : (
+                          <span className={`inline-flex items-center px-3 py-1.5 rounded-lg ${
                             leave.returnStatus === 'Sudah Kembali'
                               ? 'bg-green-100 text-green-700'
                               : 'bg-yellow-100 text-yellow-700'
-                          }`}
-                        >
-                          <option value="Belum Kembali">Belum Kembali</option>
-                          <option value="Sudah Kembali">Sudah Kembali</option>
-                        </select>
-                      ) : (
-                        <span className={`inline-flex items-center px-3 py-1.5 rounded-lg ${
-                          leave.returnStatus === 'Sudah Kembali'
-                            ? 'bg-green-100 text-green-700'
-                            : 'bg-yellow-100 text-yellow-700'
-                        }`}>
-                          {leave.returnStatus || 'Belum Kembali'}
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-4 py-4 hidden sm:table-cell whitespace-nowrap">
-                      {leave.documentUrl ? (
-                        <button
-                          onClick={() => handleViewDocument(leave)}
-                          className="inline-flex items-center px-3 py-1.5 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors duration-200"
-                        >
-                          <svg 
-                            className="w-4 h-4 mr-1.5" 
-                            fill="none" 
-                            stroke="currentColor" 
-                            viewBox="0 0 24 24"
+                          }`}>
+                            {leave.returnStatus || 'Belum Kembali'}
+                          </span>
+                        )}
+                      </td>
+                      <td className="hidden sm:table-cell px-4 py-3">
+                        {leave.documentUrl ? (
+                          <button
+                            onClick={() => handleViewDocument(leave)}
+                            className="inline-flex items-center px-3 py-1.5 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors duration-200"
                           >
-                            <path 
-                              strokeLinecap="round" 
-                              strokeLinejoin="round" 
-                              strokeWidth={2} 
-                              d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" 
-                            />
-                            <path 
-                              strokeLinecap="round" 
-                              strokeLinejoin="round" 
-                              strokeWidth={2} 
-                              d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" 
-                            />
-                          </svg>
-                          Lihat Dokumen
-                        </button>
-                      ) : (
-                        <span className="text-gray-400">-</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-right">
-                      <div className="flex space-x-2 justify-end">
-                        <button
-                          onClick={() => handleEdit(leave)}
-                          className="text-blue-600 hover:text-blue-900 p-1"
-                        >
-                          <Edit className="h-5 w-5" />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(leave.id)}
-                          className="text-red-600 hover:text-red-900 p-1"
-                        >
-                          <Trash2 className="h-5 w-5" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-              {filteredLeavesByDate.length === 0 && (
-                <tr>
-                  <td colSpan={10} className="px-4 py-8 text-center text-gray-500">
-                    Tidak ada perizinan untuk tanggal ini
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+                            <svg 
+                              className="w-4 h-4 mr-1.5" 
+                              fill="none" 
+                              stroke="currentColor" 
+                              viewBox="0 0 24 24"
+                            >
+                              <path 
+                                strokeLinecap="round" 
+                                strokeLinejoin="round" 
+                                strokeWidth={2} 
+                                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" 
+                              />
+                              <path 
+                                strokeLinecap="round" 
+                                strokeLinejoin="round" 
+                                strokeWidth={2} 
+                                d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" 
+                              />
+                            </svg>
+                            Dokumen
+                          </button>
+                        ) : (
+                          <span className="text-gray-400">-</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex justify-end space-x-2">
+                          <button
+                            onClick={() => handleEdit(leave)}
+                            className="text-blue-600 hover:text-blue-900 p-1"
+                          >
+                            <Edit className="h-5 w-5" />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(leave.id)}
+                            className="text-red-600 hover:text-red-900 p-1"
+                          >
+                            <Trash2 className="h-5 w-5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
+      </div>
+
+      {/* Mobile View untuk Data */}
+      <div className="md:hidden space-y-4">
+        {filteredLeavesByDate.map((leave) => { // Hapus parameter index yang tidak digunakan
+          const student = students.find(s => s.id === leave.studentId);
+          return (
+            <div key={leave.id} className="bg-white p-4 rounded-lg shadow">
+              <div className="flex justify-between items-start mb-2">
+                <div>
+                  <div className="font-medium text-gray-900">{student?.fullName}</div>
+                  <div className="text-sm text-gray-500">
+                    {student?.class} - {student?.asrama}
+                  </div>
+                </div>
+                <div className="flex space-x-2">
+                  <button
+                    onClick={() => handleEdit(leave)}
+                    className="text-blue-600 hover:text-blue-900 p-1"
+                  >
+                    <Edit className="h-5 w-5" />
+                  </button>
+                  <button
+                    onClick={() => handleDelete(leave.id)}
+                    className="text-red-600 hover:text-red-900 p-1"
+                  >
+                    <Trash2 className="h-5 w-5" />
+                  </button>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-500">Jenis Izin:</span>
+                  <span className="inline-flex items-center px-2.5 py-1 rounded-md text-sm font-medium bg-blue-100 text-blue-800">
+                    {leave.leaveType}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-500">Tanggal & Jam Keluar:</span>
+                  <span className="text-sm">{leave.startDate} {leave.startTime}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-500">Tanggal & Jam Kembali:</span>
+                  <span className="text-sm">{leave.endDate} {leave.endTime}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-500">Status:</span>
+                  {(currentUser?.role === 'pengasuh' || currentUser?.role === 'admin_asrama') ? (
+                    <select
+                      value={leave.returnStatus || 'Belum Kembali'}
+                      onChange={(e) => handleStatusChange(leave, e.target.value as ReturnStatus)}
+                      className={`px-3 py-1.5 rounded-lg text-sm ${
+                        leave.returnStatus === 'Sudah Kembali'
+                          ? 'bg-green-100 text-green-700'
+                          : 'bg-yellow-100 text-yellow-700'
+                      }`}
+                    >
+                      <option value="Belum Kembali">Belum Kembali</option>
+                      <option value="Sudah Kembali">Sudah Kembali</option>
+                    </select>
+                  ) : (
+                    <span className={`inline-flex items-center px-3 py-1.5 rounded-lg text-sm ${
+                      leave.returnStatus === 'Sudah Kembali'
+                        ? 'bg-green-100 text-green-700'
+                        : 'bg-yellow-100 text-yellow-700'
+                    }`}>
+                      {leave.returnStatus || 'Belum Kembali'}
+                    </span>
+                  )}
+                </div>
+                {leave.documentUrl && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-500">Dokumen:</span>
+                    <button
+                      onClick={() => handleViewDocument(leave)}
+                      className="inline-flex items-center px-3 py-1.5 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200"
+                    >
+                      Dokumen
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       {/* Modal form */}
@@ -706,7 +780,7 @@ const StudentLeaveManagement: React.FC = () => {
                           onClick={() => handleViewDocument(editingLeave)}
                           className="text-blue-600 hover:text-blue-800 text-sm underline"
                         >
-                          Lihat Dokumen
+                          Dokumen
                         </button>
                       </div>
                     ) : null}
