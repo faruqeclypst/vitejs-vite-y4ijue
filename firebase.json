@@ -1,6 +1,7 @@
 {
   "hosting": {
     "public": "dist",
+    "site": "piket-mosa-test",
     "ignore": [
       "firebase.json",
       "**/.*",

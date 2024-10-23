@@ -52,49 +52,51 @@ function AppContent() {
             <StudentProvider>
               <div className="flex h-screen overflow-hidden bg-gray-100">
                 <Sidebar />
-                <main className="flex-1 overflow-auto">
-                  <div className="container mx-auto max-w-4xl p-4">
-                    <Routes>
-                      <Route path="/login" element={<Login />} />
-                      <Route path="/" element={
-                        <ProtectedRoute allowedRoles={['admin', 'piket', 'wakil_kepala']}>
-                          <LandingPage />
-                        </ProtectedRoute>
-                      } />
-                      <Route path="/teachers" element={
-                        <ProtectedRoute allowedRoles={['admin']}>
-                          <TeachersPage />
-                        </ProtectedRoute>
-                      } />
-                      <Route path="/roster" element={
-                        <ProtectedRoute allowedRoles={['admin']}>
-                          <RosterPage />
-                        </ProtectedRoute>
-                      } />
-                      <Route path="/attendance" element={
-                        <ProtectedRoute allowedRoles={['admin', 'piket', 'wakil_kepala']}>
-                          <AttendancePage />
-                        </ProtectedRoute>
-                      } />
-                      <Route path="/students" element={
-                        <ProtectedRoute allowedRoles={['admin']}>
-                          <StudentManagement />
-                        </ProtectedRoute>
-                      } />
-                      <Route path="/leave-request" element={
-                        <ProtectedRoute allowedRoles={['admin', 'piket', 'wakil_kepala']}>
-                          <StudentLeaveRequestForm />
-                        </ProtectedRoute>
-                      } />
-                      <Route path="/user-management" element={
-                        <ProtectedRoute allowedRoles={['admin']}>
-                          <UserManagement />
-                        </ProtectedRoute>
-                      } />
-                      <Route path="*" element={<Navigate to="/" replace />} />
-                    </Routes>
-                  </div>
-                </main>
+                <div className="flex-1 overflow-hidden">
+                  <main className="h-full overflow-y-auto">
+                    <div className="container mx-auto p-4 pb-20 md:pb-4">
+                      <Routes>
+                        <Route path="/login" element={<Login />} />
+                        <Route path="/" element={
+                          <ProtectedRoute allowedRoles={['admin', 'piket', 'wakil_kepala']}>
+                            <LandingPage />
+                          </ProtectedRoute>
+                        } />
+                        <Route path="/teachers" element={
+                          <ProtectedRoute allowedRoles={['admin']}>
+                            <TeachersPage />
+                          </ProtectedRoute>
+                        } />
+                        <Route path="/roster" element={
+                          <ProtectedRoute allowedRoles={['admin', 'piket']}>
+                            <RosterPage />
+                          </ProtectedRoute>
+                        } />
+                        <Route path="/attendance" element={
+                          <ProtectedRoute allowedRoles={['admin', 'piket', 'wakil_kepala']}>
+                            <AttendancePage />
+                          </ProtectedRoute>
+                        } />
+                        <Route path="/students" element={
+                          <ProtectedRoute allowedRoles={['admin']}>
+                            <StudentManagement />
+                          </ProtectedRoute>
+                        } />
+                        <Route path="/leave-request" element={
+                          <ProtectedRoute allowedRoles={['admin', 'piket', 'wakil_kepala']}>
+                            <StudentLeaveRequestForm />
+                          </ProtectedRoute>
+                        } />
+                        <Route path="/user-management" element={
+                          <ProtectedRoute allowedRoles={['admin']}>
+                            <UserManagement />
+                          </ProtectedRoute>
+                        } />
+                         <Route path="*" element={<Navigate to="/" replace />} />
+                      </Routes>
+                    </div>
+                  </main>
+                </div>
               </div>
             </StudentProvider>
           </AttendanceProvider>

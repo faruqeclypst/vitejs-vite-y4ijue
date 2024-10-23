@@ -86,6 +86,13 @@ const AttendanceTable: React.FC<AttendanceTableProps> = ({ roster, teachers, onS
     return acc;
   }, {} as { [teacherId: string]: RosterEntry[] });
 
+  // Sort teachers alphabetically by name
+  const sortedTeacherIds = Object.keys(groupedRoster).sort((a, b) => {
+    const teacherA = teachers.find(t => t.id === a);
+    const teacherB = teachers.find(t => t.id === b);
+    return (teacherA?.name || '').localeCompare(teacherB?.name || '');
+  });
+
   return (
     <div className="overflow-x-auto w-full">
       <table className="w-full table-auto divide-y divide-gray-200">
@@ -99,7 +106,8 @@ const AttendanceTable: React.FC<AttendanceTableProps> = ({ roster, teachers, onS
           </tr>
         </thead>
         <tbody className="bg-white divide-y divide-gray-200">
-          {Object.entries(groupedRoster).map(([teacherId, entries]) => {
+          {sortedTeacherIds.map((teacherId) => {
+            const entries = groupedRoster[teacherId];
             const teacher = teachers.find(t => t.id === teacherId);
             const maxHours = Math.max(...entries.map(e => daySchedule[e.dayOfWeek]));
             const isConfirmed = confirmedTeachers.includes(teacherId);
@@ -118,18 +126,22 @@ const AttendanceTable: React.FC<AttendanceTableProps> = ({ roster, teachers, onS
                         {entries.map(entry => {
                           if (entry.hours.includes(i + 1)) {
                             const currentData = attendanceData[entry.id] || { presentHours: [], keterangan: '' };
+                            const isUpacara = entry.dayOfWeek === 'Senin' && i === 0;
                             return (
                               <button
                                 key={entry.id}
-                                onClick={() => handleToggle(entry.id, i + 1)}
+                                onClick={() => !isUpacara && handleToggle(entry.id, i + 1)}
                                 className={`px-1 py-1 text-xs rounded truncate ${
-                                  currentData.presentHours.includes(i + 1)
+                                  isUpacara
+                                    ? 'bg-yellow-500 text-white cursor-not-allowed'
+                                    : currentData.presentHours.includes(i + 1)
                                     ? 'bg-green-500 text-white'
                                     : 'bg-gray-200 text-gray-700'
                                 }`}
                                 style={{ maxWidth: '100%', whiteSpace: 'nowrap', overflow: 'hidden' }}
+                                title={isUpacara ? 'UPACARA' : undefined}
                               >
-                                {entry.classId}
+                                {isUpacara ? 'UPACARA' : entry.classId}
                               </button>
                             );
                           }
@@ -150,7 +162,7 @@ const AttendanceTable: React.FC<AttendanceTableProps> = ({ roster, teachers, onS
                           value={currentData.keterangan}
                           onChange={(e) => handleKeteranganChange(entry.id, e.target.value)}
                           className="form-input block w-full text-xs"
-                          placeholder="Add keterangan..."
+                          placeholder="Tambahkan keterangan..."
                         />
                       </div>
                     );

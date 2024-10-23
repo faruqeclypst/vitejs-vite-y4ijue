@@ -68,7 +68,9 @@ const StatsGrid: React.FC<{ stats: Array<{ title: string; value: number; icon: R
       {stats.map((item, index) => (
         <div
           key={item.title}
-          className={`relative overflow-hidden rounded-lg ${item.color} shadow-md transition-all duration-300 hover:shadow-xl hover:-translate-y-1`}
+          className={`relative overflow-hidden rounded-lg ${item.color} shadow-md transition-all duration-300 hover:shadow-xl hover:-translate-y-1 ${
+            item.title.startsWith('Jam') ? 'block' : 'hidden sm:block'
+          }`}
           style={{animation: `fadeInUp 0.5s ease-out ${index * 0.1}s both`}}
         >
           <div className="px-4 py-5 sm:p-6">
@@ -77,7 +79,7 @@ const StatsGrid: React.FC<{ stats: Array<{ title: string; value: number; icon: R
                 <item.icon className="h-6 w-6 text-white" />
               </div>
               <div className="ml-5 w-0 flex-1">
-                <dt className="truncate text-sm font-medium text-gray-100">
+                <dt className="truncate text-sm font-bold text-gray-100">
                   {item.title}
                 </dt>
                 <dd className="mt-1 text-3xl font-semibold text-white">

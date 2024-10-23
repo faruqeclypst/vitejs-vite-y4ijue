@@ -7,6 +7,7 @@ interface RosterFormProps {
   classes: string[];
   onSubmit: (roster: Omit<RosterEntry, 'id'>) => void;
   initialData?: RosterEntry | null;
+  preselectedTeacherId?: string | null;
 }
 
 interface Conflict {
@@ -15,13 +16,16 @@ interface Conflict {
   conflictWith: string;
 }
 
-const RosterForm: React.FC<RosterFormProps> = ({ teachers, classes, onSubmit, initialData }) => {
-  const [teacherId, setTeacherId] = useState('');
+const RosterForm: React.FC<RosterFormProps> = ({ teachers, classes, onSubmit, initialData, preselectedTeacherId }) => {
+  const [teacherId, setTeacherId] = useState(preselectedTeacherId || '');
   const [classId, setClassId] = useState('');
   const [dayOfWeek, setDayOfWeek] = useState<DayOfWeek | ''>('');
   const [hours, setHours] = useState<number[]>([]);
   const [conflicts, setConflicts] = useState<Conflict[]>([]);
   const { roster } = useRoster();
+  const [grade, setGrade] = useState<'X' | 'XI' | 'XII' | ''>('');
+
+  const days = Object.keys(daySchedule) as DayOfWeek[];
 
   useEffect(() => {
     if (initialData) {
@@ -29,8 +33,12 @@ const RosterForm: React.FC<RosterFormProps> = ({ teachers, classes, onSubmit, in
       setClassId(initialData.classId);
       setDayOfWeek(initialData.dayOfWeek);
       setHours(initialData.hours);
+      // Add this line to set the grade when editing
+      setGrade(initialData.classId.split('-')[0] as 'X' | 'XI' | 'XII');
+    } else if (preselectedTeacherId) {
+      setTeacherId(preselectedTeacherId);
     }
-  }, [initialData]);
+  }, [initialData, preselectedTeacherId]);
 
   useEffect(() => {
     if(dayOfWeek) {
@@ -88,6 +96,7 @@ const RosterForm: React.FC<RosterFormProps> = ({ teachers, classes, onSubmit, in
   };
 
   const toggleHour = (hour: number) => {
+    if (dayOfWeek === 'Senin' && hour === 1) return; // Prevent toggling first hour on Monday
     setHours(prev =>
       prev.includes(hour) ? prev.filter(h => h !== hour) : [...prev, hour]
     );
@@ -116,63 +125,119 @@ const RosterForm: React.FC<RosterFormProps> = ({ teachers, classes, onSubmit, in
     return message.trim();
   };
 
+  const gradeOptions = ['X', 'XI', 'XII'];
+  const filteredClasses = grade 
+    ? classes.filter(cls => new RegExp(`^${grade}-\\d+$`).test(cls))
+    : [];
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <select
-        value={teacherId}
-        onChange={(e) => setTeacherId(e.target.value)}
-        className="w-full p-2 border rounded"
-        required
-      >
-        <option value="">Pilih guru</option>
-        {teachers.map((teacher) => (
-          <option key={teacher.id} value={teacher.id}>{teacher.name}</option>
-        ))}
-      </select>
+    <form onSubmit={handleSubmit} className="space-y-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Guru</label>
+          <select
+            value={teacherId}
+            onChange={(e) => setTeacherId(e.target.value)}
+            className="w-full p-2 border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+            required
+            disabled={Boolean(initialData || preselectedTeacherId)}
+          >
+            <option value="">Pilih guru</option>
+            {teachers.map((teacher) => (
+              <option key={teacher.id} value={teacher.id}>{teacher.name}</option>
+            ))}
+          </select>
+        </div>
 
-      <select
-        value={classId}
-        onChange={(e) => setClassId(e.target.value)}
-        className="w-full p-2 border rounded"
-        required
-      >
-        <option value="">Pilih kelas</option>
-        {classes.map((cls) => (
-          <option key={cls} value={cls}>{cls}</option>
-        ))}
-      </select>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Tingkatan Kelas</label>
+          <div className="flex space-x-2">
+            {gradeOptions.map((g) => (
+              <button
+                key={g}
+                type="button"
+                onClick={() => setGrade(g as "X" | "XI" | "XII")}
+                className={`flex-1 py-2 px-4 rounded-md transition-colors ${
+                  grade === g 
+                    ? 'bg-blue-500 text-white' 
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                {g}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
 
-      <select
-        value={dayOfWeek}
-        onChange={(e) => setDayOfWeek(e.target.value as DayOfWeek || '')}
-        className="w-full p-2 border rounded"
-        required
-      >
-        <option value="">Pilih hari</option>
-        {Object.keys(daySchedule).map((day) => (
-          <option key={day} value={day}>{day}</option>
-        ))}
-      </select>
+      {grade && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Kelas</label>
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
+            {filteredClasses.map((cls) => (
+              <button
+                key={cls}
+                type="button"
+                onClick={() => setClassId(cls)}
+                className={`p-2 rounded-md transition-colors ${
+                  classId === cls 
+                    ? 'bg-blue-500 text-white' 
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                {cls}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
-      <div className="space-y-2">
-        <label className="block text-sm font-medium text-gray-700">Jam</label>
-        <div className="grid grid-cols-4 gap-2">
-          {dayOfWeek && Array.from({ length: daySchedule[dayOfWeek] }, (_, i) => i + 1).map((hour) => (
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">Hari</label>
+        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
+          {days.map((day) => (
             <button
-              key={hour}
+              key={day}
               type="button"
-              onClick={() => toggleHour(hour)}
-              className={`p-2 rounded ${
-                hours.includes(hour)
-                  ? conflicts.some(c => c.hour === hour)
-                    ? 'bg-red-500 text-white'
-                    : 'bg-green-500 text-white'
-                  : 'bg-gray-200 hover:bg-gray-300'
+              onClick={() => setDayOfWeek(day)}
+              className={`p-2 rounded-md transition-colors ${
+                dayOfWeek === day 
+                  ? 'bg-blue-500 text-white' 
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
               }`}
             >
-              Jam {hour}
+              {day}
             </button>
           ))}
+        </div>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">Jam Pelajaran</label>
+        <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2">
+          {dayOfWeek && Array.from({ length: daySchedule[dayOfWeek] }, (_, i) => i + 1).map((hour) => {
+            const isUpacara = dayOfWeek === 'Senin' && hour === 1;
+            return (
+              <button
+                key={hour}
+                type="button"
+                onClick={() => toggleHour(hour)}
+                className={`p-2 rounded-md transition-colors ${
+                  isUpacara
+                    ? 'bg-yellow-500 text-white cursor-not-allowed hover:bg-yellow-600'
+                    : hours.includes(hour)
+                    ? conflicts.some(c => c.hour === hour)
+                      ? 'bg-red-500 text-white'
+                      : 'bg-green-500 text-white'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+                disabled={isUpacara}
+                title={isUpacara ? 'Jam Upacara' : `Jam Pelajaran ${hour}`}
+              >
+                {isUpacara ? 'JP 1' : `JP ${hour}`}
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -184,7 +249,7 @@ const RosterForm: React.FC<RosterFormProps> = ({ teachers, classes, onSubmit, in
 
       <button
         type="submit"
-        className={`w-full p-2 text-white rounded focus:outline-none focus:ring-2 focus:ring-opacity-50 ${
+        className={`w-full p-3 text-white rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-opacity-50 ${
           conflicts.length > 0
             ? 'bg-gray-400 cursor-not-allowed'
             : 'bg-blue-500 hover:bg-blue-600 focus:ring-blue-500'
