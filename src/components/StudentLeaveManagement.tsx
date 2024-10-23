@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useStudentLeave } from '../contexts/StudentLeaveContext';
 import { useStudents } from '../contexts/StudentContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -18,16 +18,15 @@ const StudentLeaveManagement: React.FC = () => {
   const { asramas } = useAsrama();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingLeave, setEditingLeave] = useState<StudentLeave | null>(null);
-  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
-  const [newLeave, setNewLeave] = useState<Omit<StudentLeave, 'id'>>({
-    studentId: '',
+  const [selectedStudents, setSelectedStudents] = useState<Student[]>([]);
+  const [newLeave, setNewLeave] = useState<Omit<StudentLeave, 'id' | 'studentId'>>({
     leaveType: 'Izin',
     startDate: new Date().toISOString().split('T')[0],
     startTime: '07:00',
     endDate: new Date().toISOString().split('T')[0],
     endTime: '17:00',
     keterangan: '',
-    returnStatus: 'Belum Kembali' // Tambah default value
+    returnStatus: 'Belum Kembali'
   });
   const [isDocumentModalOpen, setIsDocumentModalOpen] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState<string | null>(null);
@@ -41,8 +40,10 @@ const StudentLeaveManagement: React.FC = () => {
   const [showStatusConfirmModal, setShowStatusConfirmModal] = useState(false);
   const [selectedLeaveForStatus, setSelectedLeaveForStatus] = useState<StudentLeave | null>(null);
   const [newStatus, setNewStatus] = useState<ReturnStatus | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
-  const leaveTypes: LeaveType[] = ['Sakit', 'Izin', 'Pulang', 'Tanpa Keterangan'];
+  const leaveTypes: LeaveType[] = ['Sakit', 'Izin', 'Pulang', 'Tanpa Keterangan', 'Lomba'];
 
   // Filter students berdasarkan asrama pengasuh
   const availableStudents = useMemo(() => {
@@ -52,6 +53,15 @@ const StudentLeaveManagement: React.FC = () => {
     }
     return students;
   }, [students, currentUser, asramas]);
+
+  // Filter siswa berdasarkan pencarian
+  const filteredStudents = useMemo(() => {
+    return availableStudents.filter(student => 
+      student.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      student.class.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      student.asrama.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [availableStudents, searchTerm]);
 
   // Hapus filter perizinan berdasarkan asrama pengasuh
   const filteredLeaves = useMemo(() => {
@@ -65,28 +75,29 @@ const StudentLeaveManagement: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Validasi nama siswa
-    if (!newLeave.studentId) {
-      showAlert({
-        type: 'error',
-        message: 'Silakan pilih nama siswa terlebih dahulu'
-      });
-      return;
-    }
-
     try {
       if (editingLeave) {
-        await updateLeave(editingLeave.id, newLeave);
+        // Untuk edit tetap single student
+        await updateLeave(editingLeave.id, {
+          ...newLeave,
+          studentId: selectedStudents[0].id
+        });
         showAlert({
           type: 'success',
           message: 'Data perizinan berhasil diperbarui'
         });
       } else {
-        await addLeave(newLeave);
+        // Untuk tambah baru, buat perizinan untuk setiap siswa yang dipilih
+        const promises = selectedStudents.map(student =>
+          addLeave({
+            ...newLeave,
+            studentId: student.id
+          })
+        );
+        await Promise.all(promises);
         showAlert({
           type: 'success',
-          message: 'Data perizinan berhasil ditambahkan'
+          message: `Berhasil menambahkan perizinan untuk ${selectedStudents.length} siswa`
         });
       }
       resetForm();
@@ -137,36 +148,17 @@ const StudentLeaveManagement: React.FC = () => {
 
   const resetForm = () => {
     setEditingLeave(null);
-    setSelectedStudent(null);
+    setSelectedStudents([]);
     setNewLeave({
-      studentId: '',
       leaveType: 'Izin',
       startDate: new Date().toISOString().split('T')[0],
       startTime: '07:00',
       endDate: new Date().toISOString().split('T')[0],
       endTime: '17:00',
       keterangan: '',
-      returnStatus: 'Belum Kembali' // Tambah default value
+      returnStatus: 'Belum Kembali'
     });
     setIsModalOpen(false);
-  };
-
-  const handleStudentSelect = (student: Student) => {
-    setSelectedStudent(student);
-    setNewLeave(prev => ({
-      ...prev,
-      studentId: student.id,
-      // Reset nilai lainnya jika ini adalah tambah baru (bukan edit)
-      ...(editingLeave ? {} : {
-        leaveType: 'Izin',
-        startDate: new Date().toISOString().split('T')[0],
-        startTime: '07:00',
-        endDate: new Date().toISOString().split('T')[0],
-        endTime: '17:00',
-        keterangan: '',
-        returnStatus: 'Belum Kembali' // Tambah default value
-      })
-    }));
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -228,7 +220,7 @@ const StudentLeaveManagement: React.FC = () => {
       const student = students.find(s => s.id === leave.studentId);
       setSelectedDocument(leave.documentUrl);
       setSelectedLeave(leave);
-      setSelectedStudent(student || null);
+      setSelectedStudents(student ? [student] : []);
       setIsDocumentModalOpen(true);
     }
   };
@@ -237,7 +229,6 @@ const StudentLeaveManagement: React.FC = () => {
   const handleEdit = (leave: StudentLeave) => {
     const student = students.find(s => s.id === leave.studentId);
     
-    // Cek apakah pengasuh memiliki akses untuk mengedit
     if (currentUser?.role === 'pengasuh' && currentUser?.asramaId) {
       const userAsrama = asramas.find(a => a.id === currentUser.asramaId)?.name;
       if (student?.asrama !== userAsrama) {
@@ -248,10 +239,16 @@ const StudentLeaveManagement: React.FC = () => {
     }
 
     setEditingLeave(leave);
-    setSelectedStudent(student || null);
+    setSelectedStudents(student ? [student] : []);
     setNewLeave({
-      ...leave,
-      returnStatus: leave.returnStatus || 'Belum Kembali' // Pastikan returnStatus selalu ada
+      leaveType: leave.leaveType,
+      startDate: leave.startDate,
+      startTime: leave.startTime,
+      endDate: leave.endDate,
+      endTime: leave.endTime,
+      keterangan: leave.keterangan,
+      returnStatus: leave.returnStatus || 'Belum Kembali',
+      documentUrl: leave.documentUrl
     });
     setIsModalOpen(true);
   };
@@ -287,8 +284,8 @@ const StudentLeaveManagement: React.FC = () => {
 
   // Tambahkan fungsi untuk menangani perubahan status
   const handleStatusChange = async (leave: StudentLeave, status: ReturnStatus) => {
-    // Hanya pengasuh yang bisa mengubah status
-    if (currentUser?.role !== 'pengasuh') return;
+    // Hanya pengasuh dan admin_asrama yang bisa mengubah status
+    if (currentUser?.role !== 'pengasuh' && currentUser?.role !== 'admin_asrama') return;
 
     setSelectedLeaveForStatus(leave);
     setNewStatus(status);
@@ -331,6 +328,20 @@ const StudentLeaveManagement: React.FC = () => {
       return 'Dokumen';
     }
   };
+
+  // Tambahkan event listener untuk menutup dropdown saat klik di luar
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (isDropdownOpen && !(event.target as Element).closest('.relative')) {
+        setIsDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isDropdownOpen]);
 
   return (
     <div className="w-full">
@@ -410,7 +421,7 @@ const StudentLeaveManagement: React.FC = () => {
                       {student?.asrama}
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap">
-                      <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+                      <span className="inline-flex items-center px-3 py-1.5 bg-blue-100 text-blue-700 rounded-lg">
                         {leave.leaveType}
                       </span>
                     </td>
@@ -426,24 +437,24 @@ const StudentLeaveManagement: React.FC = () => {
                       </div>
                     </td>
                     <td className="px-4 py-4 hidden sm:table-cell whitespace-nowrap">
-                      {currentUser?.role === 'pengasuh' ? (
+                      {(currentUser?.role === 'pengasuh' || currentUser?.role === 'admin_asrama') ? (
                         <select
                           value={leave.returnStatus || 'Belum Kembali'}
                           onChange={(e) => handleStatusChange(leave, e.target.value as ReturnStatus)}
-                          className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                          className={`px-3 py-1.5 rounded-lg text-sm ${
                             leave.returnStatus === 'Sudah Kembali'
-                              ? 'bg-green-100 text-green-800'
-                              : 'bg-yellow-100 text-yellow-800'
+                              ? 'bg-green-100 text-green-700'
+                              : 'bg-yellow-100 text-yellow-700'
                           }`}
                         >
                           <option value="Belum Kembali">Belum Kembali</option>
                           <option value="Sudah Kembali">Sudah Kembali</option>
                         </select>
                       ) : (
-                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                        <span className={`inline-flex items-center px-3 py-1.5 rounded-lg ${
                           leave.returnStatus === 'Sudah Kembali'
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-yellow-100 text-yellow-800'
+                            ? 'bg-green-100 text-green-700'
+                            : 'bg-yellow-100 text-yellow-700'
                         }`}>
                           {leave.returnStatus || 'Belum Kembali'}
                         </span>
@@ -453,12 +464,31 @@ const StudentLeaveManagement: React.FC = () => {
                       {leave.documentUrl ? (
                         <button
                           onClick={() => handleViewDocument(leave)}
-                          className="text-blue-600 hover:text-blue-900 underline"
+                          className="inline-flex items-center px-3 py-1.5 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors duration-200"
                         >
+                          <svg 
+                            className="w-4 h-4 mr-1.5" 
+                            fill="none" 
+                            stroke="currentColor" 
+                            viewBox="0 0 24 24"
+                          >
+                            <path 
+                              strokeLinecap="round" 
+                              strokeLinejoin="round" 
+                              strokeWidth={2} 
+                              d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" 
+                            />
+                            <path 
+                              strokeLinecap="round" 
+                              strokeLinejoin="round" 
+                              strokeWidth={2} 
+                              d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" 
+                            />
+                          </svg>
                           Lihat Dokumen
                         </button>
                       ) : (
-                        '-'
+                        <span className="text-gray-400">-</span>
                       )}
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap text-right">
@@ -509,49 +539,95 @@ const StudentLeaveManagement: React.FC = () => {
             </div>
             <div className="p-6">
               <form onSubmit={handleSubmit} className="space-y-6">
-                {/* Bagian Atas: Nama Siswa dan Jenis Izin */}
-                <div className="grid grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-base font-medium text-gray-700 mb-2">
-                      Nama Siswa
-                    </label>
-                    <select
-                      value={selectedStudent?.id || ''}
-                      onChange={(e) => {
-                        const student = availableStudents.find(s => s.id === e.target.value);
-                        if (student) {
-                          handleStudentSelect(student);
-                        }
-                      }}
-                      disabled={Boolean(editingLeave)}
-                      className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="">Pilih Siswa</option>
-                      {availableStudents
-                        .sort((a, b) => a.fullName.localeCompare(b.fullName))
-                        .map(student => (
-                          <option key={student.id} value={student.id}>
-                            {student.fullName} - {student.class} - {student.asrama}
-                          </option>
-                        ))
-                      }
-                    </select>
+                <div>
+                  <label className="block text-base font-medium text-gray-700 mb-2">
+                    {editingLeave ? 'Siswa' : 'Pilih Siswa (bisa lebih dari satu)'}
+                  </label>
+                  
+                  {/* Selected Students Tags */}
+                  <div className="mb-2 flex flex-wrap gap-2">
+                    {selectedStudents.map(student => (
+                      <div 
+                        key={student.id}
+                        className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full flex items-center gap-2"
+                      >
+                        <span>{student.fullName} ({student.class} - {student.asrama})</span>
+                        {!editingLeave && (
+                          <button
+                            type="button"
+                            onClick={() => setSelectedStudents(prev => 
+                              prev.filter(s => s.id !== student.id)
+                            )}
+                            className="text-blue-600 hover:text-blue-800"
+                          >
+                            ×
+                          </button>
+                        )}
+                      </div>
+                    ))}
                   </div>
 
-                  <div>
-                    <label className="block text-base font-medium text-gray-700 mb-2">
-                      Jenis Izin
-                    </label>
-                    <select
-                      value={newLeave.leaveType}
-                      onChange={(e) => setNewLeave({ ...newLeave, leaveType: e.target.value as LeaveType })}
-                      className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                    >
-                      {leaveTypes.map((type) => (
-                        <option key={type} value={type}>{type}</option>
-                      ))}
-                    </select>
-                  </div>
+                  {/* Combobox */}
+                  {!editingLeave && (
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={searchTerm}
+                        onChange={(e) => {
+                          setSearchTerm(e.target.value);
+                          setIsDropdownOpen(true);
+                        }}
+                        onFocus={() => setIsDropdownOpen(true)}
+                        placeholder="Cari siswa..."
+                        className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                      />
+                      
+                      {isDropdownOpen && filteredStudents.length > 0 && (
+                        <div className="absolute z-50 w-full mt-1 bg-white border rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                          {filteredStudents
+                            .filter(student => !selectedStudents.find(s => s.id === student.id))
+                            .map(student => (
+                              <button
+                                key={student.id}
+                                type="button"
+                                onClick={() => {
+                                  setSelectedStudents(prev => [...prev, student]);
+                                  setSearchTerm('');
+                                  setIsDropdownOpen(false);
+                                }}
+                                className="w-full px-4 py-2 text-left hover:bg-gray-100 focus:bg-gray-100"
+                              >
+                                <div className="font-medium">{student.fullName}</div>
+                                <div className="text-sm text-gray-500">
+                                  {student.class} - {student.asrama}
+                                </div>
+                              </button>
+                            ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {!editingLeave && (
+                    <p className="mt-1 text-sm text-gray-500">
+                      Ketik untuk mencari dan pilih siswa
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-base font-medium text-gray-700 mb-2">
+                    Jenis Izin
+                  </label>
+                  <select
+                    value={newLeave.leaveType}
+                    onChange={(e) => setNewLeave({ ...newLeave, leaveType: e.target.value as LeaveType })}
+                    className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                  >
+                    {leaveTypes.map((type) => (
+                      <option key={type} value={type}>{type}</option>
+                    ))}
+                  </select>
                 </div>
 
                 {/* Bagian Tengah: Waktu Izin */}
@@ -676,10 +752,10 @@ const StudentLeaveManagement: React.FC = () => {
               <div className="flex justify-between items-center">
                 <div>
                   <h3 className="text-lg font-semibold">Dokumen Perizinan</h3>
-                  {selectedLeave && selectedStudent && (
+                  {selectedLeave && selectedStudents && (
                     <div className="mt-1 text-sm text-gray-600">
-                      <p>Siswa: {selectedStudent.fullName}</p>
-                      <p>Asrama: {selectedStudent.asrama}</p>
+                      <p>Siswa: {selectedStudents.map(s => s.fullName).join(', ')}</p>
+                      <p>Asrama: {selectedStudents.map(s => s.asrama).join(', ')}</p>
                     </div>
                   )}
                 </div>
@@ -688,7 +764,7 @@ const StudentLeaveManagement: React.FC = () => {
                     setIsDocumentModalOpen(false);
                     setSelectedDocument(null);
                     setSelectedLeave(null);
-                    setSelectedStudent(null);
+                    setSelectedStudents([]);
                   }}
                   className="text-gray-500 hover:text-gray-700"
                 >

@@ -54,7 +54,7 @@ export const availableClasses = [
   'XII-1', 'XII-2', 'XII-3', 'XII-4', 'XII-5', 'XII-6'
 ];
 
-export type LeaveType = 'Sakit' | 'Izin' | 'Pulang' | 'Tanpa Keterangan';
+export type LeaveType = 'Sakit' | 'Izin' | 'Pulang' | 'Tanpa Keterangan' | 'Lomba';
 
 // Tambahkan tipe untuk status kembali
 export type ReturnStatus = 'Sudah Kembali' | 'Belum Kembali';
