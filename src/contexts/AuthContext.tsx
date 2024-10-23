@@ -37,61 +37,69 @@ const auth = getAuth();
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isInitialSetup, setIsInitialSetup] = useState(false);
 
-  // Tambahkan fungsi untuk cek dan buat admin pertama
-  const initializeAdminAccount = async () => {
-    try {
-      const usersRef = ref(db, 'users');
-      const snapshot = await get(usersRef);
-      
-      // Jika belum ada user sama sekali
-      if (!snapshot.exists()) {
-        try {
-          // Buat akun admin default
-          const adminEmail = 'admin@piketmosa.com';
-          const adminCredential = await createUserWithEmailAndPassword(auth, adminEmail, 'sudahlupa');
-          await updateProfile(adminCredential.user, {
-            displayName: 'Administrator'
-          });
-          await set(ref(db, `users/${adminCredential.user.uid}`), {
-            username: 'admin',
-            email: adminEmail,
-            fullName: 'Administrator',
-            role: 'admin',
-            asramaId: null
-          });
-
-          // Buat akun admin_asrama default
-          const adminAsramaEmail = 'admin_asrama@piketmosa.com';
-          const adminAsramaCredential = await createUserWithEmailAndPassword(auth, adminAsramaEmail, 'sudahlupa');
-          await updateProfile(adminAsramaCredential.user, {
-            displayName: 'Admin Asrama'
-          });
-          await set(ref(db, `users/${adminAsramaCredential.user.uid}`), {
-            username: 'admin_asrama',
-            email: adminAsramaEmail,
-            fullName: 'Admin Asrama',
-            role: 'admin_asrama',
-            asramaId: null
-          });
-
-          console.log('Default accounts created successfully');
-        } catch (loginError) {
-          // Jika error karena akun sudah ada, abaikan
-          if ((loginError as any)?.code !== 'auth/email-already-in-use') {
-            console.error('Error creating default accounts:', loginError);
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Error initializing accounts:', error);
+  const checkInitialSetup = async () => {
+    const usersRef = ref(db, 'users');
+    const snapshot = await get(usersRef);
+    if (!snapshot.exists()) {
+      setIsInitialSetup(true);
     }
+    setIsLoading(false);
   };
 
-  // Panggil fungsi init saat pertama kali load
   useEffect(() => {
-    initializeAdminAccount();
+    checkInitialSetup();
   }, []);
+
+  const initialSetup = async (
+    adminUsername: string,
+    adminPassword: string,
+    adminAsramaUsername: string,
+    adminAsramaPassword: string
+  ) => {
+    try {
+      // Buat akun admin
+      const adminEmail = `${adminUsername.toLowerCase()}@piketmosa.com`;
+      const adminCredential = await createUserWithEmailAndPassword(auth, adminEmail, adminPassword);
+      await updateProfile(adminCredential.user, {
+        displayName: 'Administrator'
+      });
+      await set(ref(db, `users/${adminCredential.user.uid}`), {
+        username: adminUsername,
+        email: adminEmail,
+        fullName: 'Administrator',
+        role: 'admin',
+        asramaId: null
+      });
+
+      // Sign out setelah membuat admin
+      await signOut(auth);
+
+      // Buat akun admin_asrama
+      const adminAsramaEmail = `${adminAsramaUsername.toLowerCase()}@piketmosa.com`;
+      const adminAsramaCredential = await createUserWithEmailAndPassword(auth, adminAsramaEmail, adminAsramaPassword);
+      await updateProfile(adminAsramaCredential.user, {
+        displayName: 'Admin Asrama'
+      });
+      await set(ref(db, `users/${adminAsramaCredential.user.uid}`), {
+        username: adminAsramaUsername,
+        email: adminAsramaEmail,
+        fullName: 'Admin Asrama',
+        role: 'admin_asrama',
+        asramaId: null
+      });
+
+      // Sign out setelah membuat admin_asrama
+      await signOut(auth);
+
+      setIsInitialSetup(false);
+      return true;
+    } catch (error) {
+      console.error('Error in initial setup:', error);
+      throw error;
+    }
+  };
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
@@ -295,6 +303,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }));
   };
 
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
+
+  if (isInitialSetup) {
+    return (
+      <InitialSetup onSetupComplete={initialSetup} />
+    );
+  }
+
   return (
     <AuthContext.Provider value={{ 
       user, 
@@ -306,12 +328,134 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       deleteUser, 
       isLoading 
     }}>
-      {!isLoading ? children : (
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-        </div>
-      )}
+      {children}
     </AuthContext.Provider>
+  );
+};
+
+// Komponen InitialSetup
+const InitialSetup: React.FC<{
+  onSetupComplete: (
+    adminUsername: string,
+    adminPassword: string,
+    adminAsramaUsername: string,
+    adminAsramaPassword: string
+  ) => Promise<boolean>;
+}> = ({ onSetupComplete }) => {
+  const [adminUsername, setAdminUsername] = useState('');
+  const [adminPassword, setAdminPassword] = useState('');
+  const [adminAsramaUsername, setAdminAsramaUsername] = useState('');
+  const [adminAsramaPassword, setAdminAsramaPassword] = useState('');
+  const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setIsLoading(true);
+
+    try {
+      await onSetupComplete(
+        adminUsername,
+        adminPassword,
+        adminAsramaUsername,
+        adminAsramaPassword
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Terjadi kesalahan saat setup');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="flex items-center justify-center min-h-screen bg-gray-100">
+      <div className="w-full max-w-xl p-8 bg-white rounded-lg shadow-md">
+        <h2 className="text-2xl font-bold text-center text-gray-800 mb-6">
+          Initial Setup
+        </h2>
+        <p className="text-gray-600 mb-6 text-center">
+          Buat akun administrator dan admin asrama untuk memulai
+        </p>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="border-b pb-6">
+            <h3 className="text-lg font-semibold mb-4">Administrator</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Username Admin
+                </label>
+                <input
+                  type="text"
+                  value={adminUsername}
+                  onChange={(e) => setAdminUsername(e.target.value)}
+                  required
+                  className="w-full px-4 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Password Admin
+                </label>
+                <input
+                  type="password"
+                  value={adminPassword}
+                  onChange={(e) => setAdminPassword(e.target.value)}
+                  required
+                  className="w-full px-4 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="border-b pb-6">
+            <h3 className="text-lg font-semibold mb-4">Admin Asrama</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Username Admin Asrama
+                </label>
+                <input
+                  type="text"
+                  value={adminAsramaUsername}
+                  onChange={(e) => setAdminAsramaUsername(e.target.value)}
+                  required
+                  className="w-full px-4 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Password Admin Asrama
+                </label>
+                <input
+                  type="password"
+                  value={adminAsramaPassword}
+                  onChange={(e) => setAdminAsramaPassword(e.target.value)}
+                  required
+                  className="w-full px-4 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+          </div>
+
+          {error && (
+            <div className="text-sm text-red-600 bg-red-50 p-3 rounded-md">
+              {error}
+            </div>
+          )}
+
+          <button
+            type="submit"
+            disabled={isLoading}
+            className={`w-full py-3 px-4 rounded-md text-white font-medium ${
+              isLoading ? 'bg-blue-400' : 'bg-blue-600 hover:bg-blue-700'
+            }`}
+          >
+            {isLoading ? 'Setting up...' : 'Complete Setup'}
+          </button>
+        </form>
+      </div>
+    </div>
   );
 };
 
