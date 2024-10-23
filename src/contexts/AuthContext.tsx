@@ -7,17 +7,18 @@ type UserRole = 'admin' | 'piket' | 'wakil_kepala' | 'pengasuh' | 'admin_asrama'
 interface User {
   id: string;
   username: string;
+  fullName: string; // Tambah field fullName
   role: UserRole;
-  asramaId?: string; // Tambahkan field untuk pengasuh
+  asramaId?: string;
 }
 
 interface AuthContextType {
   user: User | null;
   login: (username: string, password: string) => Promise<void>;
   logout: () => void;
-  addUser: (username: string, password: string, role: UserRole, asramaId?: string) => Promise<void>;
+  addUser: (username: string, password: string, fullName: string, role: UserRole, asramaId?: string) => Promise<void>;
   getUsers: () => Promise<User[]>;
-  updateUser: (id: string, username: string, password: string, role: UserRole, asramaId?: string) => Promise<void>;
+  updateUser: (id: string, username: string, password: string, fullName: string, role: UserRole, asramaId?: string) => Promise<void>;
   deleteUser: (id: string) => Promise<void>;
   isLoading: boolean;
 }
@@ -47,17 +48,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const matchedUser = Object.entries(users).find(
       ([_, userData]: [string, any]) =>
-        (userData as { username: string; password: string; role: UserRole }).username === username &&
-        (userData as { username: string; password: string; role: UserRole }).password === password
+        userData.username === username && userData.password === password
     );
 
     if (matchedUser) {
-      const [id, userData] = matchedUser as [string, { username: string; password: string; role: UserRole; asramaId?: string }];
+      const [id, userData] = matchedUser as [string, { 
+        username: string; 
+        password: string; 
+        fullName: string;
+        role: UserRole; 
+        asramaId?: string 
+      }];
+      
       const loggedInUser: User = {
         id,
         username: userData.username,
+        fullName: userData.fullName,
         role: userData.role,
-        asramaId: userData.asramaId // Tambahkan ini
+        asramaId: userData.asramaId
       };
       setUser(loggedInUser);
       localStorage.setItem('user', JSON.stringify(loggedInUser));
@@ -71,9 +79,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.removeItem('user');
   };
 
-  const addUser = async (username: string, password: string, role: UserRole, asramaId?: string) => {
+  const addUser = async (
+    username: string, 
+    password: string, 
+    fullName: string, // Tambah parameter
+    role: UserRole, 
+    asramaId?: string
+  ) => {
     const usersRef = ref(db, 'users');
-    await push(usersRef, { username, password, role, asramaId });
+    await push(usersRef, { 
+      username, 
+      password, 
+      fullName, 
+      role, 
+      asramaId: asramaId || null // Pastikan selalu null jika tidak ada nilai
+    });
   };
 
   const getUsers = async (): Promise<User[]> => {
@@ -83,14 +103,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return Object.entries(users).map(([id, userData]: [string, any]) => ({
       id,
       username: userData.username,
+      fullName: userData.fullName,
       role: userData.role,
-      asramaId: userData.asramaId // Tambahkan ini
+      asramaId: userData.asramaId
     }));
   };
 
-  const updateUser = async (id: string, username: string, password: string, role: UserRole, asramaId?: string) => {
+  const updateUser = async (
+    id: string, 
+    username: string, 
+    password: string, 
+    fullName: string, // Tambah parameter
+    role: UserRole, 
+    asramaId?: string
+  ) => {
     const userRef = ref(db, `users/${id}`);
-    await set(userRef, { username, password, role, asramaId });
+    const userData = {
+      username,
+      password,
+      fullName,
+      role,
+      asramaId: asramaId || null // Pastikan selalu null jika tidak ada nilai
+    };
+    
+    try {
+      await set(userRef, userData);
+      console.log('User updated successfully:', { id, username, fullName, role, asramaId });
+    } catch (error) {
+      console.error('Error updating user:', error);
+      throw error;
+    }
   };
 
   const deleteUser = async (id: string) => {

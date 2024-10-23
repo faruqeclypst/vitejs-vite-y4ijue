@@ -2,6 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useAsrama } from '../contexts/AsramaContext';
 import { X, Plus } from 'lucide-react';
+import { ref, get } from 'firebase/database';
+import { db } from '../firebase';
+import Alert from './Alert';
+import ConfirmationModal from './ConfirmationModal';
+import useAlert from '../hooks/useAlert';
+import useConfirmation from '../hooks/useConfirmation';
 
 interface UserManagementProps {
   onUserAdded?: () => void;
@@ -13,6 +19,7 @@ type UserRole = 'admin' | 'piket' | 'wakil_kepala' | 'pengasuh' | 'admin_asrama'
 interface User {
   id: string;
   username: string;
+  fullName: string;
   role: UserRole;
   asramaId?: string;
 }
@@ -21,6 +28,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
   const { asramas } = useAsrama();
   const { user: currentUser } = useAuth();
   const [username, setUsername] = useState('');
+  const [fullName, setFullName] = useState(''); // Tambah state
   const [password, setPassword] = useState('');
   const [role, setRole] = useState<UserRole>('admin');
   const [selectedAsrama, setSelectedAsrama] = useState<string>('');
@@ -31,6 +39,8 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
   const [newPassword, setNewPassword] = useState('');
   const { addUser, getUsers, updateUser, deleteUser } = useAuth();
   const [userForPasswordChange, setUserForPasswordChange] = useState<User | null>(null);
+  const { alert, showAlert, hideAlert } = useAlert();
+  const { isOpen, options, confirm, handleConfirm, handleCancel } = useConfirmation();
 
   useEffect(() => {
     fetchUsers();
@@ -75,51 +85,115 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      if (editingUser) {
-        await updateUser(
-          editingUser.id, 
-          username, 
-          password, 
-          role,
-          role === 'pengasuh' ? selectedAsrama : undefined
-        );
-      } else {
-        await addUser(
-          username, 
-          password, 
-          role,
-          role === 'pengasuh' ? selectedAsrama : undefined
-        );
+      const needsAsrama = role === 'pengasuh' || role === 'admin_asrama';
+      const asramaIdToUse = needsAsrama ? selectedAsrama : undefined;
+
+      if (needsAsrama && !selectedAsrama) {
+        showAlert({
+          type: 'error',
+          message: 'Asrama harus dipilih untuk role Pengasuh dan Admin Asrama',
+          duration: 3000
+        });
+        return;
       }
-      alert('User berhasil ditambahkan/diperbarui');
+
+      if (editingUser) {
+        const usersRef = ref(db, `users/${editingUser.id}`);
+        const snapshot = await get(usersRef);
+        const currentUserData = snapshot.val();
+        
+        if (!currentUserData) {
+          throw new Error('User tidak ditemukan');
+        }
+
+        await updateUser(
+          editingUser.id,
+          username,
+          password || currentUserData.password,
+          fullName,
+          role as UserRole,
+          asramaIdToUse
+        );
+        showAlert({
+          type: 'success',
+          message: 'User berhasil diperbarui',
+          duration: 3000
+        });
+      } else {
+        if (!password) {
+          showAlert({
+            type: 'error',
+            message: 'Password harus diisi untuk user baru',
+            duration: 3000
+          });
+          return;
+        }
+
+        await addUser(
+          username,
+          password,
+          fullName,
+          role as UserRole,
+          asramaIdToUse
+        );
+        showAlert({
+          type: 'success',
+          message: 'User baru berhasil ditambahkan',
+          duration: 3000
+        });
+      }
+
+      await fetchUsers();
       resetForm();
-      fetchUsers();
+      setIsModalOpen(false);
+      
       if (onUserAdded) {
         onUserAdded();
       }
     } catch (error) {
-      alert('Gagal menambahkan/memperbarui user');
+      console.error('Error dalam handleSubmit:', error);
+      showAlert({
+        type: 'error',
+        message: error instanceof Error ? error.message : 'Gagal menambahkan/memperbarui user',
+        duration: 3000
+      });
     }
-    setIsModalOpen(false);
   };
 
   const handleEdit = (user: User) => {
+    console.log('Editing user:', user);
     setEditingUser(user);
     setUsername(user.username);
+    setFullName(user.fullName);
     setRole(user.role);
     setSelectedAsrama(user.asramaId || '');
-    setPassword('');
+    setPassword(''); // Reset password field
     setIsModalOpen(true);
   };
 
   const handleDelete = async (userId: string) => {
-    if (window.confirm('Apakah Anda yakin ingin menghapus user ini?')) {
+    const confirmed = await confirm({
+      title: 'Konfirmasi Hapus',
+      message: 'Apakah Anda yakin ingin menghapus user ini?',
+      confirmText: 'Hapus',
+      cancelText: 'Batal'
+    });
+
+    if (confirmed) {
       try {
         await deleteUser(userId);
-        alert('User berhasil dihapus');
+        showAlert({
+          type: 'success',
+          message: 'User berhasil dihapus',
+          duration: 3000
+        });
         fetchUsers();
       } catch (error) {
-        alert('Gagal menghapus user');
+        showAlert({
+          type: 'error',
+          message: 'Gagal menghapus user',
+          duration: 3000
+        });
       }
     }
   };
@@ -127,6 +201,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
   const resetForm = () => {
     setUsername('');
     setPassword('');
+    setFullName(''); // Reset fullName
     setRole('admin');
     setSelectedAsrama('');
     setEditingUser(null);
@@ -141,16 +216,25 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
           userForPasswordChange.id,
           userForPasswordChange.username,
           newPassword,
-          userForPasswordChange.role,
+          userForPasswordChange.fullName,
+          userForPasswordChange.role as UserRole,
           userForPasswordChange.asramaId
         );
-        alert('Password berhasil diperbarui');
+        showAlert({
+          type: 'success',
+          message: 'Password berhasil diperbarui',
+          duration: 3000
+        });
         setNewPassword('');
         setIsChangePasswordModalOpen(false);
         setUserForPasswordChange(null);
       }
     } catch (error) {
-      alert('Gagal memperbarui password');
+      showAlert({
+        type: 'error',
+        message: 'Gagal memperbarui password',
+        duration: 3000
+      });
     }
   };
 
@@ -174,8 +258,33 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
     return targetUser.id === currentUser.id;
   };
 
+  // Update fungsi untuk menampilkan field asrama
+  const showAsramaField = (selectedRole: UserRole) => {
+    return selectedRole === 'pengasuh' || selectedRole === 'admin_asrama';
+  };
+
   return (
     <div className="w-full">
+      {/* Tambahkan Alert dan ConfirmationModal */}
+      {alert && (
+        <Alert
+          type={alert.type}
+          message={alert.message}
+          duration={alert.duration}
+          onClose={hideAlert}
+        />
+      )}
+      
+      <ConfirmationModal
+        isOpen={isOpen}
+        onClose={handleCancel}
+        onConfirm={handleConfirm}
+        title={options?.title || ''}
+        message={options?.message || ''}
+        confirmText={options?.confirmText}
+        cancelText={options?.cancelText}
+      />
+
       {/* Tombol tambah */}
       <div className="flex justify-between items-center mb-6">
         <button
@@ -258,6 +367,18 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div>
                   <label className="block text-base font-medium text-gray-700 mb-2">
+                    Nama Lengkap
+                  </label>
+                  <input
+                    type="text"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    required
+                    className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-base font-medium text-gray-700 mb-2">
                     Username
                   </label>
                   <input
@@ -270,7 +391,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
                 </div>
                 <div>
                   <label className="block text-base font-medium text-gray-700 mb-2">
-                    Password
+                    {editingUser ? 'Password Baru (kosongkan jika tidak diubah)' : 'Password'}
                   </label>
                   <input
                     type="password"
@@ -278,6 +399,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
                     onChange={(e) => setPassword(e.target.value)}
                     required={!editingUser}
                     className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                    placeholder={editingUser ? 'Kosongkan jika tidak ingin mengubah password' : ''}
                   />
                 </div>
                 <div>
@@ -289,7 +411,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
                     onChange={(e) => {
                       const newRole = e.target.value as UserRole;
                       setRole(newRole);
-                      if (newRole !== 'pengasuh') {
+                      if (!showAsramaField(newRole)) {
                         setSelectedAsrama('');
                       }
                     }}
@@ -300,7 +422,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
                     ))}
                   </select>
                 </div>
-                {role === 'pengasuh' && (
+                {showAsramaField(role) && (
                   <div>
                     <label className="block text-base font-medium text-gray-700 mb-2">
                       Asrama
@@ -308,7 +430,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
                     <select
                       value={selectedAsrama}
                       onChange={(e) => setSelectedAsrama(e.target.value)}
-                      required={role === 'pengasuh'}
+                      required={showAsramaField(role)}
                       className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
                     >
                       <option value="">Pilih Asrama</option>
@@ -341,63 +463,68 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
         </div>
       )}
 
-      <div className="bg-white shadow-md rounded-lg overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Username</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
-              {currentUser?.role === 'admin_asrama' && (
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Asrama</th>
-              )}
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {users.map((user) => {
-              const userAsrama = asramas.find(a => a.id === user.asramaId);
-              const canManageUser = currentUser?.role === 'admin' || 
-                (currentUser?.role === 'admin_asrama' && user.role === 'pengasuh');
+      {/* Tabel dengan scroll horizontal */}
+      <div className="overflow-x-auto bg-white shadow-md rounded-lg">
+        <div className="min-w-[800px]"> {/* Minimum width untuk tabel */}
+          <table className="w-full table-auto">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Lengkap</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Username</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
+                {currentUser?.role === 'admin_asrama' && (
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Asrama</th>
+                )}
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {users.map((user) => {
+                const userAsrama = asramas.find(a => a.id === user.asramaId);
+                const canManageUser = currentUser?.role === 'admin' || 
+                  (currentUser?.role === 'admin_asrama' && user.role === 'pengasuh');
 
-              return (
-                <tr key={user.id}>
-                  <td className="px-6 py-4 whitespace-nowrap">{user.username}</td>
-                  <td className="px-6 py-4 whitespace-nowrap">{user.role}</td>
-                  {currentUser?.role === 'admin_asrama' && (
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {userAsrama?.name || '-'}
-                    </td>
-                  )}
-                  <td className="px-6 py-4 whitespace-nowrap space-x-2">
-                    {canManageUser ? (
-                      <>
-                        <button
-                          onClick={() => handleEdit(user)}
-                          className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-1 px-3 rounded text-sm"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => handleDelete(user.id)}
-                          className="bg-red-500 hover:bg-red-600 text-white font-bold py-1 px-3 rounded text-sm"
-                        >
-                          Delete
-                        </button>
-                      </>
-                    ) : canChangePassword(user) && (
-                      <button
-                        onClick={() => openChangePasswordModal(user)}
-                        className="bg-green-500 hover:bg-green-600 text-white font-bold py-1 px-3 rounded text-sm"
-                      >
-                        Ganti Password
-                      </button>
+                return (
+                  <tr key={user.id}>
+                    <td className="px-6 py-4 whitespace-nowrap">{user.fullName}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">{user.username}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">{user.role}</td>
+                    {currentUser?.role === 'admin_asrama' && (
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {userAsrama?.name || '-'}
+                      </td>
                     )}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+                    <td className="px-6 py-4 whitespace-nowrap space-x-2">
+                      {canManageUser ? (
+                        <>
+                          <button
+                            onClick={() => handleEdit(user)}
+                            className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-1 px-3 rounded text-sm"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleDelete(user.id)}
+                            className="bg-red-500 hover:bg-red-600 text-white font-bold py-1 px-3 rounded text-sm"
+                          >
+                            Delete
+                          </button>
+                        </>
+                      ) : canChangePassword(user) && (
+                        <button
+                          onClick={() => openChangePasswordModal(user)}
+                          className="bg-green-500 hover:bg-green-600 text-white font-bold py-1 px-3 rounded text-sm"
+                        >
+                          Ganti Password
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

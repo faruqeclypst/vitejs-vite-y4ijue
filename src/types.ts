@@ -56,6 +56,10 @@ export const availableClasses = [
 
 export type LeaveType = 'Sakit' | 'Izin' | 'Pulang' | 'Tanpa Keterangan';
 
+// Tambahkan tipe untuk status kembali
+export type ReturnStatus = 'Sudah Kembali' | 'Belum Kembali';
+
+// Update interface StudentLeave
 export interface StudentLeave {
   id: string;
   studentId: string;
@@ -66,4 +70,5 @@ export interface StudentLeave {
   endTime: string;
   keterangan: string;
   documentUrl?: string;
+  returnStatus?: ReturnStatus; // Tambah field baru
 }

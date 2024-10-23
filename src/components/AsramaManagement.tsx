@@ -51,41 +51,43 @@ const AsramaManagement: React.FC = () => {
         </button>
       </div>
 
-      {/* Tabel */}
-      <div className="bg-white shadow-md rounded-lg overflow-x-auto">
-        <table className="w-full table-auto">
-          <thead className="bg-gray-50">
-            <tr>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Nama Asrama
-              </th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Aksi
-              </th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {asramas.map((asrama) => (
-              <tr key={asrama.id}>
-                <td className="px-6 py-4 whitespace-nowrap">{asrama.name}</td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <button
-                    onClick={() => handleEdit(asrama)}
-                    className="text-blue-600 hover:text-blue-900 p-1"
-                  >
-                    <Edit className="h-5 w-5" />
-                  </button>
-                  <button
-                    onClick={() => handleDelete(asrama.id)}
-                    className="text-red-600 hover:text-red-900 p-1 ml-2"
-                  >
-                    <Trash2 className="h-5 w-5" />
-                  </button>
-                </td>
+      {/* Tabel dengan scroll horizontal */}
+      <div className="overflow-x-auto bg-white shadow-md rounded-lg">
+        <div className="min-w-[600px]"> {/* Minimum width untuk tabel */}
+          <table className="w-full table-auto">
+            <thead className="bg-gray-50">
+              <tr>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Nama Asrama
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Aksi
+                </th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {asramas.map((asrama) => (
+                <tr key={asrama.id}>
+                  <td className="px-6 py-4 whitespace-nowrap">{asrama.name}</td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <button
+                      onClick={() => handleEdit(asrama)}
+                      className="text-blue-600 hover:text-blue-900 p-1"
+                    >
+                      <Edit className="h-5 w-5" />
+                    </button>
+                    <button
+                      onClick={() => handleDelete(asrama.id)}
+                      className="text-red-600 hover:text-red-900 p-1 ml-2"
+                    >
+                      <Trash2 className="h-5 w-5" />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* Modal dengan ukuran lebih besar */}
