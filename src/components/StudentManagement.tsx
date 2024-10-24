@@ -3,16 +3,21 @@ import { Student, availableClasses } from '../types';
 import { useStudents } from '../contexts/StudentContext';
 import { useAsrama } from '../contexts/AsramaContext';
 import Papa from 'papaparse';
-import { Edit, Trash2, Plus, X, FileText } from 'lucide-react';
+import { Edit, Trash2, Plus, X, FileText, History } from 'lucide-react';
 import StudentLeaveHistory from './StudentLeaveHistory';
 import { useAuth } from '../contexts/AuthContext';
 import Alert from '../components/Alert';
 import useAlert from '../hooks/useAlert';
 import { ref, onValue, get } from 'firebase/database'; // Hapus 'get' karena tidak digunakan
 import { db } from '../firebase';
+import ConfirmationModal from '../components/ConfirmationModal';
+import useConfirmation from '../hooks/useConfirmation';
+
+// Update interface untuk tab
+type TabType = 'active' | 'deleted';
 
 const StudentManagement: React.FC = () => {
-  const { students, addStudent, updateStudent, deleteStudent } = useStudents();
+  const { students, allStudents, addStudent, updateStudent, deleteStudent, restoreStudent } = useStudents(); // Tambahkan allStudents
   const { asramas } = useAsrama();
   const { user: currentUser } = useAuth();
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
@@ -22,7 +27,7 @@ const StudentManagement: React.FC = () => {
     gender: 'Laki-laki',
     class: availableClasses[0],
     asrama: '',
-    barak: '' // Tambahkan properti barak
+    barak: ''
   });
   const [selectedGrade, setSelectedGrade] = useState<'X' | 'XI' | 'XII' | ''>('');
   const [selectedStudentForHistory, setSelectedStudentForHistory] = useState<Student | null>(null);
@@ -30,21 +35,27 @@ const StudentManagement: React.FC = () => {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [groupedStudents, setGroupedStudents] = useState<Record<string, Student[]>>({ 'Semua Siswa': students });
+  const [activeTab, setActiveTab] = useState<TabType>('active');
+  const { isOpen: isConfirmOpen, options: confirmOptions, confirm, handleConfirm, handleCancel } = useConfirmation();
 
   // Tambahkan useEffect untuk memantau perubahan user dan barakId
   useEffect(() => {
     const usersRef = ref(db, 'users');
     const unsubscribe = onValue(usersRef, async () => {
       if (currentUser) {
-        // Ambil data user terbaru dari database
         const userRef = ref(db, `users/${currentUser.id}`);
         const snapshot = await get(userRef);
         const userData = snapshot.val();
         
         if (userData) {
+          // Filter students berdasarkan tab yang aktif
+          const filteredStudents = activeTab === 'active' 
+            ? students.filter((student: Student) => !student.isDeleted)
+            : allStudents.filter((student: Student) => student.isDeleted);
+
           if (userData.role === 'admin_asrama') {
             // Admin asrama melihat semua barak
-            const groupedByBarak = students.reduce((acc, student) => {
+            const groupedByBarak = filteredStudents.reduce((acc: Record<string, Student[]>, student: Student) => {
               if (!acc[student.barak]) {
                 acc[student.barak] = [];
               }
@@ -53,17 +64,18 @@ const StudentManagement: React.FC = () => {
             }, {} as Record<string, Student[]>);
             setGroupedStudents(groupedByBarak);
           } else if (userData.role === 'pengasuh' && userData.barakId) {
-            // Pengasuh melihat barak yang dia kelola berdasarkan barakId terbaru
+            // Pengasuh melihat barak yang dia kelola
             const barakIds = userData.barakId.split(',');
             
             // Buat object untuk menyimpan siswa per barak
             const groupedStudents: Record<string, Student[]> = {};
+            
             // Untuk setiap barak yang dikelola pengasuh
             barakIds.forEach((barakId: string) => {
-              const barak = asramas.find(a => a.id === barakId);
+              const barak = asramas.find(b => b.id === barakId);
               if (barak) {
                 // Filter siswa untuk barak ini
-                const barakStudents = students.filter(student => student.barak === barak.name);
+                const barakStudents = filteredStudents.filter((student: Student) => student.barak === barak.name);
                 if (barakStudents.length > 0) {
                   groupedStudents[barak.name] = barakStudents;
                 }
@@ -77,7 +89,7 @@ const StudentManagement: React.FC = () => {
     });
 
     return () => unsubscribe();
-  }, [currentUser?.id, students, asramas]);
+  }, [currentUser?.id, students, allStudents, asramas, activeTab]);
 
   // Filter asrama yang bisa dipilih saat menambah/edit siswa
   const availableAsramas = useMemo(() => {
@@ -239,6 +251,31 @@ const StudentManagement: React.FC = () => {
     return false;
   };
 
+  // Update fungsi handleRestore
+  const handleRestore = async (studentId: string) => {
+    const shouldRestore = await confirm({
+      title: 'Konfirmasi Pemulihan',
+      message: 'Apakah Anda yakin ingin memulihkan siswa ini? Semua data perizinan siswa akan kembali aktif.',
+      confirmText: 'Ya, Pulihkan',
+      cancelText: 'Batal'
+    });
+
+    if (shouldRestore) {
+      try {
+        await restoreStudent(studentId);
+        showAlert({
+          type: 'success',
+          message: 'Siswa berhasil dipulihkan'
+        });
+      } catch (error) {
+        showAlert({
+          type: 'error',
+          message: 'Gagal memulihkan siswa'
+        });
+      }
+    }
+  };
+
   // Update renderStudentTable
   const renderStudentTable = (students: Student[], barakName: string) => {
     if (!students || students.length === 0) {
@@ -274,7 +311,6 @@ const StudentManagement: React.FC = () => {
     }
 
     const canEditBarak = hasAccessToBarak(barakName);
-    // Hitung berapa baris kosong yang perlu ditambahkan
     const emptyRows = Math.max(0, 10 - students.length);
 
     return (
@@ -310,7 +346,7 @@ const StudentManagement: React.FC = () => {
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium bg-white group-hover:bg-gray-50 transition-colors">
                   <div className="flex justify-end space-x-3">
-                    {canEditBarak ? (
+                    {activeTab === 'active' && canEditBarak ? ( // Gunakan canEditBarak di sini
                       <>
                         <button
                           onClick={() => handleEditStudent(student)}
@@ -327,6 +363,14 @@ const StudentManagement: React.FC = () => {
                           <Trash2 className="h-5 w-5" />
                         </button>
                       </>
+                    ) : activeTab === 'deleted' ? (
+                      <button
+                        onClick={() => handleRestore(student.id)}
+                        className="text-green-600 hover:text-green-900 transition-colors"
+                        title="Pulihkan"
+                      >
+                        <History className="h-5 w-5" />
+                      </button>
                     ) : (
                       <span className="text-sm text-gray-500 italic">
                         Tidak ada akses
@@ -385,6 +429,32 @@ const StudentManagement: React.FC = () => {
             Export CSV
           </button>
         </div>
+      </div>
+
+      {/* Tambah tabs */}
+      <div className="mb-4 border-b border-gray-200">
+        <nav className="-mb-px flex space-x-8">
+          <button
+            onClick={() => setActiveTab('active')}
+            className={`${
+              activeTab === 'active'
+                ? 'border-blue-500 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
+          >
+            Siswa Aktif
+          </button>
+          <button
+            onClick={() => setActiveTab('deleted')}
+            className={`${
+              activeTab === 'deleted'
+                ? 'border-blue-500 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
+          >
+            Siswa Terhapus
+          </button>
+        </nav>
       </div>
 
       {/* Render tables with dynamic columns */}
@@ -581,6 +651,17 @@ const StudentManagement: React.FC = () => {
           onClose={hideAlert}
         />
       )}
+
+      {/* Tambahkan ConfirmationModal */}
+      <ConfirmationModal
+        isOpen={isConfirmOpen}
+        onClose={handleCancel}
+        onConfirm={handleConfirm}
+        title={confirmOptions?.title || ''}
+        message={confirmOptions?.message || ''}
+        confirmText={confirmOptions?.confirmText}
+        cancelText={confirmOptions?.cancelText}
+      />
     </div>
   );
 };

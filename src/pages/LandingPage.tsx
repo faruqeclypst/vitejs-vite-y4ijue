@@ -71,26 +71,32 @@ const LandingPage: React.FC = () => {
       const activeLeavesToday = leaves.filter((leave: StudentLeave) => {
         const today = new Date().toISOString().split('T')[0];
         const student = students.find(s => s.id === leave.studentId);
-        // Untuk pengasuh, hanya hitung perizinan dari barak yang dikelola
+        // Hanya hitung perizinan dari siswa yang aktif (tidak dihapus)
         if (user.role === 'pengasuh') {
-          return leave.startDate === today && student && userBaraks.includes(student.barak);
+          return leave.startDate === today && 
+                 student && 
+                 !student.isDeleted && 
+                 userBaraks.includes(student.barak);
         }
-        return leave.startDate === today;
-      });
-
-      // Hitung perizinan yang sudah selesai
-      const completedLeaves = leaves.filter((leave: StudentLeave) => {
-        const student = students.find(s => s.id === leave.studentId);
-        // Untuk pengasuh, hanya hitung perizinan dari barak yang dikelola
-        if (user.role === 'pengasuh') {
-          return leave.returnStatus === 'Sudah Kembali' && student && userBaraks.includes(student.barak);
-        }
-        return leave.returnStatus === 'Sudah Kembali';
+        return leave.startDate === today && student && !student.isDeleted;
       });
 
       // Hitung jumlah siswa berdasarkan jenis kelamin
       const maleStudents = relevantStudents.filter(s => s.gender === 'Laki-laki').length;
       const femaleStudents = relevantStudents.filter(s => s.gender === 'Perempuan').length;
+
+      // Hitung perizinan yang sudah selesai
+      const completedLeaves = leaves.filter((leave: StudentLeave) => {
+        const student = students.find(s => s.id === leave.studentId);
+        // Hanya hitung perizinan dari siswa yang aktif (tidak dihapus)
+        if (user.role === 'pengasuh') {
+          return leave.returnStatus === 'Sudah Kembali' && 
+                 student && 
+                 !student.isDeleted && 
+                 userBaraks.includes(student.barak);
+        }
+        return leave.returnStatus === 'Sudah Kembali' && student && !student.isDeleted;
+      });
 
       setStats([
         { title: 'Total Siswa', value: relevantStudents.length, icon: Users, color: "bg-blue-500 text-white" },

@@ -29,6 +29,7 @@ export interface Student {
   class: string;
   asrama: string;
   barak: string;
+  isDeleted?: boolean;
 }
 
 export interface StudentLeaveRequest {

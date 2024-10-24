@@ -1,7 +1,8 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import { ref, onValue, push, set, remove } from 'firebase/database';
 import { db } from '../firebase';
 import { StudentLeave } from '../types';
+import { useStudents } from './StudentContext';
 
 interface StudentLeaveContextType {
   leaves: StudentLeave[];
@@ -9,12 +10,14 @@ interface StudentLeaveContextType {
   updateLeave: (id: string, leave: Omit<StudentLeave, 'id'>) => Promise<void>;
   deleteLeave: (id: string) => Promise<void>;
   getStudentLeaves: (studentId: string) => StudentLeave[];
+  getActiveStudentLeaves: (studentId: string) => StudentLeave[]; // Tambah ini
 }
 
 const StudentLeaveContext = createContext<StudentLeaveContextType | undefined>(undefined);
 
 export const StudentLeaveProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [leaves, setLeaves] = useState<StudentLeave[]>([]);
+  const { allStudents } = useStudents(); // Gunakan allStudents untuk mengecek status siswa
 
   useEffect(() => {
     const leavesRef = ref(db, 'studentLeaves');
@@ -47,12 +50,30 @@ export const StudentLeaveProvider: React.FC<{ children: React.ReactNode }> = ({ 
     await remove(leaveRef);
   };
 
-  const getStudentLeaves = (studentId: string) => {
+  // Mendapatkan semua perizinan siswa (termasuk yang sudah dihapus)
+  const getStudentLeaves = useCallback((studentId: string) => {
     return leaves.filter(leave => leave.studentId === studentId);
-  };
+  }, [leaves]);
+
+  // Mendapatkan perizinan hanya untuk siswa yang aktif
+  const getActiveStudentLeaves = useCallback((studentId: string) => {
+    const student = allStudents.find(s => s.id === studentId);
+    // Jika siswa dihapus (isDeleted = true), return array kosong
+    if (student?.isDeleted) {
+      return [];
+    }
+    return leaves.filter(leave => leave.studentId === studentId);
+  }, [leaves, allStudents]);
 
   return (
-    <StudentLeaveContext.Provider value={{ leaves, addLeave, updateLeave, deleteLeave, getStudentLeaves }}>
+    <StudentLeaveContext.Provider value={{ 
+      leaves, 
+      addLeave, 
+      updateLeave, 
+      deleteLeave, 
+      getStudentLeaves,
+      getActiveStudentLeaves 
+    }}>
       {children}
     </StudentLeaveContext.Provider>
   );

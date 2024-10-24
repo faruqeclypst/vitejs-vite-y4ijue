@@ -10,6 +10,8 @@ import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage
 import { storage } from '../firebase';
 import Alert from '../components/Alert';
 import useAlert from '../hooks/useAlert';
+import { ref, onValue } from 'firebase/database';
+import { db } from '../firebase';
 
 const StudentLeaveManagement: React.FC = () => {
   const { leaves, addLeave, updateLeave, deleteLeave } = useStudentLeave();
@@ -42,6 +44,7 @@ const StudentLeaveManagement: React.FC = () => {
   const [alertMessage] = useState('');
   const [showAsramaAlert, setShowAsramaAlert] = useState(false);
   const { alert, showAlert, hideAlert } = useAlert();
+  const [filteredLeavesByDate, setFilteredLeavesByDate] = useState<StudentLeave[]>([]);
 
   const leaveTypes: LeaveType[] = ['Sakit', 'Izin', 'Pulang', 'Tanpa Keterangan', 'Lomba'];
 
@@ -73,10 +76,10 @@ const StudentLeaveManagement: React.FC = () => {
   const filteredLeaves = useMemo(() => {
     return leaves;
   }, [leaves]);
-
   // Filter perizinan berdasarkan tanggal yang dipilih
-  const filteredLeavesByDate = useMemo(() => {
-    return filteredLeaves.filter(leave => leave.startDate === selectedDate);
+  useEffect(() => {
+    const filtered = filteredLeaves.filter(leave => leave.startDate === selectedDate);
+    setFilteredLeavesByDate(filtered);
   }, [filteredLeaves, selectedDate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -418,6 +421,57 @@ const StudentLeaveManagement: React.FC = () => {
       // Optional: Tambahkan logika tambahan saat alert berubah
     }
   }, [alert]);
+
+  // Update useEffect untuk filter leaves
+  useEffect(() => {
+    const leavesRef = ref(db, 'studentLeaves');
+    const unsubscribe = onValue(leavesRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const leavesList = Object.entries(data).map(([id, value]) => ({
+          id,
+          ...(value as Omit<StudentLeave, 'id'>)
+        }));
+
+        // Filter leaves berdasarkan status siswa (tidak dihapus)
+        const activeLeaves = leavesList.filter(leave => {
+          const student = students.find(s => s.id === leave.studentId);
+          return student && !student.isDeleted;
+        });
+
+        // Group by date
+        const groupedByDate = activeLeaves.reduce((acc, leave) => {
+          if (!acc[leave.startDate]) {
+            acc[leave.startDate] = [];
+          }
+          acc[leave.startDate].push(leave);
+          return acc;
+        }, {} as Record<string, StudentLeave[]>);
+
+        // Sort leaves by date and set state
+        const sortedDates = Object.keys(groupedByDate).sort((a, b) => 
+          new Date(b).getTime() - new Date(a).getTime()
+        );
+
+        const filteredLeaves = sortedDates
+          .filter(date => {
+            if (selectedDate) {
+              return date === selectedDate;
+            }
+            return true;
+          })
+          .reduce((acc, date) => {
+            return [...acc, ...groupedByDate[date]];
+          }, [] as StudentLeave[]);
+
+        setFilteredLeavesByDate(filteredLeaves);
+      } else {
+        setFilteredLeavesByDate([]);
+      }
+    });
+
+    return () => unsubscribe();
+  }, [selectedDate, students]); // Tambahkan students sebagai dependency
 
   return (
     <div className="space-y-6">
