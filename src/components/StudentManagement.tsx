@@ -12,12 +12,13 @@ import { ref, onValue, get } from 'firebase/database'; // Hapus 'get' karena tid
 import { db } from '../firebase';
 import ConfirmationModal from '../components/ConfirmationModal';
 import useConfirmation from '../hooks/useConfirmation';
+import { exportStudent } from '../utils/exportStudent';
 
 // Update interface untuk tab
 type TabType = 'active' | 'deleted';
 
 const StudentManagement: React.FC = () => {
-  const { students, allStudents, addStudent, updateStudent, deleteStudent, restoreStudent } = useStudents(); // Tambahkan allStudents
+  const { students, allStudents, addStudent, updateStudent, deleteStudent, restoreStudent, deleteStudentPermanently } = useStudents(); // Tambahkan allStudents
   const { baraks } = useBarak(); // Ganti asramas dengan baraks
   const { user: currentUser } = useAuth();
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
@@ -216,22 +217,22 @@ const StudentManagement: React.FC = () => {
     }
   };
 
-  const handleExportCSV = () => {
-    const exportData = students.map(student => ({
-      ...student,
-      gender: student.gender === 'Laki-laki' ? 'Male' : 'Female'
-    }));
-    const csv = Papa.unparse(exportData);
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    if (link.download !== undefined) {
-      const url = URL.createObjectURL(blob);
-      link.setAttribute('href', url);
-      link.setAttribute('download', 'students.csv');
-      link.style.visibility = 'hidden';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+  const handleExportCSV = async () => {
+    try {
+      await exportStudent({
+        students,
+        baraks
+      });
+      showAlert({
+        type: 'success',
+        message: 'Data siswa berhasil diekspor'
+      });
+    } catch (error) {
+      console.error('Error exporting students:', error);
+      showAlert({
+        type: 'error',
+        message: 'Gagal mengekspor data siswa'
+      });
     }
   };
 
@@ -284,6 +285,30 @@ const StudentManagement: React.FC = () => {
         showAlert({
           type: 'error',
           message: 'Gagal memulihkan siswa'
+        });
+      }
+    }
+  };
+
+  const handlePermanentDelete = async (id: string) => {
+    const confirmed = await confirm({
+      title: 'Konfirmasi Hapus Permanen',
+      message: 'Apakah Anda yakin ingin menghapus siswa ini secara permanen? Semua perizinan siswa ini akan hilang jika dihapus!!!.',
+      confirmText: 'Hapus Permanen',
+      cancelText: 'Batal'
+    });
+
+    if (confirmed) {
+      try {
+        await deleteStudentPermanently(id);
+        showAlert({
+          type: 'success',
+          message: 'Siswa berhasil dihapus secara permanen'
+        });
+      } catch (error) {
+        showAlert({
+          type: 'error',
+          message: 'Gagal menghapus siswa secara permanen'
         });
       }
     }
@@ -359,7 +384,7 @@ const StudentManagement: React.FC = () => {
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium bg-white group-hover:bg-gray-50 transition-colors">
                   <div className="flex justify-end space-x-3">
-                    {activeTab === 'active' && canEditBarak ? ( // Gunakan canEditBarak di sini
+                    {activeTab === 'active' && canEditBarak ? (
                       <>
                         <button
                           onClick={() => handleEditStudent(student)}
@@ -377,13 +402,22 @@ const StudentManagement: React.FC = () => {
                         </button>
                       </>
                     ) : activeTab === 'deleted' ? (
-                      <button
-                        onClick={() => handleRestore(student.id)}
-                        className="text-green-600 hover:text-green-900 transition-colors"
-                        title="Pulihkan"
-                      >
-                        <History className="h-5 w-5" />
-                      </button>
+                      <>
+                        <button
+                          onClick={() => handleRestore(student.id)}
+                          className="text-green-600 hover:text-green-900 transition-colors"
+                          title="Pulihkan"
+                        >
+                          <History className="h-5 w-5" />
+                        </button>
+                        <button
+                          onClick={() => handlePermanentDelete(student.id)}
+                          className="text-red-600 hover:text-red-900 transition-colors"
+                          title="Hapus Permanen"
+                        >
+                          <Trash2 className="h-5 w-5" />
+                        </button>
+                      </>
                     ) : (
                       <span className="text-sm text-gray-500 italic">
                         Tidak ada akses

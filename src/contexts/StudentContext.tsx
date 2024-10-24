@@ -1,5 +1,5 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import { ref, onValue, push, update } from 'firebase/database';
+import { ref, onValue, push, update, remove } from 'firebase/database';
 import { db } from '../firebase';
 import { Student } from '../types';
 
@@ -9,7 +9,8 @@ interface StudentContextType {
   addStudent: (student: Omit<Student, 'id'>) => void;
   updateStudent: (id: string, student: Omit<Student, 'id'>) => void;
   deleteStudent: (id: string) => void;
-  restoreStudent: (id: string) => void; // Tambah ini
+  restoreStudent: (id: string) => void;
+  deleteStudentPermanently: (id: string) => void; // Tambah ini
 }
 
 const StudentContext = createContext<StudentContextType | undefined>(undefined);
@@ -62,6 +63,11 @@ export const StudentProvider: React.FC<{ children: React.ReactNode }> = ({ child
     await update(studentRef, { isDeleted: false });
   };
 
+  const deleteStudentPermanently = async (id: string) => {
+    const studentRef = ref(db, `students/${id}`);
+    await remove(studentRef);
+  };
+
   return (
     <StudentContext.Provider value={{ 
       students, 
@@ -69,7 +75,8 @@ export const StudentProvider: React.FC<{ children: React.ReactNode }> = ({ child
       addStudent, 
       updateStudent, 
       deleteStudent,
-      restoreStudent // Tambah ini
+      restoreStudent,
+      deleteStudentPermanently // Tambah ini
     }}>
       {children}
     </StudentContext.Provider>
