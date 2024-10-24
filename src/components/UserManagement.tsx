@@ -415,9 +415,9 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
 
       {isModalOpen && (
         <div className="fixed inset-0 z-50 overflow-auto bg-black bg-opacity-50 flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-5xl rounded-lg shadow-xl overflow-hidden">
+          <div className="bg-white w-full max-w-2xl rounded-lg shadow-xl overflow-hidden">
             <div className="p-6 bg-gray-50 border-b flex justify-between items-center">
-              <h3 className="text-2xl font-bold text-gray-800">
+              <h3 className="text-xl font-bold text-gray-800">
                 {editingUser ? 'Edit User' : 'Tambah User Baru'}
               </h3>
               <button onClick={() => setIsModalOpen(false)} className="text-gray-500 hover:text-gray-700">
@@ -426,7 +426,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
             </div>
             <div className="p-6">
               <form onSubmit={handleSubmit} className="space-y-6">
-                <div>
+                <div className="bg-white p-4 rounded-lg border border-gray-200">
                   <label className="block text-base font-medium text-gray-700 mb-2">
                     Nama Lengkap
                   </label>
@@ -438,7 +438,8 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
                     className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
-                <div>
+
+                <div className="bg-white p-4 rounded-lg border border-gray-200">
                   <label className="block text-base font-medium text-gray-700 mb-2">
                     Username
                   </label>
@@ -450,7 +451,8 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
                     className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
-                <div>
+
+                <div className="bg-white p-4 rounded-lg border border-gray-200">
                   <label className="block text-base font-medium text-gray-700 mb-2">
                     {editingUser ? 'Password Baru (kosongkan jika tidak diubah)' : 'Password'}
                   </label>
@@ -463,33 +465,36 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
                     placeholder={editingUser ? 'Kosongkan jika tidak ingin mengubah password' : ''}
                   />
                 </div>
-                <div>
+
+                <div className="bg-white p-4 rounded-lg border border-gray-200">
                   <label className="block text-base font-medium text-gray-700 mb-2">
                     Hak Akses
                   </label>
-                  <select
-                    value={role}
-                    onChange={(e) => {
-                      const newRole = e.target.value as UserRole;
-                      setRole(newRole);
-                      if (!showBarakField(newRole)) {
-                        setSelectedBaraks([]);
-                      }
-                    }}
-                    className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                  >
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                     {getAvailableRoles().map(({ value, label }) => (
-                      <option key={value} value={value}>{label}</option>
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() => setRole(value)}
+                        className={`p-3 rounded-lg transition-colors ${
+                          role === value
+                            ? 'bg-blue-500 text-white'
+                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        }`}
+                      >
+                        {label}
+                      </button>
                     ))}
-                  </select>
+                  </div>
                 </div>
+
                 {showBarakField(role) && (
-                  <div>
+                  <div className="bg-white p-4 rounded-lg border border-gray-200">
                     <label className="block text-base font-medium text-gray-700 mb-2">
                       {role === 'pengasuh' ? 'Barak yang Diawasi' : 'Barak yang Dikelola'}
                     </label>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                      {baraks.map((barak: Barak) => (
+                      {baraks.map((barak) => (
                         <button
                           key={barak.id}
                           type="button"
@@ -500,25 +505,19 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
                               setSelectedBaraks(prev => [...prev, barak.id]);
                             }
                           }}
-                          className={`p-2 rounded-lg transition-colors ${
+                          className={`p-3 rounded-lg transition-colors ${
                             selectedBaraks.includes(barak.id)
                               ? 'bg-blue-500 text-white'
-                              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                           }`}
                         >
                           {barak.name}
                         </button>
                       ))}
                     </div>
-                    {selectedBaraks.length === 0 && (
-                      <p className="mt-2 text-sm text-red-500">
-                        {role === 'pengasuh' 
-                          ? 'Pilih minimal satu barak yang akan diawasi' 
-                          : 'Pilih minimal satu barak yang akan dikelola'}
-                      </p>
-                    )}
                   </div>
                 )}
+
                 <div className="flex justify-end space-x-4 pt-4">
                   <button
                     type="button"

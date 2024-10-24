@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useStudentLeave } from '../contexts/StudentLeaveContext';
 import { useStudents } from '../contexts/StudentContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -47,6 +47,9 @@ const StudentLeaveManagement: React.FC = () => {
   const [filteredLeavesByDate, setFilteredLeavesByDate] = useState<StudentLeave[]>([]);
 
   const leaveTypes: LeaveType[] = ['Sakit', 'Izin', 'Pulang', 'Tanpa Keterangan', 'Lomba'];
+
+  // Tambahkan useRef untuk dropdown container
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Filter students berdasarkan asrama pengasuh
   const filterStudentsByUserAccess = (students: Student[]) => {
@@ -411,10 +414,10 @@ const StudentLeaveManagement: React.FC = () => {
     }
   };
 
-  // Tambahkan event listener untuk menutup dropdown saat klik di luar
+  // Update useEffect untuk click outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (isDropdownOpen && !(event.target as Element).closest('.relative')) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsDropdownOpen(false);
       }
     };
@@ -423,7 +426,7 @@ const StudentLeaveManagement: React.FC = () => {
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [isDropdownOpen]);
+  }, []);
 
   // Pastikan useAlert digunakan
   useEffect(() => {
@@ -757,345 +760,379 @@ const StudentLeaveManagement: React.FC = () => {
 
       {/* Modal form */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 overflow-auto bg-black bg-opacity-50 flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-4xl rounded-lg shadow-xl overflow-hidden">
-            <div className="p-6 bg-gray-50 border-b flex justify-between items-center">
-              <h3 className="text-xl font-bold text-gray-800">
-                {editingLeave ? 'Edit Perizinan' : 'Tambah Perizinan Baru'}
-              </h3>
-              <button onClick={() => setIsModalOpen(false)} className="text-gray-500 hover:text-gray-700">
-                <X className="h-6 w-6" />
-              </button>
-            </div>
-            <div className="p-6">
-              <form onSubmit={handleSubmit} className="space-y-6">
-                {/* Dropdown Siswa */}
-                <div className="bg-white p-4 rounded-lg border border-gray-200">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    {editingLeave ? 'Siswa' : 'Pilih Siswa'} {selectedStudents.length > 0 && `(${selectedStudents.length} dipilih)`}
-                  </label>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      placeholder="Cari siswa..."
-                      value={searchTerm}
-                      onChange={(e) => {
-                        setSearchTerm(e.target.value);
-                        if (!editingLeave) setIsDropdownOpen(true);
-                      }}
-                      onClick={() => !editingLeave && setIsDropdownOpen(true)}
-                      className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 ${
-                        editingLeave ? 'bg-gray-100' : ''
-                      }`}
-                      readOnly={!!editingLeave}
-                    />
-                    {/* Tampilkan siswa yang sudah dipilih */}
-                    {selectedStudents.length > 0 && (
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        {selectedStudents.map((student) => (
-                          <div
-                            key={student.id}
-                            className="inline-flex items-center bg-blue-100 text-blue-700 rounded-full px-3 py-1"
-                          >
-                            <span className="text-sm">{student.fullName}</span>
-                            {!editingLeave && (
-                              <button
-                                type="button"
-                                onClick={() => setSelectedStudents(prev => prev.filter(s => s.id !== student.id))}
-                                className="ml-2 text-blue-500 hover:text-blue-700"
-                              >
-                                <X className="h-4 w-4" />
-                              </button>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    {/* Dropdown */}
-                    {!editingLeave && isDropdownOpen && filteredStudents.length > 0 && (
-                      <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg max-h-60 overflow-auto">
-                        {filteredStudents
-                          .filter(student => !selectedStudents.some(s => s.id === student.id))
-                          .map((student) => (
-                            <div
-                              key={student.id}
-                              onClick={() => {
-                                setSelectedStudents(prev => [...prev, student]);
-                                setSearchTerm('');
-                              }}
-                              className="p-3 hover:bg-gray-100 cursor-pointer border-b last:border-b-0"
-                            >
-                              <div className="font-medium">{student.fullName}</div>
-                              <div className="text-sm text-gray-500 flex items-center gap-2">
-                                <span className="px-2 py-0.5 rounded bg-gray-100">{student.class}</span>
-                                <span className="px-2 py-0.5 rounded bg-gray-100">{student.barak}</span>
-                                <span className={`px-2 py-0.5 rounded ${
-                                  student.gender === 'Laki-laki' 
-                                    ? 'bg-blue-100 text-blue-800' 
-                                    : 'bg-pink-100 text-pink-800'
-                                }`}>
-                                  {student.gender}
-                                </span>
-                              </div>
-                            </div>
-                          ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Jenis Izin */}
-                <div className="bg-white p-4 rounded-lg border border-gray-200">
-                  <label className="block text-base font-medium text-gray-700 mb-2">
-                    Jenis Izin
-                  </label>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
-                    {leaveTypes.map((type) => (
-                      <button
-                        key={type}
-                        type="button"
-                        onClick={() => setNewLeave({ ...newLeave, leaveType: type })}
-                        className={`p-2 rounded-lg transition-colors ${
-                          newLeave.leaveType === type
-                            ? 'bg-blue-500 text-white'
-                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                        }`}
-                      >
-                        {type}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Waktu Izin */}
-                <div className="bg-white p-4 rounded-lg border border-gray-200">
-                  <label className="block text-base font-medium text-gray-700 mb-2">
-                    Waktu Izin
-                  </label>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <label className="block text-sm text-gray-600">Mulai</label>
-                      <div className="grid grid-cols-2 gap-2">
-                        <input
-                          type="date"
-                          value={newLeave.startDate}
-                          onChange={(e) => setNewLeave({ ...newLeave, startDate: e.target.value })}
-                          className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                        />
-                        <input
-                          type="time"
-                          value={newLeave.startTime}
-                          onChange={(e) => setNewLeave({ ...newLeave, startTime: e.target.value })}
-                          className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                        />
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <label className="block text-sm text-gray-600">Selesai</label>
-                      <div className="grid grid-cols-2 gap-2">
-                        <input
-                          type="date"
-                          value={newLeave.endDate}
-                          onChange={(e) => setNewLeave({ ...newLeave, endDate: e.target.value })}
-                          className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                        />
-                        <input
-                          type="time"
-                          value={newLeave.endTime}
-                          onChange={(e) => setNewLeave({ ...newLeave, endTime: e.target.value })}
-                          className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Keterangan dan Upload */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="bg-white p-4 rounded-lg border border-gray-200">
-                    <label className="block text-base font-medium text-gray-700 mb-2">
-                      Keterangan
-                    </label>
-                    <textarea
-                      value={newLeave.keterangan}
-                      onChange={(e) => setNewLeave({ ...newLeave, keterangan: e.target.value })}
-                      className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 min-h-[120px]"
-                      placeholder="Tambahkan keterangan..."
-                    />
-                  </div>
-
-                  <div className="bg-white p-4 rounded-lg border border-gray-200">
-                    <label className="block text-base font-medium text-gray-700 mb-2">
-                      Bukti Surat/Dokumen
-                    </label>
-                    {editingLeave && editingLeave.documentUrl ? (
-                      <div className="mb-3 flex items-center justify-between bg-gray-50 p-3 rounded-lg">
-                        <span className="text-sm text-gray-600">
-                          File saat ini: {getFileNameFromUrl(editingLeave.documentUrl)}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => handleViewDocument(editingLeave)}
-                          className="text-blue-600 hover:text-blue-800 text-sm underline"
-                        >
-                          Lihat Dokumen
-                        </button>
-                      </div>
-                    ) : null}
-                    <div className="space-y-2">
-                      <input
-                        type="file"
-                        onChange={handleFileUpload}
-                        className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                        accept=".pdf,.jpg,.jpeg,.png"
-                      />
-                      <p className="text-sm text-gray-500">
-                        {editingLeave?.documentUrl 
-                          ? "Upload file baru untuk mengganti dokumen yang ada" 
-                          : "Upload file (PDF, JPG, PNG)"}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex justify-end space-x-4 pt-4">
-                  <button
-                    type="button"
-                    onClick={() => setIsModalOpen(false)}
-                    className="px-6 py-3 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 font-medium"
-                  >
-                    Batal
-                  </button>
-                  <button
-                    type="submit"
-                    className={`px-6 py-3 rounded-lg font-medium ${
-                      selectedStudents.length === 0 
-                        ? 'bg-gray-400 cursor-not-allowed text-white' 
-                        : 'bg-blue-500 hover:bg-blue-600 text-white'
-                    }`}
-                    disabled={selectedStudents.length === 0}
-                  >
-                    {editingLeave ? 'Update' : 'Simpan'}
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {isDocumentModalOpen && selectedDocument && (
-        <div className="fixed inset-0 z-50 overflow-auto bg-black bg-opacity-50 flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-5xl rounded-lg shadow-xl overflow-hidden">
-            <div className="p-4 bg-gray-50 border-b">
-              <div className="flex justify-between items-center">
-                <div>
-                  <h3 className="text-lg font-semibold">Dokumen Perizinan</h3>
-                  {selectedLeave && selectedStudents && (
-                    <div className="mt-1 text-sm text-gray-600">
-                      <p>Siswa: {selectedStudents.map(s => s.fullName).join(', ')}</p>
-                      <p>Barak: {selectedStudents.map(s => s.barak).join(', ')}</p>
-                    </div>
-                  )}
-                </div>
-                <button
-                  onClick={() => {
-                    setIsDocumentModalOpen(false);
-                    setSelectedDocument(null);
-                    setSelectedLeave(null);
-                    setSelectedStudents([]);
-                  }}
-                  className="text-gray-500 hover:text-gray-700"
-                >
+        <div className="fixed inset-0 z-[60] overflow-y-auto">
+          <div className="fixed inset-0 bg-black bg-opacity-50"></div>
+          <div className="relative min-h-screen flex items-center justify-center p-4">
+            <div className="bg-white w-full max-w-4xl rounded-lg shadow-xl overflow-hidden relative">
+              <div className="p-6 bg-gray-50 border-b flex justify-between items-center">
+                <h3 className="text-xl font-bold text-gray-800">
+                  {editingLeave ? 'Edit Perizinan' : 'Tambah Perizinan Baru'}
+                </h3>
+                <button onClick={() => setIsModalOpen(false)} className="text-gray-500 hover:text-gray-700">
                   <X className="h-6 w-6" />
                 </button>
               </div>
-            </div>
-            <div className="p-4 h-[80vh]">
-              <iframe
-                src={selectedDocument}
-                className="w-full h-full rounded-lg"
-                title="Document Preview"
-              />
+              <div className="p-6">
+                <form onSubmit={handleSubmit} className="space-y-6">
+                  {/* Dropdown Siswa */}
+                  <div className="bg-white p-4 rounded-lg border border-gray-200">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      {editingLeave ? 'Siswa' : 'Pilih Siswa'} {selectedStudents.length > 0 && `(${selectedStudents.length} dipilih)`}
+                    </label>
+                    <div className="relative" ref={dropdownRef}>
+                      <input
+                        type="text"
+                        placeholder="Cari siswa..."
+                        value={searchTerm}
+                        onChange={(e) => {
+                          setSearchTerm(e.target.value);
+                          if (!editingLeave) setIsDropdownOpen(true);
+                        }}
+                        onClick={() => !editingLeave && setIsDropdownOpen(true)}
+                        className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 ${
+                          editingLeave ? 'bg-gray-100' : ''
+                        }`}
+                        readOnly={!!editingLeave}
+                      />
+                      {/* Tampilkan siswa yang sudah dipilih */}
+                      {selectedStudents.length > 0 && (
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {selectedStudents.map((student) => (
+                            <div
+                              key={student.id}
+                              className={`inline-flex items-center px-3 py-1.5 rounded-lg ${
+                                student.gender === 'Laki-laki'
+                                  ? 'bg-blue-100 text-blue-800'
+                                  : 'bg-pink-100 text-pink-800'
+                              }`}
+                            >
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium">{student.fullName}</span>
+                                <span className="text-sm opacity-75">•</span>
+                                <span className="text-sm">{student.class}</span>
+                                <span className="text-sm opacity-75">•</span>
+                                <span className="text-sm">{student.barak}</span>
+                              </div>
+                              {!editingLeave && (
+                                <button
+                                  type="button"
+                                  onClick={() => setSelectedStudents(prev => prev.filter(s => s.id !== student.id))}
+                                  className={`ml-2 ${
+                                    student.gender === 'Laki-laki'
+                                      ? 'text-blue-600 hover:text-blue-800'
+                                      : 'text-pink-600 hover:text-pink-800'
+                                  }`}
+                                >
+                                  <X className="h-4 w-4" />
+                                </button>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {/* Dropdown */}
+                      {!editingLeave && isDropdownOpen && filteredStudents.length > 0 && (
+                        <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg max-h-60 overflow-auto">
+                          {filteredStudents
+                            .filter(student => !selectedStudents.some(s => s.id === student.id))
+                            .map((student) => (
+                              <div
+                                key={student.id}
+                                onClick={() => {
+                                  setSelectedStudents(prev => [...prev, student]);
+                                  setSearchTerm('');
+                                  // Tidak perlu menutup dropdown di sini agar user bisa memilih lebih dari satu siswa
+                                }}
+                                className="p-3 hover:bg-gray-100 cursor-pointer border-b last:border-b-0"
+                              >
+                                <div className="flex items-center justify-between">
+                                  <div className="font-medium">{student.fullName}</div>
+                                  <div className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                                    student.gender === 'Laki-laki'
+                                      ? 'bg-blue-100 text-blue-800'
+                                      : 'bg-pink-100 text-pink-800'
+                                  }`}>
+                                    {student.gender}
+                                  </div>
+                                </div>
+                                <div className="text-sm text-gray-500 flex items-center gap-2 mt-1">
+                                  <span className="px-2 py-0.5 rounded bg-gray-100">{student.class}</span>
+                                  <span className="text-gray-400">•</span>
+                                  <span className="px-2 py-0.5 rounded bg-gray-100">{student.barak}</span>
+                                </div>
+                              </div>
+                            ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Jenis Izin */}
+                  <div className="bg-white p-4 rounded-lg border border-gray-200">
+                    <label className="block text-base font-medium text-gray-700 mb-2">
+                      Jenis Izin
+                    </label>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
+                      {leaveTypes.map((type) => (
+                        <button
+                          key={type}
+                          type="button"
+                          onClick={() => setNewLeave({ ...newLeave, leaveType: type })}
+                          className={`p-2 rounded-lg transition-colors ${
+                            newLeave.leaveType === type
+                              ? 'bg-blue-500 text-white'
+                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                          }`}
+                        >
+                          {type}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Waktu Izin */}
+                  <div className="bg-white p-4 rounded-lg border border-gray-200">
+                    <label className="block text-base font-medium text-gray-700 mb-2">
+                      Waktu Izin
+                    </label>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-2">
+                        <label className="block text-sm text-gray-600">Mulai</label>
+                        <div className="grid grid-cols-2 gap-2">
+                          <input
+                            type="date"
+                            value={newLeave.startDate}
+                            onChange={(e) => setNewLeave({ ...newLeave, startDate: e.target.value })}
+                            className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                          />
+                          <input
+                            type="time"
+                            value={newLeave.startTime}
+                            onChange={(e) => setNewLeave({ ...newLeave, startTime: e.target.value })}
+                            className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="block text-sm text-gray-600">Selesai</label>
+                        <div className="grid grid-cols-2 gap-2">
+                          <input
+                            type="date"
+                            value={newLeave.endDate}
+                            onChange={(e) => setNewLeave({ ...newLeave, endDate: e.target.value })}
+                            className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                          />
+                          <input
+                            type="time"
+                            value={newLeave.endTime}
+                            onChange={(e) => setNewLeave({ ...newLeave, endTime: e.target.value })}
+                            className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Keterangan dan Upload */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="bg-white p-4 rounded-lg border border-gray-200">
+                      <label className="block text-base font-medium text-gray-700 mb-2">
+                        Keterangan
+                      </label>
+                      <textarea
+                        value={newLeave.keterangan}
+                        onChange={(e) => setNewLeave({ ...newLeave, keterangan: e.target.value })}
+                        className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 min-h-[120px]"
+                        placeholder="Tambahkan keterangan..."
+                      />
+                    </div>
+
+                    <div className="bg-white p-4 rounded-lg border border-gray-200">
+                      <label className="block text-base font-medium text-gray-700 mb-2">
+                        Bukti Surat/Dokumen
+                      </label>
+                      {editingLeave && editingLeave.documentUrl ? (
+                        <div className="mb-3 flex items-center justify-between bg-gray-50 p-3 rounded-lg">
+                          <span className="text-sm text-gray-600">
+                            File saat ini: {getFileNameFromUrl(editingLeave.documentUrl)}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleViewDocument(editingLeave)}
+                            className="text-blue-600 hover:text-blue-800 text-sm underline"
+                          >
+                            Lihat Dokumen
+                          </button>
+                        </div>
+                      ) : null}
+                      <div className="space-y-2">
+                        <input
+                          type="file"
+                          onChange={handleFileUpload}
+                          className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                          accept=".pdf,.jpg,.jpeg,.png"
+                        />
+                        <p className="text-sm text-gray-500">
+                          {editingLeave?.documentUrl 
+                            ? "Upload file baru untuk mengganti dokumen yang ada" 
+                            : "Upload file (PDF, JPG, PNG)"}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end space-x-4 pt-4">
+                    <button
+                      type="button"
+                      onClick={() => setIsModalOpen(false)}
+                      className="px-6 py-3 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 font-medium"
+                    >
+                      Batal
+                    </button>
+                    <button
+                      type="submit"
+                      className={`px-6 py-3 rounded-lg font-medium ${
+                        selectedStudents.length === 0 
+                          ? 'bg-gray-400 cursor-not-allowed text-white' 
+                          : 'bg-blue-500 hover:bg-blue-600 text-white'
+                      }`}
+                      disabled={selectedStudents.length === 0}
+                    >
+                      {editingLeave ? 'Update' : 'Simpan'}
+                    </button>
+                  </div>
+                </form>
+              </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* Modal Konfirmasi Delete */}
+      {/* Document Modal */}
+      {isDocumentModalOpen && selectedDocument && (
+        <div className="fixed inset-0 z-[60] overflow-y-auto">
+          <div className="fixed inset-0 bg-black bg-opacity-50"></div>
+          <div className="relative min-h-screen flex items-center justify-center p-4">
+            <div className="bg-white w-full max-w-5xl rounded-lg shadow-xl overflow-hidden relative">
+              <div className="p-4 bg-gray-50 border-b">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <h3 className="text-lg font-semibold">Dokumen Perizinan</h3>
+                    {selectedLeave && selectedStudents && (
+                      <div className="mt-1 text-sm text-gray-600">
+                        <p>Siswa: {selectedStudents.map(s => s.fullName).join(', ')}</p>
+                        <p>Barak: {selectedStudents.map(s => s.barak).join(', ')}</p>
+                      </div>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => {
+                      setIsDocumentModalOpen(false);
+                      setSelectedDocument(null);
+                      setSelectedLeave(null);
+                      setSelectedStudents([]);
+                    }}
+                    className="text-gray-500 hover:text-gray-700"
+                  >
+                    <X className="h-6 w-6" />
+                  </button>
+                </div>
+              </div>
+              <div className="p-4 h-[80vh]">
+                <iframe
+                  src={selectedDocument}
+                  className="w-full h-full rounded-lg"
+                  title="Document Preview"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
       {showDeleteConfirmModal && (
-        <div className="fixed inset-0 z-50 overflow-auto bg-black bg-opacity-50 flex items-center justify-center">
-          <div className="bg-white rounded-lg p-8 max-w-md mx-auto">
-            <h3 className="text-xl font-bold mb-4">Konfirmasi Hapus</h3>
-            <p className="text-gray-600 mb-6">
-              Apakah Anda yakin ingin menghapus perizinan ini?
-            </p>
-            <div className="flex justify-end space-x-4">
-              <button
-                onClick={() => {
-                  setShowDeleteConfirmModal(false);
-                  setDeleteId(null);
-                }}
-                className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300"
-              >
-                Batal
-              </button>
-              <button
-                onClick={confirmDelete}
-                className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600"
-              >
-                Hapus
-              </button>
+        <div className="fixed inset-0 z-[60] overflow-y-auto">
+          <div className="fixed inset-0 bg-black bg-opacity-50"></div>
+          <div className="relative min-h-screen flex items-center justify-center p-4">
+            <div className="bg-white rounded-lg p-8 max-w-md mx-auto relative">
+              <h3 className="text-xl font-bold mb-4">Konfirmasi Hapus</h3>
+              <p className="text-gray-600 mb-6">
+                Apakah Anda yakin ingin menghapus perizinan ini?
+              </p>
+              <div className="flex justify-end space-x-4">
+                <button
+                  onClick={() => {
+                    setShowDeleteConfirmModal(false);
+                    setDeleteId(null);
+                  }}
+                  className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300"
+                >
+                  Batal
+                </button>
+                <button
+                  onClick={confirmDelete}
+                  className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600"
+                >
+                  Hapus
+                </button>
+              </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* Alert Modal untuk Asrama */}
+      {/* Asrama Alert Modal */}
       {showAsramaAlert && (
-        <div className="fixed inset-0 z-50 overflow-auto bg-black bg-opacity-50 flex items-center justify-center">
-          <div className="bg-white rounded-lg p-8 max-w-md mx-auto">
-            <h3 className="text-xl font-bold mb-4">Peringatan</h3>
-            <p className="text-gray-600 mb-6">
-              {alertMessage}
-            </p>
-            <div className="flex justify-end">
-              <button
-                onClick={() => setShowAsramaAlert(false)}
-                className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
-              >
-                OK
-              </button>
+        <div className="fixed inset-0 z-[60] overflow-y-auto">
+          <div className="fixed inset-0 bg-black bg-opacity-50"></div>
+          <div className="relative min-h-screen flex items-center justify-center p-4">
+            <div className="bg-white rounded-lg p-8 max-w-md mx-auto relative">
+              <h3 className="text-xl font-bold mb-4">Peringatan</h3>
+              <p className="text-gray-600 mb-6">
+                {alertMessage}
+              </p>
+              <div className="flex justify-end">
+                <button
+                  onClick={() => setShowAsramaAlert(false)}
+                  className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+                >
+                  OK
+                </button>
+              </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* Modal Konfirmasi Status */}
+      {/* Status Confirmation Modal */}
       {showStatusConfirmModal && (
-        <div className="fixed inset-0 z-50 overflow-auto bg-black bg-opacity-50 flex items-center justify-center">
-          <div className="bg-white rounded-lg p-8 max-w-md mx-auto">
-            <h3 className="text-xl font-bold mb-4">Konfirmasi Perubahan Status</h3>
-            <p className="text-gray-600 mb-6">
-              Apakah Anda yakin ingin mengubah status menjadi "{newStatus}"?
-            </p>
-            <div className="flex justify-end space-x-4">
-              <button
-                onClick={() => {
-                  setShowStatusConfirmModal(false);
-                  setSelectedLeaveForStatus(null);
-                  setNewStatus(null);
-                }}
-                className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300"
-              >
-                Batal
-              </button>
-              <button
-                onClick={confirmStatusChange}
-                className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
-              >
-                Konfirmasi
-              </button>
+        <div className="fixed inset-0 z-[60] overflow-y-auto">
+          <div className="fixed inset-0 bg-black bg-opacity-50"></div>
+          <div className="relative min-h-screen flex items-center justify-center p-4">
+            <div className="bg-white rounded-lg p-8 max-w-md mx-auto relative">
+              <h3 className="text-xl font-bold mb-4">Konfirmasi Perubahan Status</h3>
+              <p className="text-gray-600 mb-6">
+                Apakah Anda yakin ingin mengubah status menjadi "{newStatus}"?
+              </p>
+              <div className="flex justify-end space-x-4">
+                <button
+                  onClick={() => {
+                    setShowStatusConfirmModal(false);
+                    setSelectedLeaveForStatus(null);
+                    setNewStatus(null);
+                  }}
+                  className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300"
+                >
+                  Batal
+                </button>
+                <button
+                  onClick={confirmStatusChange}
+                  className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+                >
+                  Konfirmasi
+                </button>
+              </div>
             </div>
           </div>
         </div>
