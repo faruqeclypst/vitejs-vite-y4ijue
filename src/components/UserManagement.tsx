@@ -1,21 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { useAsrama } from '../contexts/AsramaContext';
+import { useBarak } from '../contexts/BarakContext';
 import { X, Plus } from 'lucide-react';
-import { ref, onValue } from 'firebase/database'; // Hapus 'get' karena tidak digunakan
+import { ref, onValue } from 'firebase/database';
 import { db } from '../firebase';
+import { UserRole, Barak } from '../types'; // Hapus import User, gunakan dari AuthContext
 import Alert from './Alert';
-import ConfirmationModal from './ConfirmationModal';
 import useAlert from '../hooks/useAlert';
+import ConfirmationModal from './ConfirmationModal';
 import useConfirmation from '../hooks/useConfirmation';
-import { UserRole } from '../types';
 
 interface UserManagementProps {
   onUserAdded?: () => void;
 }
 
-// Gunakan tipe User yang sama dengan AuthContext
-interface User {
+// Gunakan tipe User dari AuthContext
+type User = {
   id: string;
   username: string;
   fullName: string;
@@ -23,10 +23,10 @@ interface User {
   barakId?: string;
   email: string;
   isDefaultAccount?: boolean;
-}
+};
 
 const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
-  const { asramas: baraks } = useAsrama(); // Rename untuk kejelasan
+  const { baraks } = useBarak(); // Rename untuk kejelasan
   const { user: currentUser } = useAuth();
   const [username, setUsername] = useState('');
   const [fullName, setFullName] = useState('');
@@ -293,19 +293,19 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
     return () => unsubscribe();
   }, []);
 
-  // Ganti formatAsramaDisplay menjadi formatBarakDisplay
-  const formatBarakDisplay = (barakId: string | undefined) => {
+  // Update fungsi getBarakName
+  const getBarakName = (barakId: string | undefined) => {
     if (!barakId) return '-';
     
     if (barakId.includes(',')) {
       const barakIds = barakId.split(',');
       return barakIds
-        .map(id => baraks.find(b => b.id === id)?.name)
+        .map((id: string) => baraks.find((b: Barak) => b.id === id)?.name)
         .filter(Boolean)
         .join(', ');
     }
     
-    const barak = baraks.find(b => b.id === barakId);
+    const barak = baraks.find((b: Barak) => b.id === barakId);
     return barak ? barak.name : '-';
   };
 
@@ -489,7 +489,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
                       {role === 'pengasuh' ? 'Barak yang Diawasi' : 'Barak yang Dikelola'}
                     </label>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                      {baraks.map((barak) => (
+                      {baraks.map((barak: Barak) => (
                         <button
                           key={barak.id}
                           type="button"
@@ -563,7 +563,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
                   <td className="px-6 py-4 whitespace-nowrap">{user.role}</td>
                   {(currentUser?.role === 'admin_barak' || currentUser?.role === 'admin_asrama') && (
                     <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {formatBarakDisplay(user.barakId)}
+                      {getBarakName(user.barakId)}
                     </td>
                   )}
                   <td className="px-6 py-4 whitespace-nowrap space-x-2">

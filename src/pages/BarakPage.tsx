@@ -1,4 +1,4 @@
-import AsramaManagement from '../components/AsramaManagement';
+import BarakManagement from '../components/BarakManagement';
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
 
@@ -13,7 +13,7 @@ const BarakPage = () => {
   return (
     <div className="p-6">
       <h1 className="text-2xl font-bold mb-6">Manajemen Barak</h1>
-      <AsramaManagement />
+      <BarakManagement />
     </div>
   );
 };

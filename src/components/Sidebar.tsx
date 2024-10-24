@@ -70,7 +70,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isExpanded, setIsExpanded }) => {
       path: '/barak', 
       icon: Building, 
       label: 'Manajemen Barak', 
-      roles: ['admin_asrama', 'pengasuh'] 
+      roles: ['admin', 'admin_asrama'] 
     },
     { 
       path: '/students', 

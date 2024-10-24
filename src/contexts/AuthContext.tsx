@@ -12,12 +12,12 @@ import { db } from '../firebase';
 // Gunakan type yang sama dengan yang ada di types.ts
 type UserRole = 'admin' | 'piket' | 'wakil_kepala' | 'pengasuh' | 'admin_asrama' | 'admin_barak';
 
-interface User {
+export interface User {
   id: string;
   username: string;
   fullName: string;
   role: UserRole;
-  barakId?: string; // Ganti asramaId menjadi barakId
+  barakId?: string; // Hapus asramaId
   email: string;
   isDefaultAccount: boolean;
 }

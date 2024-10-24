@@ -1,13 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { Users, ClipboardList, UserCheck, Clock } from 'lucide-react';
+import { Users, ClipboardList, Calendar, UserCheck } from 'lucide-react';
 import { useTeachers } from '../contexts/TeachersContext';
 import { useAttendance } from '../contexts/AttendanceContext';
 import { useRoster } from '../contexts/RosterContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useStudents } from '../contexts/StudentContext';
-import { useAsrama } from '../contexts/AsramaContext';
+import { useBarak } from '../contexts/BarakContext';
 import { useStudentLeave } from '../contexts/StudentLeaveContext';
-import { DayOfWeek, StudentLeave } from '../types';
+import { DayOfWeek, StudentLeave, Barak } from '../types';
 
 interface StatsItem {
   title: string;
@@ -22,7 +22,7 @@ const LandingPage: React.FC = () => {
   const { attendanceRecords } = useAttendance();
   const { roster } = useRoster();
   const { students } = useStudents();
-  const { asramas } = useAsrama();
+  const { baraks } = useBarak();
   const { leaves } = useStudentLeave();
   const [stats, setStats] = useState<StatsItem[]>([]);
 
@@ -46,26 +46,26 @@ const LandingPage: React.FC = () => {
         { title: `Semua Guru`, value: teachers.length, icon: Users, color: "bg-blue-500 text-white" },
         { title: `Guru Mengajar (${dayOfWeek})`, value: teachersWithRosterToday.size, icon: UserCheck, color: "bg-green-500 text-white" },
         { title: "Jumlah Kelas", value: 18, icon: ClipboardList, color: "bg-yellow-500 text-white" },
-        { title: `Jam Tersedia (${dayOfWeek})`, value: totalAvailableHours, icon: Clock, color: "bg-indigo-500 text-white" },
-        { title: `Jam Hadir (${dayOfWeek})`, value: totalPresentHours, icon: Clock, color: "bg-purple-500 text-white" },
-        { title: `Jam Tidak Hadir (${dayOfWeek})`, value: totalAbsentHours, icon: Clock, color: "bg-pink-500 text-white" },
+        { title: `Jam Tersedia (${dayOfWeek})`, value: totalAvailableHours, icon: Calendar, color: "bg-indigo-500 text-white" },
+        { title: `Jam Hadir (${dayOfWeek})`, value: totalPresentHours, icon: Calendar, color: "bg-purple-500 text-white" },
+        { title: `Jam Tidak Hadir (${dayOfWeek})`, value: totalAbsentHours, icon: Calendar, color: "bg-pink-500 text-white" },
       ]);
     } else if (user?.role === 'admin_asrama' || user?.role === 'pengasuh') {
       // Stats untuk admin asrama dan pengasuh
       let relevantStudents = students;
-      let relevantAsramas = asramas;
+      let relevantBaraks = baraks;
       let userBaraks: string[] = [];
       
       if (user.role === 'pengasuh' && user.barakId) {
         // Dapatkan nama-nama barak yang dikelola pengasuh
         const barakIds = user.barakId.split(',');
-        userBaraks = asramas
-          .filter(a => barakIds.includes(a.id))
-          .map(a => a.name);
+        userBaraks = baraks
+          .filter((barak: Barak) => barakIds.includes(barak.id))
+          .map((barak: Barak) => barak.name);
         
         // Filter siswa berdasarkan barak yang dikelola
         relevantStudents = students.filter(s => userBaraks.includes(s.barak));
-        relevantAsramas = asramas.filter(a => barakIds.includes(a.id));
+        relevantBaraks = baraks.filter((barak: Barak) => barakIds.includes(barak.id));
       }
 
       const activeLeavesToday = leaves.filter((leave: StudentLeave) => {
@@ -100,14 +100,14 @@ const LandingPage: React.FC = () => {
 
       setStats([
         { title: 'Total Siswa', value: relevantStudents.length, icon: Users, color: "bg-blue-500 text-white" },
-        { title: 'Total Barak', value: relevantAsramas.length, icon: ClipboardList, color: "bg-green-500 text-white" },
+        { title: 'Total Barak', value: relevantBaraks.length, icon: ClipboardList, color: "bg-green-500 text-white" },
         { title: 'Perizinan Aktif', value: activeLeavesToday.length, icon: UserCheck, color: "bg-yellow-500 text-white" },
         { title: 'Siswa Laki-laki', value: maleStudents, icon: Users, color: "bg-indigo-500 text-white" },
         { title: 'Siswa Perempuan', value: femaleStudents, icon: Users, color: "bg-pink-500 text-white" },
         { title: 'Perizinan Selesai', value: completedLeaves.length, icon: UserCheck, color: "bg-purple-500 text-white" }
       ]);
     }
-  }, [user, teachers, attendanceRecords, roster, students, asramas, leaves]);
+  }, [user, teachers, attendanceRecords, roster, students, baraks, leaves]);
 
   return (
     <div className="flex items-center justify-center min-h-[calc(100vh-4rem)]">

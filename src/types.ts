@@ -27,7 +27,6 @@ export interface Student {
   fullName: string;
   gender: 'Laki-laki' | 'Perempuan';
   class: string;
-  asrama: string;
   barak: string;
   isDeleted?: boolean;
 }
@@ -89,9 +88,5 @@ export interface User {
 export interface Barak {
   id: string;
   name: string;
-  capacity: number;
-  currentOccupancy: number;
+  gender: 'Laki-laki' | 'Perempuan';
 }
-
-// Untuk backward compatibility
-export interface Asrama extends Barak {}

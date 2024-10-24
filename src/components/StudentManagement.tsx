@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Student, availableClasses } from '../types';
 import { useStudents } from '../contexts/StudentContext';
-import { useAsrama } from '../contexts/AsramaContext';
+import { useBarak } from '../contexts/BarakContext'; // Ganti useAsrama dengan useBarak
 import Papa from 'papaparse';
 import { Edit, Trash2, Plus, X, FileText, History } from 'lucide-react';
 import StudentLeaveHistory from './StudentLeaveHistory';
@@ -18,15 +18,14 @@ type TabType = 'active' | 'deleted';
 
 const StudentManagement: React.FC = () => {
   const { students, allStudents, addStudent, updateStudent, deleteStudent, restoreStudent } = useStudents(); // Tambahkan allStudents
-  const { asramas } = useAsrama();
+  const { baraks } = useBarak(); // Ganti asramas dengan baraks
   const { user: currentUser } = useAuth();
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newStudent, setNewStudent] = useState<Omit<Student, 'id'>>({
     fullName: '',
-    gender: 'Laki-laki',
+    gender: 'Laki-laki', // Ini akan diset otomatis berdasarkan barak
     class: availableClasses[0],
-    asrama: '',
     barak: ''
   });
   const [selectedGrade, setSelectedGrade] = useState<'X' | 'XI' | 'XII' | ''>('');
@@ -72,7 +71,7 @@ const StudentManagement: React.FC = () => {
             
             // Untuk setiap barak yang dikelola pengasuh
             barakIds.forEach((barakId: string) => {
-              const barak = asramas.find(b => b.id === barakId);
+              const barak = baraks.find(b => b.id === barakId);
               if (barak) {
                 // Filter siswa untuk barak ini
                 const barakStudents = filteredStudents.filter((student: Student) => student.barak === barak.name);
@@ -89,10 +88,10 @@ const StudentManagement: React.FC = () => {
     });
 
     return () => unsubscribe();
-  }, [currentUser?.id, students, allStudents, asramas, activeTab]);
+  }, [currentUser?.id, students, allStudents, baraks, activeTab]);
 
   // Filter asrama yang bisa dipilih saat menambah/edit siswa
-  const availableAsramas = useMemo(() => {
+  const availableBaraks = useMemo(() => {
     if (currentUser?.role === 'pengasuh') {
       // Ambil data user terbaru dari database setiap kali memo dijalankan
       const userRef = ref(db, `users/${currentUser.id}`);
@@ -100,12 +99,28 @@ const StudentManagement: React.FC = () => {
         const userData = snapshot.val();
         if (userData && userData.barakId) {
           const barakIds = userData.barakId.split(',');
-          return asramas.filter(asrama => barakIds.includes(asrama.id));
+          return baraks.filter(barak => barakIds.includes(barak.id));
         }
       });
     }
-    return asramas;
-  }, [asramas, currentUser]);
+    return baraks;
+  }, [baraks, currentUser]);
+
+  // Tambah fungsi untuk mendapatkan gender dari barak
+  const getBarakGender = (barakName: string): 'Laki-laki' | 'Perempuan' => {
+    const barak = baraks.find(b => b.name === barakName);
+    return barak?.gender || 'Laki-laki';
+  };
+
+  // Update handler untuk pemilihan barak
+  const handleBarakSelect = (barakName: string) => {
+    const gender = getBarakGender(barakName);
+    setNewStudent({
+      ...newStudent,
+      barak: barakName,
+      gender: gender // Set gender otomatis berdasarkan barak
+    });
+  };
 
   const handleAddOrUpdateStudent = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -113,7 +128,7 @@ const StudentManagement: React.FC = () => {
       // Pastikan barak sama dengan asrama untuk backward compatibility
       const studentData = {
         ...newStudent,
-        barak: newStudent.asrama
+        barak: newStudent.barak
       };
 
       if (editingStudent) {
@@ -133,7 +148,6 @@ const StudentManagement: React.FC = () => {
         fullName: '',
         gender: 'Laki-laki',
         class: availableClasses[0],
-        asrama: '',
         barak: ''
       });
       setIsModalOpen(false);
@@ -184,10 +198,10 @@ const StudentManagement: React.FC = () => {
             fullName: row[0],
             gender: row[1] === 'Male' ? 'Laki-laki' : 'Perempuan',
             class: row[2],
-            asrama: row[3]
+            barak: row[3]
           }));
           importedStudents.forEach(student => {
-            if (student.fullName && (student.gender === 'Laki-laki' || student.gender === 'Perempuan') && student.class && student.asrama) {
+            if (student.fullName && (student.gender === 'Laki-laki' || student.gender === 'Perempuan') && student.class && student.barak) {
               addStudent(student as Omit<Student, 'id'>);
             }
           });
@@ -227,7 +241,6 @@ const StudentManagement: React.FC = () => {
       fullName: '',
       gender: 'Laki-laki',
       class: availableClasses[0],
-      asrama: '',
       barak: ''
     });
     setIsModalOpen(true);
@@ -244,7 +257,7 @@ const StudentManagement: React.FC = () => {
     if (currentUser.role === 'pengasuh' && currentUser.barakId) {
       const userBarakIds = currentUser.barakId.split(',');
       // Cari barak berdasarkan nama dan cek apakah pengasuh punya akses
-      const barak = asramas.find((b: { id: string; name: string }) => b.name === barakName);
+      const barak = baraks.find((b: { id: string; name: string }) => b.name === barakName);
       return barak ? userBarakIds.includes(barak.id) : false;
     }
     
@@ -288,7 +301,7 @@ const StudentManagement: React.FC = () => {
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-16">No</th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama</th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-28">Kelas</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Asrama</th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Barak</th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32">Jenis Kelamin</th>
                 <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-32">Aksi</th>
               </tr>
@@ -321,7 +334,7 @@ const StudentManagement: React.FC = () => {
               <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-16">No</th>
               <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama</th>
               <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-28">Kelas</th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Asrama</th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Barak</th>
               <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32">Jenis Kelamin</th>
               <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-32">Aksi</th>
             </tr>
@@ -334,7 +347,7 @@ const StudentManagement: React.FC = () => {
                   <div className="text-sm font-medium text-gray-900">{student.fullName}</div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{student.class}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{student.asrama}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{student.barak}</td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
                     student.gender === 'Laki-laki' 
@@ -479,132 +492,117 @@ const StudentManagement: React.FC = () => {
 
       {/* Modal form */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 overflow-auto bg-black bg-opacity-50 flex items-center justify-center p-2 sm:p-4">
-          <div className="bg-white w-full max-w-4xl rounded-lg shadow-xl overflow-hidden">
+        <div className="fixed inset-0 z-50 overflow-auto bg-black bg-opacity-50 flex items-center justify-center">
+          <div className="bg-white w-full max-w-md rounded-lg shadow-xl overflow-hidden">
             <div className="p-6 bg-gray-50 border-b flex justify-between items-center">
-              <h2 className="text-2xl font-bold text-gray-800">
-                {editingStudent ? 'Edit Siswa' : 'Tambah Siswa Baru'}
+              <h2 className="text-xl font-bold text-gray-800">
+                {editingStudent ? 'Edit Siswa' : 'Tambah Siswa'}
               </h2>
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="text-gray-600 hover:text-gray-800 transition-colors"
+                className="text-gray-600 hover:text-gray-800"
               >
-                <X size={24} />
+                <X className="h-6 w-6" />
               </button>
             </div>
-            <div className="p-6 max-h-[calc(100vh-200px)] overflow-y-auto">
-              <form onSubmit={handleAddOrUpdateStudent} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Nama Lengkap</label>
-                  <input
-                    type="text"
-                    value={newStudent.fullName}
-                    onChange={(e) => setNewStudent({ ...newStudent, fullName: e.target.value })}
-                    placeholder="Nama Lengkap"
-                    required
-                    className="w-full p-2 border rounded"
-                  />
-                </div>
+            <form onSubmit={handleAddOrUpdateStudent} className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Nama Lengkap
+                </label>
+                <input
+                  type="text"
+                  value={newStudent.fullName}
+                  onChange={(e) => setNewStudent({ ...newStudent, fullName: e.target.value })}
+                  className="w-full p-2 border rounded-md"
+                  required
+                />
+              </div>
 
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Tingkat
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  {['X', 'XI', 'XII'].map((grade) => (
+                    <button
+                      key={grade}
+                      type="button"
+                      onClick={() => setSelectedGrade(grade as 'X' | 'XI' | 'XII')}
+                      className={`p-2 rounded-md transition-colors ${
+                        selectedGrade === grade
+                          ? 'bg-blue-500 text-white'
+                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                      }`}
+                    >
+                      {grade}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {selectedGrade && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Jenis Kelamin</label>
-                  <div className="grid grid-cols-2 gap-2">
-                    {['Laki-laki', 'Perempuan'].map((gender) => (
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Kelas
+                  </label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {['1', '2', '3', '4', '5', '6'].map((num) => (
                       <button
-                        key={gender}
+                        key={num}
                         type="button"
-                        onClick={() => setNewStudent({ ...newStudent, gender: gender as 'Laki-laki' | 'Perempuan' })}
+                        onClick={() => setNewStudent({ ...newStudent, class: `${selectedGrade}-${num}` })}
                         className={`p-2 rounded-md transition-colors ${
-                          newStudent.gender === gender
-                            ? 'bg-blue-500 text-white'
+                          newStudent.class === `${selectedGrade}-${num}`
+                            ? 'bg-green-500 text-white'
                             : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                         }`}
                       >
-                        {gender}
+                        {`${selectedGrade}-${num}`}
                       </button>
                     ))}
                   </div>
                 </div>
+              )}
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Tingkatan</label>
-                  <div className="flex space-x-2">
-                    {['X', 'XI', 'XII'].map((g) => (
-                      <button
-                        key={g}
-                        type="button"
-                        onClick={() => setSelectedGrade(g as 'X' | 'XI' | 'XII')}
-                        className={`flex-1 py-2 px-4 rounded-md transition-colors ${
-                          selectedGrade === g 
-                            ? 'bg-blue-500 text-white' 
-                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                        }`}
-                      >
-                        {g}
-                      </button>
-                    ))}
-                  </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Barak
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  {availableBaraks.map((barak) => (
+                    <button
+                      key={barak.id}
+                      type="button"
+                      onClick={() => handleBarakSelect(barak.name)}
+                      className={`p-2 rounded-md transition-colors ${
+                        newStudent.barak === barak.name
+                          ? 'bg-blue-500 text-white'
+                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                      }`}
+                    >
+                      {barak.name}
+                    </button>
+                  ))}
                 </div>
+              </div>
 
-                {selectedGrade && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Kelas</label>
-                    <div className="grid grid-cols-3 gap-2">
-                      {['1', '2', '3', '4', '5', '6'].map((num) => (
-                        <button
-                          key={num}
-                          type="button"
-                          onClick={() => setNewStudent({ ...newStudent, class: `${selectedGrade}-${num}` })}
-                          className={`p-2 rounded-md transition-colors ${
-                            newStudent.class === `${selectedGrade}-${num}`
-                              ? 'bg-green-500 text-white' 
-                              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                          }`}
-                        >
-                          {`${selectedGrade}-${num}`}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Asrama</label>
-                  <div className="grid grid-cols-2 gap-2">
-                    {availableAsramas.map((asrama) => (
-                      <button
-                        key={asrama.id}
-                        type="button"
-                        onClick={() => setNewStudent({ ...newStudent, asrama: asrama.name })}
-                        className={`p-2 rounded-md transition-colors ${
-                          newStudent.asrama === asrama.name
-                            ? 'bg-blue-500 text-white'
-                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                        }`}
-                      >
-                        {asrama.name}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="flex justify-end space-x-2 pt-4">
-                  <button
-                    type="button"
-                    onClick={() => setIsModalOpen(false)}
-                    className="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300"
-                  >
-                    Batal
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-                  >
-                    {editingStudent ? 'Update' : 'Simpan'}
-                  </button>
-                </div>
-              </form>
-            </div>
+              <div className="flex justify-end space-x-2 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
+                  className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+                >
+                  {editingStudent ? 'Update' : 'Simpan'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

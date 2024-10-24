@@ -62,14 +62,14 @@ const StudentLeaveHistory: React.FC<StudentLeaveHistoryProps> = ({ student, onCl
 
   return (
     <div className="fixed inset-0 z-50 overflow-auto bg-black bg-opacity-50 flex items-center justify-center p-4">
-      <div className="bg-white w-[95%] max-w-7xl rounded-lg shadow-xl overflow-hidden">
+      <div className="bg-white w-full max-w-4xl rounded-lg shadow-xl">
         <div className="p-6 bg-gray-50 border-b flex justify-between items-center">
           <div>
             <h2 className="text-2xl font-bold text-gray-800">
               Riwayat Perizinan - {student.fullName}
             </h2>
             <p className="text-sm text-gray-600">
-              Kelas: {student.class} | Asrama: {student.asrama}
+              Kelas: {student.class} | Barak: {student.barak}
             </p>
           </div>
           <button

@@ -2,8 +2,8 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useStudentLeave } from '../contexts/StudentLeaveContext';
 import { useStudents } from '../contexts/StudentContext';
 import { useAuth } from '../contexts/AuthContext';
-import { useAsrama } from '../contexts/AsramaContext';
-import { Student, StudentLeave, LeaveType, ReturnStatus } from '../types';
+import { useBarak } from '../contexts/BarakContext';
+import { Student, StudentLeave, LeaveType, ReturnStatus, Barak } from '../types';
 import { Edit, Trash2, X, Calendar, Share, Plus } from 'lucide-react';
 import "react-datepicker/dist/react-datepicker.css";
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -17,7 +17,7 @@ const StudentLeaveManagement: React.FC = () => {
   const { leaves, addLeave, updateLeave, deleteLeave } = useStudentLeave();
   const { students } = useStudents();
   const { user: currentUser } = useAuth();
-  const { asramas } = useAsrama();
+  const { baraks } = useBarak();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingLeave, setEditingLeave] = useState<StudentLeave | null>(null);
   const [selectedStudents, setSelectedStudents] = useState<Student[]>([]);
@@ -49,28 +49,28 @@ const StudentLeaveManagement: React.FC = () => {
   const leaveTypes: LeaveType[] = ['Sakit', 'Izin', 'Pulang', 'Tanpa Keterangan', 'Lomba'];
 
   // Filter students berdasarkan asrama pengasuh
-  const availableStudents = useMemo(() => {
-    if (currentUser?.role === 'pengasuh' && currentUser?.barakId) {
+  const filterStudentsByUserAccess = (students: Student[]) => {
+    if (currentUser && currentUser.barakId) {
       const userBarakIds = currentUser.barakId.split(',');
-      const userBaraks = asramas
-        .filter(a => userBarakIds.includes(a.id))
-        .map(a => a.name);
+      const userBaraks = baraks
+        .filter((barak: Barak) => userBarakIds.includes(barak.id))
+        .map((barak: Barak) => barak.name);
       
       return students.filter(student => 
         userBaraks.includes(student.barak)
       );
     }
     return students;
-  }, [students, currentUser, asramas]);
+  };
 
   // Filter siswa berdasarkan pencarian
   const filteredStudents = useMemo(() => {
-    return availableStudents.filter(student => 
+    return filterStudentsByUserAccess(students).filter(student => 
       student.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       student.class.toLowerCase().includes(searchTerm.toLowerCase()) ||
       student.barak.toLowerCase().includes(searchTerm.toLowerCase())
     );
-  }, [availableStudents, searchTerm]);
+  }, [students, searchTerm, filterStudentsByUserAccess]);
 
   // Hapus filter perizinan berdasarkan asrama pengasuh
   const filteredLeaves = useMemo(() => {
@@ -84,6 +84,16 @@ const StudentLeaveManagement: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Validasi siswa sudah dipilih
+    if (selectedStudents.length === 0) {
+      showAlert({
+        type: 'error',
+        message: 'Pilih minimal satu siswa terlebih dahulu'
+      });
+      return;
+    }
+
     try {
       if (editingLeave) {
         // Untuk edit tetap single student
@@ -303,7 +313,7 @@ const StudentLeaveManagement: React.FC = () => {
     
     if (currentUser.role === 'pengasuh' && currentUser.barakId) {
       const userBarakIds = currentUser.barakId.split(',');
-      const userBaraks = asramas
+      const userBaraks = baraks
         .filter(b => userBarakIds.includes(b.id))
         .map(b => b.name);
       
@@ -517,6 +527,7 @@ const StudentLeaveManagement: React.FC = () => {
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Siswa</th>
                   <th className="hidden md:table-cell px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kelas</th>
                   <th className="hidden md:table-cell px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Barak</th>
+                  <th className="hidden md:table-cell px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Gender</th> {/* Tambah kolom gender */}
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Jenis Izin</th>
                   <th className="hidden lg:table-cell px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tanggal & Jam Keluar</th>
                   <th className="hidden lg:table-cell px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tanggal & Jam Kembali</th>
@@ -545,6 +556,16 @@ const StudentLeaveManagement: React.FC = () => {
                       </td>
                       <td className="hidden md:table-cell px-4 py-3 text-sm">{student?.class}</td>
                       <td className="hidden md:table-cell px-4 py-3 text-sm">{student?.barak}</td>
+                      {/* Tambah kolom gender dengan styling */}
+                      <td className="hidden md:table-cell px-4 py-3">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          student?.gender === 'Laki-laki' 
+                            ? 'bg-blue-100 text-blue-800' 
+                            : 'bg-pink-100 text-pink-800'
+                        }`}>
+                          {student?.gender}
+                        </span>
+                      </td>
                       <td className="px-4 py-3">
                         <span className="inline-flex items-center px-2.5 py-1 rounded-md text-sm font-medium bg-blue-100 text-blue-800">
                           {leave.leaveType}
@@ -749,7 +770,7 @@ const StudentLeaveManagement: React.FC = () => {
             <div className="p-6">
               <form onSubmit={handleSubmit} className="space-y-6">
                 {/* Dropdown Siswa */}
-                <div>
+                <div className="bg-white p-4 rounded-lg border border-gray-200">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     {editingLeave ? 'Siswa' : 'Pilih Siswa'} {selectedStudents.length > 0 && `(${selectedStudents.length} dipilih)`}
                   </label>
@@ -766,7 +787,7 @@ const StudentLeaveManagement: React.FC = () => {
                       className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 ${
                         editingLeave ? 'bg-gray-100' : ''
                       }`}
-                      readOnly={!!editingLeave} // Readonly jika dalam mode edit
+                      readOnly={!!editingLeave}
                     />
                     {/* Tampilkan siswa yang sudah dipilih */}
                     {selectedStudents.length > 0 && (
@@ -777,7 +798,7 @@ const StudentLeaveManagement: React.FC = () => {
                             className="inline-flex items-center bg-blue-100 text-blue-700 rounded-full px-3 py-1"
                           >
                             <span className="text-sm">{student.fullName}</span>
-                            {!editingLeave && ( // Hanya tampilkan tombol hapus jika bukan mode edit
+                            {!editingLeave && (
                               <button
                                 type="button"
                                 onClick={() => setSelectedStudents(prev => prev.filter(s => s.id !== student.id))}
@@ -790,7 +811,7 @@ const StudentLeaveManagement: React.FC = () => {
                         ))}
                       </div>
                     )}
-                    {/* Dropdown hanya muncul jika bukan mode edit */}
+                    {/* Dropdown */}
                     {!editingLeave && isDropdownOpen && filteredStudents.length > 0 && (
                       <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg max-h-60 overflow-auto">
                         {filteredStudents
@@ -802,11 +823,19 @@ const StudentLeaveManagement: React.FC = () => {
                                 setSelectedStudents(prev => [...prev, student]);
                                 setSearchTerm('');
                               }}
-                              className="p-3 hover:bg-gray-100 cursor-pointer"
+                              className="p-3 hover:bg-gray-100 cursor-pointer border-b last:border-b-0"
                             >
                               <div className="font-medium">{student.fullName}</div>
-                              <div className="text-sm text-gray-500">
-                                {student.class} - {student.barak}
+                              <div className="text-sm text-gray-500 flex items-center gap-2">
+                                <span className="px-2 py-0.5 rounded bg-gray-100">{student.class}</span>
+                                <span className="px-2 py-0.5 rounded bg-gray-100">{student.barak}</span>
+                                <span className={`px-2 py-0.5 rounded ${
+                                  student.gender === 'Laki-laki' 
+                                    ? 'bg-blue-100 text-blue-800' 
+                                    : 'bg-pink-100 text-pink-800'
+                                }`}>
+                                  {student.gender}
+                                </span>
                               </div>
                             </div>
                           ))}
@@ -815,89 +844,92 @@ const StudentLeaveManagement: React.FC = () => {
                   </div>
                 </div>
 
-                <div>
+                {/* Jenis Izin */}
+                <div className="bg-white p-4 rounded-lg border border-gray-200">
                   <label className="block text-base font-medium text-gray-700 mb-2">
                     Jenis Izin
                   </label>
-                  <select
-                    value={newLeave.leaveType}
-                    onChange={(e) => setNewLeave({ ...newLeave, leaveType: e.target.value as LeaveType })}
-                    className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                  >
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
                     {leaveTypes.map((type) => (
-                      <option key={type} value={type}>{type}</option>
+                      <button
+                        key={type}
+                        type="button"
+                        onClick={() => setNewLeave({ ...newLeave, leaveType: type })}
+                        className={`p-2 rounded-lg transition-colors ${
+                          newLeave.leaveType === type
+                            ? 'bg-blue-500 text-white'
+                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        }`}
+                      >
+                        {type}
+                      </button>
                     ))}
-                  </select>
+                  </div>
                 </div>
 
-                {/* Bagian Tengah: Waktu Izin */}
-                <div>
+                {/* Waktu Izin */}
+                <div className="bg-white p-4 rounded-lg border border-gray-200">
                   <label className="block text-base font-medium text-gray-700 mb-2">
                     Waktu Izin
                   </label>
-                  <div className="grid grid-cols-2 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
-                      <div>
-                        <label className="block text-sm text-gray-600 mb-1">Mulai</label>
-                        <div className="grid grid-cols-2 gap-2">
-                          <input
-                            type="date"
-                            value={newLeave.startDate}
-                            onChange={(e) => setNewLeave({ ...newLeave, startDate: e.target.value })}
-                            className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                          />
-                          <input
-                            type="time"
-                            value={newLeave.startTime}
-                            onChange={(e) => setNewLeave({ ...newLeave, startTime: e.target.value })}
-                            className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                          />
-                        </div>
+                      <label className="block text-sm text-gray-600">Mulai</label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <input
+                          type="date"
+                          value={newLeave.startDate}
+                          onChange={(e) => setNewLeave({ ...newLeave, startDate: e.target.value })}
+                          className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                        />
+                        <input
+                          type="time"
+                          value={newLeave.startTime}
+                          onChange={(e) => setNewLeave({ ...newLeave, startTime: e.target.value })}
+                          className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                        />
                       </div>
                     </div>
                     <div className="space-y-2">
-                      <div>
-                        <label className="block text-sm text-gray-600 mb-1">Selesai</label>
-                        <div className="grid grid-cols-2 gap-2">
-                          <input
-                            type="date"
-                            value={newLeave.endDate}
-                            onChange={(e) => setNewLeave({ ...newLeave, endDate: e.target.value })}
-                            className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                          />
-                          <input
-                            type="time"
-                            value={newLeave.endTime}
-                            onChange={(e) => setNewLeave({ ...newLeave, endTime: e.target.value })}
-                            className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                          />
-                        </div>
+                      <label className="block text-sm text-gray-600">Selesai</label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <input
+                          type="date"
+                          value={newLeave.endDate}
+                          onChange={(e) => setNewLeave({ ...newLeave, endDate: e.target.value })}
+                          className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                        />
+                        <input
+                          type="time"
+                          value={newLeave.endTime}
+                          onChange={(e) => setNewLeave({ ...newLeave, endTime: e.target.value })}
+                          className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                        />
                       </div>
                     </div>
                   </div>
                 </div>
 
-                {/* Bagian Bawah: Keterangan dan Upload */}
-                <div className="grid grid-cols-2 gap-6">
-                  <div>
+                {/* Keterangan dan Upload */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="bg-white p-4 rounded-lg border border-gray-200">
                     <label className="block text-base font-medium text-gray-700 mb-2">
                       Keterangan
                     </label>
                     <textarea
                       value={newLeave.keterangan}
                       onChange={(e) => setNewLeave({ ...newLeave, keterangan: e.target.value })}
-                      className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                      rows={4}
+                      className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 min-h-[120px]"
                       placeholder="Tambahkan keterangan..."
                     />
                   </div>
 
-                  <div>
+                  <div className="bg-white p-4 rounded-lg border border-gray-200">
                     <label className="block text-base font-medium text-gray-700 mb-2">
                       Bukti Surat/Dokumen
                     </label>
                     {editingLeave && editingLeave.documentUrl ? (
-                      <div className="mb-2 flex items-center space-x-2">
+                      <div className="mb-3 flex items-center justify-between bg-gray-50 p-3 rounded-lg">
                         <span className="text-sm text-gray-600">
                           File saat ini: {getFileNameFromUrl(editingLeave.documentUrl)}
                         </span>
@@ -906,21 +938,23 @@ const StudentLeaveManagement: React.FC = () => {
                           onClick={() => handleViewDocument(editingLeave)}
                           className="text-blue-600 hover:text-blue-800 text-sm underline"
                         >
-                          Dokumen
+                          Lihat Dokumen
                         </button>
                       </div>
                     ) : null}
-                    <input
-                      type="file"
-                      onChange={handleFileUpload}
-                      className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                      accept=".pdf,.jpg,.jpeg,.png"
-                    />
-                    <p className="mt-1 text-sm text-gray-500">
-                      {editingLeave?.documentUrl 
-                        ? "Upload file baru untuk mengganti dokumen yang ada" 
-                        : "Upload file (PDF, JPG, PNG)"}
-                    </p>
+                    <div className="space-y-2">
+                      <input
+                        type="file"
+                        onChange={handleFileUpload}
+                        className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                        accept=".pdf,.jpg,.jpeg,.png"
+                      />
+                      <p className="text-sm text-gray-500">
+                        {editingLeave?.documentUrl 
+                          ? "Upload file baru untuk mengganti dokumen yang ada" 
+                          : "Upload file (PDF, JPG, PNG)"}
+                      </p>
+                    </div>
                   </div>
                 </div>
 
@@ -934,7 +968,12 @@ const StudentLeaveManagement: React.FC = () => {
                   </button>
                   <button
                     type="submit"
-                    className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 font-medium"
+                    className={`px-6 py-3 rounded-lg font-medium ${
+                      selectedStudents.length === 0 
+                        ? 'bg-gray-400 cursor-not-allowed text-white' 
+                        : 'bg-blue-500 hover:bg-blue-600 text-white'
+                    }`}
+                    disabled={selectedStudents.length === 0}
                   >
                     {editingLeave ? 'Update' : 'Simpan'}
                   </button>

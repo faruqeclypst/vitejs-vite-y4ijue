@@ -13,8 +13,7 @@ const BarakManagement: React.FC = () => {
   const [editingBarak, setEditingBarak] = useState<Barak | null>(null);
   const [newBarak, setNewBarak] = useState<Omit<Barak, 'id'>>({
     name: '',
-    capacity: 0,
-    currentOccupancy: 0
+    gender: 'Laki-laki'
   });
   const { alert, showAlert, hideAlert } = useAlert();
   const { confirm, isOpen, options, handleConfirm, handleCancel } = useConfirmation();
@@ -35,7 +34,7 @@ const BarakManagement: React.FC = () => {
           message: 'Data barak berhasil ditambahkan'
         });
       }
-      setNewBarak({ name: '', capacity: 0, currentOccupancy: 0 });
+      setNewBarak({ name: '', gender: 'Laki-laki' });
       setIsModalOpen(false);
     } catch (error) {
       showAlert({
@@ -77,7 +76,10 @@ const BarakManagement: React.FC = () => {
 
   const openModal = () => {
     setEditingBarak(null);
-    setNewBarak({ name: '', capacity: 0, currentOccupancy: 0 });
+    setNewBarak({
+      name: '',
+      gender: 'Laki-laki'
+    });
     setIsModalOpen(true);
   };
 
@@ -116,8 +118,7 @@ const BarakManagement: React.FC = () => {
           <thead className="bg-gray-50">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Barak</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kapasitas</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Terisi</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Gender</th>
               <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
             </tr>
           </thead>
@@ -125,8 +126,7 @@ const BarakManagement: React.FC = () => {
             {baraks.map((barak) => (
               <tr key={barak.id}>
                 <td className="px-6 py-4 whitespace-nowrap">{barak.name}</td>
-                <td className="px-6 py-4 whitespace-nowrap">{barak.capacity}</td>
-                <td className="px-6 py-4 whitespace-nowrap">{barak.currentOccupancy}</td>
+                <td className="px-6 py-4 whitespace-nowrap">{barak.gender}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                   <button
                     onClick={() => handleEdit(barak)}
@@ -177,29 +177,17 @@ const BarakManagement: React.FC = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Kapasitas
+                    Gender
                   </label>
-                  <input
-                    type="number"
-                    value={newBarak.capacity}
-                    onChange={(e) => setNewBarak({ ...newBarak, capacity: parseInt(e.target.value) })}
+                  <select
+                    value={newBarak.gender}
+                    onChange={(e) => setNewBarak({ ...newBarak, gender: e.target.value as 'Laki-laki' | 'Perempuan' })}
                     className="w-full p-2 border rounded-md"
                     required
-                    min="0"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Terisi
-                  </label>
-                  <input
-                    type="number"
-                    value={newBarak.currentOccupancy}
-                    onChange={(e) => setNewBarak({ ...newBarak, currentOccupancy: parseInt(e.target.value) })}
-                    className="w-full p-2 border rounded-md"
-                    required
-                    min="0"
-                  />
+                  >
+                    <option value="Laki-laki">Laki-laki</option>
+                    <option value="Perempuan">Perempuan</option>
+                  </select>
                 </div>
               </div>
               <div className="mt-6 flex justify-end space-x-3">

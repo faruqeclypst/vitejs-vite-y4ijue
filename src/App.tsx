@@ -4,7 +4,6 @@ import { TeachersProvider } from './contexts/TeachersContext';
 import { RosterProvider } from './contexts/RosterContext';
 import { AttendanceProvider } from './contexts/AttendanceContext';
 import { StudentProvider } from './contexts/StudentContext';
-import { AsramaProvider } from './contexts/AsramaContext';
 import { StudentLeaveProvider } from './contexts/StudentLeaveContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Sidebar from './components/Sidebar';
@@ -14,12 +13,12 @@ import RosterPage from './pages/RosterPage';
 import AttendancePage from './pages/AttendancePage';
 import UserManagementPage from './pages/UserManagementPage';
 import StudentManagementPage from './pages/StudentManagementPage';
-import AsramaPage from './pages/AsramaPage';
-import StudentLeavePage from './pages/StudentLeavePage';
 import Login from './components/Login';
 import Header from './components/Header';
 import { useState } from 'react';
 import BarakPage from './pages/BarakPage';
+import StudentLeavePage from './pages/StudentLeavePage';
+import { BarakProvider } from './contexts/BarakContext';
 
 const AppRoutes = () => {
   const { user, isLoading } = useAuth();
@@ -65,13 +64,19 @@ const AppRoutes = () => {
                 <Route path="/attendance" element={<ProtectedRoute allowedRoles={['admin', 'piket', 'wakil_kepala']}><AttendancePage /></ProtectedRoute>} />
                 <Route path="/user-management" element={<ProtectedRoute allowedRoles={['admin', 'admin_asrama']}><UserManagementPage /></ProtectedRoute>} />
                 <Route path="/students" element={<ProtectedRoute allowedRoles={['admin_asrama', 'pengasuh']}><StudentManagementPage /></ProtectedRoute>} />
-                <Route path="/asrama" element={<ProtectedRoute allowedRoles={['admin_asrama']}><AsramaPage /></ProtectedRoute>} />
                 <Route path="/student-leave" element={
                   <ProtectedRoute allowedRoles={['admin_asrama', 'pengasuh']}>
                     <StudentLeavePage />
                   </ProtectedRoute>
                 } />
-                <Route path="/barak" element={<BarakPage />} />
+                <Route 
+                  path="/barak" 
+                  element={
+                    <ProtectedRoute allowedRoles={['admin', 'admin_asrama']}>
+                      <BarakPage />
+                    </ProtectedRoute>
+                  } 
+                />
                 <Route path="*" element={<Navigate to="/" />} />
               </Routes>
             </div>
@@ -89,11 +94,11 @@ const App = () => (
       <RosterProvider>
         <AttendanceProvider>
           <StudentProvider>
-            <AsramaProvider>
+            <BarakProvider>
               <StudentLeaveProvider>
                 <AppRoutes />
               </StudentLeaveProvider>
-            </AsramaProvider>
+            </BarakProvider>
           </StudentProvider>
         </AttendanceProvider>
       </RosterProvider>

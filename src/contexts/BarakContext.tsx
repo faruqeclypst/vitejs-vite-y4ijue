@@ -5,9 +5,9 @@ import { Barak } from '../types';
 
 interface BarakContextType {
   baraks: Barak[];
-  addBarak: (barak: Omit<Barak, 'id'>) => Promise<void>;
-  updateBarak: (id: string, barak: Omit<Barak, 'id'>) => Promise<void>;
-  deleteBarak: (id: string) => Promise<void>;
+  addBarak: (barak: Omit<Barak, 'id'>) => void;
+  updateBarak: (id: string, barak: Omit<Barak, 'id'>) => void;
+  deleteBarak: (id: string) => void;
 }
 
 const BarakContext = createContext<BarakContextType | undefined>(undefined);
@@ -17,20 +17,18 @@ export const BarakProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   useEffect(() => {
     const baraksRef = ref(db, 'baraks');
-    const unsubscribe = onValue(baraksRef, (snapshot) => {
+    onValue(baraksRef, (snapshot) => {
       const data = snapshot.val();
       if (data) {
-        const barakList = Object.entries(data).map(([id, value]) => ({
+        const baraksList = Object.entries(data).map(([id, value]) => ({
           id,
           ...(value as Omit<Barak, 'id'>)
         }));
-        setBaraks(barakList);
+        setBaraks(baraksList);
       } else {
         setBaraks([]);
       }
     });
-
-    return () => unsubscribe();
   }, []);
 
   const addBarak = async (barak: Omit<Barak, 'id'>) => {
