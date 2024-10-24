@@ -10,7 +10,13 @@ interface AttendanceTableProps {
   confirmedTeachers: string[];
 }
 
-const AttendanceTable: React.FC<AttendanceTableProps> = ({ roster, teachers, onSubmit, existingAttendance, confirmedTeachers }) => {
+const AttendanceTable: React.FC<AttendanceTableProps> = ({
+  roster,
+  teachers,
+  onSubmit,
+  existingAttendance,
+  confirmedTeachers,
+}) => {
   const [attendanceData, setAttendanceData] = useState<{ [rosterId: string]: { presentHours: number[], keterangan: string } }>({});
   const [initialData, setInitialData] = useState<{ [rosterId: string]: { presentHours: number[], keterangan: string } }>({});
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
@@ -32,8 +38,8 @@ const AttendanceTable: React.FC<AttendanceTableProps> = ({ roster, teachers, onS
     const hasChanges = Object.keys(attendanceData).some(rosterId => {
       const current = attendanceData[rosterId];
       const initial = initialData[rosterId];
-      return !initial ||
-        current.presentHours.length !== initial.presentHours.length ||
+      if (!initial) return false;
+      return current.presentHours.length !== initial.presentHours.length ||
         current.presentHours.some(hour => !initial.presentHours.includes(hour)) ||
         current.keterangan !== initial.keterangan;
     });

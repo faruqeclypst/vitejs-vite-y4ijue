@@ -1,11 +1,12 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import { ref, onValue, push, update, get } from 'firebase/database';
+import { ref, onValue, push, update, get, remove } from 'firebase/database';
 import { db } from '../firebase';
 import { Attendance } from '../types';
 
 interface AttendanceContextType {
   attendanceRecords: Attendance[];
   addOrUpdateAttendanceRecord: (record: Omit<Attendance, 'id'>) => Promise<void>;
+  deleteAttendanceRecord: (id: string) => Promise<void>;
 }
 
 const AttendanceContext = createContext<AttendanceContextType | undefined>(undefined);
@@ -56,8 +57,24 @@ export const AttendanceProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
   };
 
+  const deleteAttendanceRecord = async (id: string) => {
+    try {
+      const attendanceRef = ref(db, `attendance/${id}`);
+      await remove(attendanceRef);
+      // Update state setelah menghapus
+      setAttendanceRecords(prev => prev.filter(record => record.id !== id));
+    } catch (error) {
+      console.error('Error deleting attendance record:', error);
+      throw error;
+    }
+  };
+
   return (
-    <AttendanceContext.Provider value={{ attendanceRecords, addOrUpdateAttendanceRecord }}>
+    <AttendanceContext.Provider value={{ 
+      attendanceRecords, 
+      addOrUpdateAttendanceRecord,
+      deleteAttendanceRecord
+    }}>
       {children}
     </AttendanceContext.Provider>
   );

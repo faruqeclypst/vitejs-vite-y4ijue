@@ -13,8 +13,8 @@ import { exportAttendance } from '../utils/exportAttendance';
 
 const AttendancePage: React.FC = () => {
   const { attendanceRecords, addOrUpdateAttendanceRecord } = useAttendance();
-  const { roster } = useRoster();
-  const { teachers } = useTeachers();
+  const { roster, allRoster } = useRoster();
+  const { teachers, allTeachers } = useTeachers();
   const { user } = useAuth();
   const [currentDay, setCurrentDay] = useState<DayOfWeek | null>('Senin');
   const [currentDate, setCurrentDate] = useState(
@@ -131,8 +131,8 @@ const AttendancePage: React.FC = () => {
           startDate,
           endDate,
           attendanceRecords: filteredRecords,
-          roster,
-          teachers
+          roster: allRoster,
+          teachers: allTeachers
         });
         showAlert({ type: 'success', message: `Data kehadiran ${type === 'custom' ? 'kustom' : 'bulanan'} berhasil diekspor.` });
       } catch (error) {

@@ -2,6 +2,7 @@ export interface Teacher {
   id: string;
   name: string;
   code: string;
+  isDeleted?: boolean;
 }
 
 export interface RosterEntry {
@@ -10,6 +11,7 @@ export interface RosterEntry {
   classId: string;
   dayOfWeek: DayOfWeek;
   hours: number[];
+  isDeleted?: boolean;
 }
 
 export interface Attendance {

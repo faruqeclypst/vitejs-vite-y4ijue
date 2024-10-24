@@ -1,10 +1,11 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import { ref, onValue, push, update, remove } from 'firebase/database';
+import { ref, onValue, push, update } from 'firebase/database';
 import { db } from '../firebase';
 import { Teacher } from '../types';
 
 interface TeachersContextType {
   teachers: Teacher[];
+  allTeachers: Teacher[];
   addTeacher: (teacher: Omit<Teacher, 'id'>) => void;
   updateTeacher: (id: string, teacher: Omit<Teacher, 'id'>) => void;
   deleteTeacher: (id: string) => void;
@@ -14,6 +15,7 @@ const TeachersContext = createContext<TeachersContextType | undefined>(undefined
 
 export const TeachersProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [teachers, setTeachers] = useState<Teacher[]>([]);
+  const [allTeachers, setAllTeachers] = useState<Teacher[]>([]);
 
   useEffect(() => {
     const teachersRef = ref(db, 'teachers');
@@ -24,9 +26,15 @@ export const TeachersProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           id,
           ...(teacher as Omit<Teacher, 'id'>)
         }));
-        setTeachers(teachersList);
+        // Untuk tampilan normal, filter yang tidak dihapus
+        const activeTeachers = teachersList.filter(teacher => !teacher.isDeleted);
+        setTeachers(activeTeachers);
+        
+        // Simpan semua guru termasuk yang dihapus untuk keperluan attendance
+        setAllTeachers(teachersList);
       } else {
         setTeachers([]);
+        setAllTeachers([]);
       }
     });
   }, []);
@@ -47,13 +55,20 @@ export const TeachersProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     });
   };
 
-  const deleteTeacher = (id: string) => {
+  const deleteTeacher = async (id: string) => {
     const teacherRef = ref(db, `teachers/${id}`);
-    remove(teacherRef);
+    // Soft delete dengan mengupdate flag isDeleted
+    await update(teacherRef, { isDeleted: true });
   };
 
   return (
-    <TeachersContext.Provider value={{ teachers, addTeacher, updateTeacher, deleteTeacher }}>
+    <TeachersContext.Provider value={{ 
+      teachers, 
+      allTeachers, // Expose allTeachers
+      addTeacher, 
+      updateTeacher, 
+      deleteTeacher 
+    }}>
       {children}
     </TeachersContext.Provider>
   );
