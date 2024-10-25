@@ -32,7 +32,7 @@ const Login: React.FC = () => {
         {/* Logo/Icon */}
         <div className="text-center">
           <img
-            src="../public/mosa.png" // Pastikan logo ada di folder public
+            src="/mosa.png" // Ubah path gambar
             alt="Logo"
             className="mx-auto h-40 w-auto"
           />
