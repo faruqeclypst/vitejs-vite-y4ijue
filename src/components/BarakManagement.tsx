@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useBarak } from '../contexts/BarakContext';
-import { Plus, X, Edit, Trash2 } from 'lucide-react';
+import { Plus, X, Edit, Trash2, Home, Search } from 'lucide-react';
 import { Barak } from '../types';
 import Alert from './Alert';
 import useAlert from '../hooks/useAlert';
@@ -84,7 +84,8 @@ const BarakManagement: React.FC = () => {
   };
 
   return (
-    <div className="w-full">
+    <div className="space-y-4">
+      {/* Alert dan ConfirmationModal */}
       {alert && (
         <Alert
           type={alert.type}
@@ -97,126 +98,201 @@ const BarakManagement: React.FC = () => {
         isOpen={isOpen}
         onClose={handleCancel}
         onConfirm={handleConfirm}
-        title={options?.title || ''}
-        message={options?.message || ''}
-        confirmText={options?.confirmText}
-        cancelText={options?.cancelText}
+        title={options?.title ?? ''}
+        message={options?.message ?? ''}
+        confirmText={options?.confirmText ?? 'Konfirmasi'}
+        cancelText={options?.cancelText ?? 'Batal'}
       />
 
-      <div className="flex justify-between items-center mb-6">
-        <button
-          onClick={openModal}
-          className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center"
-        >
-          <Plus className="h-5 w-5 mr-2" />
-          Tambah Barak
-        </button>
-      </div>
-
-      <div className="bg-white shadow-md rounded-lg overflow-hidden">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Barak</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Gender</th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {baraks.map((barak) => (
-              <tr key={barak.id}>
-                <td className="px-6 py-4 whitespace-nowrap">{barak.name}</td>
-                <td className="px-6 py-4 whitespace-nowrap">{barak.gender}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                  <button
-                    onClick={() => handleEdit(barak)}
-                    className="text-blue-600 hover:text-blue-900 mr-4"
-                  >
-                    <Edit className="h-5 w-5" />
-                  </button>
-                  <button
-                    onClick={() => handleDelete(barak.id)}
-                    className="text-red-600 hover:text-red-900"
-                  >
-                    <Trash2 className="h-5 w-5" />
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 overflow-auto bg-black bg-opacity-50 flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-md rounded-lg shadow-xl overflow-hidden">
-            <div className="p-6 bg-gray-50 border-b flex justify-between items-center">
-              <h2 className="text-xl font-bold text-gray-800">
-                {editingBarak ? 'Edit Barak' : 'Tambah Barak'}
-              </h2>
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="text-gray-600 hover:text-gray-800"
-              >
-                <X className="h-6 w-6" />
-              </button>
+      {/* Main Content Panel */}
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+        <div className="p-4 sm:p-6">
+          {/* Header dengan Search dan Add */}
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-3 mb-6">
+            <div className="relative w-full sm:w-64">
+              <input
+                type="text"
+                placeholder="Cari barak..."
+                className="w-full p-2 pl-8 border rounded-lg"
+              />
+              <Search className="absolute left-2 top-2.5 text-gray-400" size={18} />
             </div>
-            <form onSubmit={handleSubmit} className="p-6 space-y-6">
-              <div className="bg-white p-4 rounded-lg border border-gray-200">
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Nama Barak
-                    </label>
-                    <input
-                      type="text"
-                      value={newBarak.name}
-                      onChange={(e) => setNewBarak({ ...newBarak, name: e.target.value })}
-                      className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Gender
-                    </label>
-                    <div className="grid grid-cols-2 gap-2">
-                      {['Laki-laki', 'Perempuan'].map((gender) => (
+            <button
+              onClick={openModal}
+              className="w-full sm:w-auto bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 flex items-center justify-center gap-2"
+            >
+              <Plus size={18} />
+              <span>Tambah Barak</span>
+            </button>
+          </div>
+
+          {/* Table/Card View */}
+          <div className="overflow-x-auto">
+            {/* Desktop View */}
+            <div className="hidden sm:block">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Barak</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Gender</th>
+                    <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {baraks.map((barak) => (
+                    <tr key={barak.id} className="hover:bg-gray-50">
+                      <td className="px-4 py-2 whitespace-nowrap">{barak.name}</td>
+                      <td className="px-4 py-2 whitespace-nowrap">
+                        <span className={`px-2 py-1 text-xs rounded-full ${
+                          barak.gender === 'Laki-laki' 
+                            ? 'bg-blue-100 text-blue-800' 
+                            : 'bg-pink-100 text-pink-800'
+                        }`}>
+                          {barak.gender}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2 whitespace-nowrap text-right space-x-1">
                         <button
-                          key={gender}
-                          type="button"
-                          onClick={() => setNewBarak({ ...newBarak, gender: gender as 'Laki-laki' | 'Perempuan' })}
-                          className={`p-3 rounded-lg transition-colors ${
-                            newBarak.gender === gender
-                              ? gender === 'Laki-laki' 
-                                ? 'bg-blue-500 text-white'
-                                : 'bg-pink-500 text-white'
-                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                          }`}
+                          onClick={() => handleEdit(barak)}
+                          className="text-blue-500 hover:text-blue-700 p-1"
                         >
-                          {gender}
+                          <Edit size={16} />
                         </button>
-                      ))}
+                        <button
+                          onClick={() => handleDelete(barak.id)}
+                          className="text-red-500 hover:text-red-700 p-1"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile View */}
+            <div className="sm:hidden space-y-2">
+              {baraks.map((barak) => (
+                <div key={barak.id} className="bg-gray-50 p-3 rounded-lg">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h3 className="font-medium text-gray-900">{barak.name}</h3>
+                      <span className={`mt-1 inline-block px-2 py-0.5 text-xs rounded-full ${
+                        barak.gender === 'Laki-laki' 
+                          ? 'bg-blue-100 text-blue-800' 
+                          : 'bg-pink-100 text-pink-800'
+                      }`}>
+                        {barak.gender}
+                      </span>
+                    </div>
+                    <div className="flex gap-1">
+                      <button
+                        onClick={() => handleEdit(barak)}
+                        className="p-1.5 text-blue-500 hover:bg-blue-50 rounded-full"
+                      >
+                        <Edit size={16} />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(barak.id)}
+                        className="p-1.5 text-red-500 hover:bg-red-50 rounded-full"
+                      >
+                        <Trash2 size={16} />
+                      </button>
                     </div>
                   </div>
                 </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Empty State */}
+          {baraks.length === 0 && (
+            <div className="text-center py-6">
+              <Home className="mx-auto h-10 w-10 text-gray-400" />
+              <h3 className="mt-2 text-sm font-medium text-gray-900">Tidak ada barak</h3>
+              <p className="mt-1 text-sm text-gray-500">
+                Mulai dengan menambahkan barak baru
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Modal Form */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-50">
+          <div className="min-h-screen px-4 text-center">
+            <span className="inline-block h-screen align-middle" aria-hidden="true">&#8203;</span>
+            
+            <div className="inline-block w-full max-w-md p-6 my-8 text-left align-middle transition-all transform bg-white shadow-xl rounded-lg">
+              <div className="border-b pb-4">
+                <div className="flex justify-between items-center">
+                  <h2 className="text-xl font-bold text-gray-800">
+                    {editingBarak ? 'Edit Barak' : 'Tambah Barak Baru'}
+                  </h2>
+                  <button onClick={() => setIsModalOpen(false)} className="text-gray-500 hover:text-gray-700">
+                    <X size={24} />
+                  </button>
+                </div>
               </div>
-              <div className="flex justify-end space-x-4 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-6 py-3 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 font-medium"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 font-medium"
-                >
-                  {editingBarak ? 'Update' : 'Simpan'}
-                </button>
-              </div>
-            </form>
+
+              <form onSubmit={handleSubmit} className="mt-4 space-y-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Nama Barak
+                  </label>
+                  <input
+                    type="text"
+                    value={newBarak.name}
+                    onChange={(e) => setNewBarak({ ...newBarak, name: e.target.value })}
+                    className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                    required
+                    placeholder="Masukkan nama barak"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Gender
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {['Laki-laki', 'Perempuan'].map((gender) => (
+                      <button
+                        key={gender}
+                        type="button"
+                        onClick={() => setNewBarak({ ...newBarak, gender: gender as 'Laki-laki' | 'Perempuan' })}
+                        className={`p-3 rounded-lg transition-colors ${
+                          newBarak.gender === gender
+                            ? gender === 'Laki-laki' 
+                              ? 'bg-blue-500 text-white'
+                              : 'bg-pink-500 text-white'
+                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        }`}
+                      >
+                        {gender}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex justify-end space-x-3 pt-4 border-t">
+                  <button
+                    type="button"
+                    onClick={() => setIsModalOpen(false)}
+                    className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+                  >
+                    {editingBarak ? 'Update' : 'Simpan'}
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
         </div>
       )}
