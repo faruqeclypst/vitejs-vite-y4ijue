@@ -110,8 +110,8 @@ const LandingPage: React.FC = () => {
   }, [user, teachers, attendanceRecords, roster, students, baraks, leaves]);
 
   return (
-    <div className="flex items-center justify-center min-h-[calc(100vh-4rem)]">
-      <div className="w-full max-w-7xl px-4 sm:px-6 lg:px-8">
+    <div className="flex items-center justify-center min-h-[calc(100vh-4rem)] py-6">
+      <div className="w-full max-w-[1920px] mx-auto px-3 sm:px-4">
         <Header userRole={user?.role} />
         <StatsGrid stats={stats} />
       </div>
@@ -129,11 +129,11 @@ const Header: React.FC<{ userRole?: string }> = ({ userRole }) => {
     : "Kelola Jam dan kehadiran Guru dengan mudah dalam satu platform.";
 
   return (
-    <div className="text-center mb-12">
-      <h1 className="text-5xl font-extrabold text-gray-900 sm:text-6xl md:text-7xl">
+    <div className="text-center mb-6 sm:mb-12">
+      <h2 className="h2">
         {title}
-      </h1>
-      <p className="mt-6 text-xl text-gray-600 sm:text-2xl max-w-3xl mx-auto">
+      </h2>
+      <p className="mt-3 sm:mt-6 text-base sm:text-xl md:text-2xl text-gray-600 max-w-3xl mx-auto px-2">
         {subtitle}
       </p>
     </div>
@@ -141,26 +141,24 @@ const Header: React.FC<{ userRole?: string }> = ({ userRole }) => {
 };
 
 const StatsGrid: React.FC<{ stats: StatsItem[] }> = ({ stats }) => (
-  <div className="mt-12">
-    <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
+  <div className="mt-6 sm:mt-12">
+    <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6 lg:gap-8">
       {stats.map((item, index) => (
         <div
           key={item.title}
-          className={`relative overflow-hidden rounded-xl ${item.color} shadow-lg transition-all duration-300 hover:shadow-xl hover:-translate-y-1 ${
-            item.title.startsWith('Jam') ? 'block' : 'hidden sm:block'
-          }`}
+          className={`relative overflow-hidden rounded-xl ${item.color} shadow-lg transition-all duration-300 hover:shadow-xl hover:-translate-y-1`}
           style={{animation: `fadeInUp 0.5s ease-out ${index * 0.1}s both`}}
         >
-          <div className="px-6 py-8">
+          <div className="px-4 sm:px-6 py-4 sm:py-8">
             <div className="flex items-center">
-              <div className="flex-shrink-0 rounded-lg bg-opacity-20 bg-white p-4">
-                <item.icon className="h-8 w-8 text-white" />
+              <div className="flex-shrink-0 rounded-lg bg-opacity-20 bg-white p-2 sm:p-4">
+                <item.icon className="h-6 w-6 sm:h-8 sm:w-8 text-white" />
               </div>
-              <div className="ml-6 w-0 flex-1">
-                <dt className="truncate text-lg font-bold text-gray-100">
+              <div className="ml-3 sm:ml-6 w-0 flex-1">
+                <dt className="truncate text-sm sm:text-base lg:text-lg font-bold text-gray-100">
                   {item.title}
                 </dt>
-                <dd className="mt-2 text-4xl font-semibold text-white">
+                <dd className="mt-1 sm:mt-2 text-2xl sm:text-3xl lg:text-4xl font-semibold text-white">
                   {item.value}
                 </dd>
               </div>

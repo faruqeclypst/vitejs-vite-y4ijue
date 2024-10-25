@@ -125,45 +125,45 @@ const Header = () => {
   
   return (
     <header className="bg-white shadow-sm sticky top-0 z-10">
-      <div className="max-w-7xl mx-auto">
-        <div className="h-16 px-4 flex items-center justify-between">
-          {/* Date and Time Section */}
-          <div className="hidden sm:flex items-center space-x-2 text-gray-600">
-            <div className="flex items-center space-x-1">
-              <span className="font-medium">{formatDate(currentDateTime)}</span>
-              <span className="text-gray-400">|</span>
-              <span className="font-medium text-blue-600">{formatTime(currentDateTime)}</span>
-            </div>
+      <div className="w-full mx-auto px-2 sm:px-4">
+        <div className="h-16 flex items-center justify-between">
+          {/* Date and Time Section - Responsive untuk semua ukuran */}
+          <div className="flex flex-col xs:flex-row items-start xs:items-center space-y-1 xs:space-y-0 xs:space-x-2 text-gray-600 text-xs sm:text-sm">
+            <span className="font-medium">{formatDate(currentDateTime)}</span>
+            <span className="hidden xs:block text-gray-400">|</span>
+            <span className="font-medium text-blue-600">{formatTime(currentDateTime)}</span>
           </div>
 
-          {/* Mobile Date */}
-          <div className="sm:hidden text-sm text-gray-600">
-            <div className="font-medium">{formatDate(currentDateTime)}</div>
-            <div className="font-medium text-blue-600">{formatTime(currentDateTime)}</div>
-          </div>
-
-          {/* User Profile Section */}
+          {/* User Profile Section - Responsive untuk semua ukuran */}
           <div className="relative">
             <button
               onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-              className="flex items-center space-x-3 py-2 px-3 rounded-lg hover:bg-gray-100 transition-colors"
+              className="flex items-center space-x-2 sm:space-x-3 py-2 px-2 sm:px-3 rounded-lg hover:bg-gray-100 transition-colors"
             >
-              <div className="h-8 w-8 bg-blue-500 rounded-full flex items-center justify-center">
-                <User className="h-5 w-5 text-white" />
+              <div className="h-7 w-7 sm:h-8 sm:w-8 bg-blue-500 rounded-full flex items-center justify-center">
+                <User className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
               </div>
-              <div className="hidden sm:block text-right">
-                <div className="text-sm font-medium text-gray-900">{user?.fullName}</div>
-                <div className="text-xs text-gray-500 capitalize">{user?.role?.replace('_', ' ')}</div>
+              <div className="hidden xs:block text-right">
+                <div className="text-xs sm:text-sm font-medium text-gray-900 truncate max-w-[120px] sm:max-w-[200px]">
+                  {user?.fullName}
+                </div>
+                <div className="text-[10px] sm:text-xs text-gray-500 capitalize">
+                  {user?.role?.replace('_', ' ')}
+                </div>
               </div>
-              <ChevronDown className="h-4 w-4 text-gray-500" />
+              <ChevronDown className="h-3 w-3 sm:h-4 sm:w-4 text-gray-500" />
             </button>
 
-            {/* Dropdown Menu */}
+            {/* Dropdown Menu - Responsive */}
             {isDropdownOpen && (
-              <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-1 border border-gray-200">
-                <div className="px-4 py-2 border-b sm:hidden">
-                  <div className="text-sm font-medium text-gray-900">{user?.fullName}</div>
-                  <div className="text-xs text-gray-500 capitalize">{user?.role?.replace('_', ' ')}</div>
+              <div className="absolute right-0 mt-2 w-40 sm:w-48 bg-white rounded-lg shadow-lg py-1 border border-gray-200">
+                <div className="px-3 sm:px-4 py-2 border-b xs:hidden">
+                  <div className="text-xs sm:text-sm font-medium text-gray-900 truncate">
+                    {user?.fullName}
+                  </div>
+                  <div className="text-[10px] sm:text-xs text-gray-500 capitalize">
+                    {user?.role?.replace('_', ' ')}
+                  </div>
                 </div>
                 <button
                   onClick={() => {
@@ -193,13 +193,13 @@ const Header = () => {
         </div>
       </div>
 
-      {/* Edit Profile Modal */}
+      {/* Edit Profile Modal - Responsive */}
       {isEditProfileOpen && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-50">
-          <div className="min-h-screen px-4 text-center">
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-50 p-2">
+          <div className="min-h-screen px-2 sm:px-4 text-center">
             <span className="inline-block h-screen align-middle" aria-hidden="true">&#8203;</span>
             
-            <div className="inline-block w-full max-w-md p-6 my-8 text-left align-middle transition-all transform bg-white shadow-xl rounded-lg">
+            <div className="inline-block w-full max-w-[95%] sm:max-w-md p-4 sm:p-6 my-8 text-left align-middle transition-all transform bg-white shadow-xl rounded-lg">
               <div className="flex justify-between items-center mb-4 pb-4 border-b">
                 <h3 className="text-xl font-bold text-gray-900">Edit Profil</h3>
                 <button

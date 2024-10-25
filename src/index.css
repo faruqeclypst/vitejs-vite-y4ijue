@@ -15,17 +15,44 @@
     -moz-osx-font-smoothing: grayscale;
   }
 
+  /* Universal Container Max Width */
+  .main-container {
+    @apply w-full max-w-[1920px] mx-auto px-3 sm:px-4 lg:px-6;
+  }
+
+  /* Semua div yang langsung di dalam main akan menggunakan max-width universal */
+  main > div {
+    @apply main-container;
+  }
+
+  /* Semua div yang langsung di dalam section juga akan menggunakan max-width universal */
+  section > div {
+    @apply main-container;
+  }
+
   /* Responsive Typography */
-  h1 {
-    @apply text-2xl sm:text-3xl lg:text-4xl font-bold;
+  h1, .h1 {
+    @apply text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-800;
   }
 
-  h2 {
-    @apply text-xl sm:text-2xl lg:text-3xl font-bold;
+  h2, .h2 {
+    @apply text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-800;
   }
 
-  h3 {
-    @apply text-lg sm:text-xl lg:text-2xl font-bold;
+  h3, .h3 {
+    @apply text-xl sm:text-2xl lg:text-3xl font-bold text-gray-800;
+  }
+
+  h4, .h4 {
+    @apply text-lg sm:text-xl lg:text-2xl font-bold text-gray-800;
+  }
+
+  h5, .h5 {
+    @apply text-base sm:text-lg lg:text-xl font-bold text-gray-800;
+  }
+
+  h6, .h6 {
+    @apply text-sm sm:text-base lg:text-lg font-bold text-gray-800;
   }
 
   /* Responsive Spacing */
@@ -37,14 +64,9 @@
     @apply mb-4 sm:mb-6 lg:mb-8;
   }
 
-  /* Responsive Container */
-  .container-responsive {
-    @apply w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
-  }
-
   /* Responsive Card */
   .card-responsive {
-    @apply bg-white shadow-md rounded-lg p-4 sm:p-6 lg:p-8;
+    @apply bg-white shadow-sm rounded-lg p-3 sm:p-4;
   }
 
   /* Responsive Grid */

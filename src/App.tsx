@@ -40,49 +40,78 @@ const AppRoutes = () => {
           user ? (isSidebarExpanded ? 'md:ml-64' : 'md:ml-20') : ''
         }`}>
           {user && <Header />}
-          <main className="flex-1 container-responsive">
-            <div className="w-full max-w-[2000px] mx-auto">
-              <Routes>
-                <Route 
-                  path="/login" 
-                  element={user ? <Navigate to="/" /> : <Login />} 
-                />
-                <Route 
-                  path="/" 
-                  element={
-                    <ProtectedRoute allowedRoles={['admin', 'piket', 'wakil_kepala', 'pengasuh', 'admin_asrama']}>
-                      <LandingPage />
-                    </ProtectedRoute>
-                  } 
-                />
-                <Route 
-                  path="/teachers" 
-                  element={
-                    <ProtectedRoute allowedRoles={['admin']}>
-                      <TeachersPage />
-                    </ProtectedRoute>
-                  } 
-                />
-                <Route path="/roster" element={<ProtectedRoute allowedRoles={['admin', 'piket']}><RosterPage /></ProtectedRoute>} />
-                <Route path="/attendance" element={<ProtectedRoute allowedRoles={['admin', 'piket', 'wakil_kepala']}><AttendancePage /></ProtectedRoute>} />
-                <Route path="/user-management" element={<ProtectedRoute allowedRoles={['admin', 'admin_asrama']}><UserManagementPage /></ProtectedRoute>} />
-                <Route path="/students" element={<ProtectedRoute allowedRoles={['admin_asrama', 'pengasuh']}><StudentManagementPage /></ProtectedRoute>} />
-                <Route path="/student-leave" element={
+          <main className="flex-1 p-3 sm:p-4">
+            <Routes>
+              <Route 
+                path="/login" 
+                element={user ? <Navigate to="/" /> : <Login />} 
+              />
+              <Route 
+                path="/" 
+                element={
+                  <ProtectedRoute allowedRoles={['admin', 'piket', 'wakil_kepala', 'pengasuh', 'admin_asrama']}>
+                    <LandingPage />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/teachers" 
+                element={
+                  <ProtectedRoute allowedRoles={['admin']}>
+                    <TeachersPage />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/roster" 
+                element={
+                  <ProtectedRoute allowedRoles={['admin', 'piket']}>
+                    <RosterPage />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/attendance" 
+                element={
+                  <ProtectedRoute allowedRoles={['admin', 'piket', 'wakil_kepala']}>
+                    <AttendancePage />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/user-management" 
+                element={
+                  <ProtectedRoute allowedRoles={['admin', 'admin_asrama']}>
+                    <UserManagementPage />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/students" 
+                element={
+                  <ProtectedRoute allowedRoles={['admin_asrama', 'pengasuh']}>
+                    <StudentManagementPage />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/student-leave" 
+                element={
                   <ProtectedRoute allowedRoles={['admin_asrama', 'pengasuh']}>
                     <StudentLeavePage />
                   </ProtectedRoute>
-                } />
-                <Route 
-                  path="/barak" 
-                  element={
-                    <ProtectedRoute allowedRoles={['admin', 'admin_asrama']}>
-                      <BarakPage />
-                    </ProtectedRoute>
-                  } 
-                />
-                <Route path="*" element={<Navigate to="/" />} />
-              </Routes>
-            </div>
+                } 
+              />
+              <Route 
+                path="/barak" 
+                element={
+                  <ProtectedRoute allowedRoles={['admin', 'admin_asrama']}>
+                    <BarakPage />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route path="*" element={<Navigate to="/" />} />
+            </Routes>
           </main>
           <div className="h-16 md:hidden" />
         </div>

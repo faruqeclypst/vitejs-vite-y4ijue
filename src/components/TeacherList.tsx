@@ -22,7 +22,7 @@ const TeacherList: React.FC<TeacherListProps> = ({ teachers, onEdit, onDelete, o
   }, [teachers, searchTerm]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 bg-white rounded-lg shadow-sm p-3 sm:p-4">
       {/* Header with Search and Add */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
         <div className="relative w-full sm:w-64">

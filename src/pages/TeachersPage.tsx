@@ -52,60 +52,52 @@ const TeachersPage: React.FC = () => {
   };
 
   return (
-    <div className="p-4">
-      <div className="max-w-6xl mx-auto">
-        <div className="flex flex-col space-y-4">
-          {/* Header */}
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">
-              Kelola Guru
-            </h1>
-          </div>
+    <div className="main-container mt-6">
+      <div className="flex flex-col space-y-4">
+        {/* Header Section */}
+        <div className="bg-white p-6 rounded-lg shadow-sm">
+          <h2 className="h2">Kelola Guru</h2>
+          <p className="mt-2 text-gray-600">Kelola data dan informasi guru pengajar</p>
+        </div>
 
-          {/* Main Content */}
-          <div className="bg-white shadow-md rounded-lg p-4">
-            <TeacherList
-              teachers={teachers}
-              onEdit={handleEdit}
-              onDelete={handleDelete}
-              onAdd={handleAdd}
-            />
-          </div>
-
-          {/* Modal Form */}
-          {isFormOpen && (
-            <div className="modal-container">
-              <div className="modal-content">
-                <TeacherForm
-                  onSubmit={handleSubmit}
-                  initialTeacher={editingTeacher}
-                  onClose={() => setIsFormOpen(false)}
-                />
-              </div>
-            </div>
-          )}
-
-          {/* Alert */}
-          {alert && (
-            <Alert
-              type={alert.type}
-              message={alert.message}
-              duration={alert.duration}
-              onClose={hideAlert}
-            />
-          )}
-
-          {/* Confirmation Modal */}
-          <ConfirmationModal
-            isOpen={isOpen}
-            onClose={handleCancel}
-            onConfirm={handleConfirm}
-            title={options?.title || ''}
-            message={options?.message || ''}
-            confirmText={options?.confirmText}
-            cancelText={options?.cancelText}
+        {/* Content Section */}
+        <div className="bg-white shadow-md rounded-lg p-4">
+          <TeacherList
+            teachers={teachers}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+            onAdd={handleAdd}
           />
         </div>
+
+        {/* Form Modal */}
+        {isFormOpen && (
+          <TeacherForm
+            onSubmit={handleSubmit}
+            initialTeacher={editingTeacher}
+            onClose={() => setIsFormOpen(false)}
+          />
+        )}
+
+        {/* Alert */}
+        {alert && (
+          <Alert
+            type={alert.type}
+            message={alert.message}
+            onClose={hideAlert}
+          />
+        )}
+
+        {/* Confirmation Modal */}
+        <ConfirmationModal
+          isOpen={isOpen}
+          onClose={handleCancel}
+          onConfirm={handleConfirm}
+          title={options?.title || ''}
+          message={options?.message || ''}
+          confirmText={options?.confirmText}
+          cancelText={options?.cancelText}
+        />
       </div>
     </div>
   );

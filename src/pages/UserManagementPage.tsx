@@ -3,20 +3,17 @@ import UserManagement from '../components/UserManagement';
 
 const UserManagementPage: React.FC = () => {
   return (
-    <div className="p-4">
-      <div className="max-w-6xl mx-auto">
-        <div className="flex flex-col space-y-4">
-          {/* Header */}
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">
-              Manajemen Pengguna
-            </h1>
-          </div>
+    <div className="main-container mt-6">
+      <div className="flex flex-col space-y-4">
+        {/* Header Section */}
+        <div className="bg-white p-6 rounded-lg shadow-sm">
+          <h2 className="h2">Manajemen Pengguna</h2>
+          <p className="mt-2 text-gray-600">Kelola akun dan hak akses pengguna sistem</p>
+        </div>
 
-          {/* Main Content */}
-          <div className="bg-white shadow-md rounded-lg p-4">
-            <UserManagement />
-          </div>
+        {/* Content Section */}
+        <div className="bg-white shadow-md rounded-lg p-4">
+          <UserManagement />
         </div>
       </div>
     </div>
