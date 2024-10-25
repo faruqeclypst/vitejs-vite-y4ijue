@@ -92,7 +92,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
       return [
         { value: 'admin' as UserRole, label: 'Admin' },
         { value: 'piket' as UserRole, label: 'Piket' },
-        { value: 'wakil_kepala' as UserRole, label: 'Wakil Kepala' }
+        // { value: 'wakil_kepala' as UserRole, label: 'Wakil Kepala' }
       ];
     }
     return [];
@@ -117,14 +117,14 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const needsBarak = role === 'pengasuh' || role === 'admin_barak';
-      
+      // Hanya perlu barakId untuk role pengasuh
+      const needsBarak = role === 'pengasuh';
       const barakIdToUse = needsBarak ? selectedBaraks.join(',') : undefined;
 
       if (needsBarak && selectedBaraks.length === 0) {
         showAlert({
           type: 'error',
-          message: `Pilih minimal satu barak untuk ${role === 'pengasuh' ? 'pengasuh' : 'admin barak'}`
+          message: 'Pilih minimal satu barak untuk pengasuh'
         });
         return;
       }
@@ -282,6 +282,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
 
   // Update fungsi showBarakField
   const showBarakField = (selectedRole: UserRole) => {
+    // Tampilkan field barak untuk pengasuh dan info untuk admin_asrama
     return selectedRole === 'pengasuh' || selectedRole === 'admin_asrama';
   };
 
@@ -314,24 +315,17 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
   const BarakDropdown = ({ barakId, userName }: { barakId: string | undefined, userName: string }) => {
     const [showModal, setShowModal] = useState(false);
 
-    if (!barakId) return <span className="text-gray-400">-</span>;
-
-      const barakList = barakId.split(',').map(id => 
-        baraks.find((b: Barak) => b.id === id)
-      ).filter(Boolean);
-
-      if (barakList.length === 0) return <span className="text-gray-400">-</span>;
-
+    if (!barakId && currentUser?.role === 'admin_asrama') {
       return (
         <div className="relative">
           <button
             onClick={() => setShowModal(true)}
             className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium transition-colors"
           >
-            Lihat {barakList.length} Barak
+            Lihat {baraks.length} Barak
           </button>
           
-          {/* Modal on Click */}
+          {/* Modal untuk admin asrama */}
           {showModal && (
             <div className="fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-50 flex items-center justify-center">
               <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full mx-4">
@@ -348,16 +342,16 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
                   </button>
                 </div>
                 <div className="space-y-2">
-                  {barakList.map((barak, index) => (
+                  {baraks.map((barak) => (
                     <div
-                      key={index}
+                      key={barak.id}
                       className={`p-3 rounded-lg text-white font-medium ${
-                        barak?.gender === 'Laki-laki' 
+                        barak.gender === 'Laki-laki' 
                           ? 'bg-blue-500' 
                           : 'bg-pink-500'
                       }`}
                     >
-                      {barak?.name}
+                      {barak.name}
                     </div>
                   ))}
                 </div>
@@ -366,7 +360,61 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
           )}
         </div>
       );
-    };
+    }
+
+    if (!barakId) return <span className="text-gray-400">-</span>;
+
+    const barakList = barakId.split(',').map(id => 
+      baraks.find((b: Barak) => b.id === id)
+    ).filter(Boolean);
+
+    if (barakList.length === 0) return <span className="text-gray-400">-</span>;
+
+    return (
+      <div className="relative">
+        <button
+          onClick={() => setShowModal(true)}
+          className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium transition-colors"
+        >
+          Lihat {barakList.length} Barak
+        </button>
+        
+        {/* Modal on Click */}
+        {showModal && (
+          <div className="fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-50 flex items-center justify-center">
+            <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full mx-4">
+              <div className="flex justify-between items-center mb-4 border-b pb-4">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">Daftar Barak</h3>
+                  <p className="text-sm text-gray-600">{userName}</p>
+                </div>
+                <button
+                  onClick={() => setShowModal(false)}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+              <div className="space-y-2">
+                {barakList.map((barak, index) => (
+                  <div
+                    key={index}
+                    className={`p-3 rounded-lg text-white font-medium ${
+                      barak?.gender === 'Laki-laki' 
+                        ? 'bg-blue-500' 
+                        : 'bg-pink-500'
+                    }`}
+                  >
+                    {barak?.name}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   // Tambahkan event listener untuk menutup dropdown saat klik di luar
   useEffect(() => {
@@ -542,7 +590,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
           <div className="fixed inset-0 bg-black opacity-40" onClick={() => setIsModalOpen(false)}></div>
           
           <div className="fixed inset-0 flex items-center justify-center p-4">
-            <div className="bg-white w-full max-w-lg rounded-lg shadow-xl max-h-[90vh] flex flex-col relative">
+            <div className="bg-white w-full max-w-[1000px] rounded-lg shadow-xl max-h-[90vh] flex flex-col relative">
               <div className="p-4 border-b flex-shrink-0">
                 <div className="flex justify-between items-center">
                   <h2 className="text-lg font-semibold">
@@ -629,47 +677,97 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
                   {showBarakField(role) && (
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        {role === 'pengasuh' ? 'Barak yang Diawasi' : 'Barak yang Dikelola'}
+                        {role === 'pengasuh' ? 'Barak yang Diawasi' : 'Hak Akses Barak'}
                       </label>
-                      <div className="bg-white p-4 rounded-lg border border-gray-200">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                          {baraks.map((barak) => (
-                            <div
-                              key={barak.id}
-                              onClick={() => {
-                                if (selectedBaraks.includes(barak.id)) {
-                                  setSelectedBaraks(prev => prev.filter(id => id !== barak.id));
-                                } else {
-                                  setSelectedBaraks(prev => [...prev, barak.id]);
-                                }
-                              }}
-                              className={`p-4 rounded-lg border-2 cursor-pointer transition-all duration-200 ${
-                                selectedBaraks.includes(barak.id)
-                                  ? 'border-blue-500 bg-blue-50'
-                                  : 'border-gray-200 hover:border-blue-200 hover:bg-gray-50'
-                              }`}
-                            >
-                              <div className="flex items-center justify-between">
-                                <div>
-                                  <p className="font-medium text-gray-900">{barak.name}</p>
-                                  <p className="text-sm text-gray-500">{barak.gender}</p>
+                      {role === 'admin_asrama' ? (
+                        <div className="space-y-4">
+                          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                            <div className="flex items-center gap-2">
+                              <div className="p-2 bg-blue-100 rounded-lg">
+                                <Users size={20} className="text-blue-600" />
+                              </div>
+                              <div>
+                                <p className="font-medium text-blue-900">Admin Asrama</p>
+                                <p className="text-sm text-blue-700">
+                                  Dapat mengelola seluruh barak yang tersedia
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="bg-white p-4 rounded-lg border border-gray-200">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                              {baraks.map((barak) => (
+                                <div
+                                  key={barak.id}
+                                  className={`p-4 rounded-lg ${
+                                    barak.gender === 'Laki-laki'
+                                      ? 'bg-blue-500 text-white'
+                                      : 'bg-pink-500 text-white'
+                                  }`}
+                                >
+                                  <div className="flex items-center justify-between">
+                                    <div>
+                                      <p className="font-medium">{barak.name}</p>
+                                      <p className="text-sm opacity-90">{barak.gender}</p>
+                                    </div>
+                                  </div>
                                 </div>
-                                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        // Bagian untuk pengasuh tetap sama
+                        <div className="bg-white p-4 rounded-lg border border-gray-200">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {baraks.map((barak) => (
+                              <div
+                                key={barak.id}
+                                onClick={() => {
+                                  if (selectedBaraks.includes(barak.id)) {
+                                    setSelectedBaraks(prev => prev.filter(id => id !== barak.id));
+                                  } else {
+                                    setSelectedBaraks(prev => [...prev, barak.id]);
+                                  }
+                                }}
+                                className={`p-4 rounded-lg border-2 cursor-pointer transition-all duration-200 ${
                                   selectedBaraks.includes(barak.id)
-                                    ? 'border-blue-500 bg-blue-500'
-                                    : 'border-gray-300'
-                                }`}>
-                                  {selectedBaraks.includes(barak.id) && (
-                                    <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                    </svg>
+                                    ? barak.gender === 'Laki-laki'
+                                      ? 'bg-blue-500 text-white border-blue-600'
+                                      : 'bg-pink-500 text-white border-pink-600'
+                                    : 'border-gray-200 hover:border-gray-300'
+                                }`}
+                              >
+                                <div className="flex items-center justify-between">
+                                  <div>
+                                    <p className={`font-medium ${selectedBaraks.includes(barak.id) ? 'text-white' : 'text-gray-900'}`}>
+                                      {barak.name}
+                                    </p>
+                                    <p className={`text-sm ${selectedBaraks.includes(barak.id) ? 'text-white opacity-90' : 'text-gray-500'}`}>
+                                      {barak.gender}
+                                    </p>
+                                  </div>
+                                  {role === 'pengasuh' && (
+                                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                                      selectedBaraks.includes(barak.id)
+                                        ? 'border-white bg-white'
+                                        : 'border-gray-300'
+                                    }`}>
+                                      {selectedBaraks.includes(barak.id) && (
+                                        <svg className={`w-3 h-3 ${
+                                          barak.gender === 'Laki-laki' ? 'text-blue-500' : 'text-pink-500'
+                                        }`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                        </svg>
+                                      )}
+                                    </div>
                                   )}
                                 </div>
                               </div>
-                            </div>
-                          ))}
+                            ))}
+                          </div>
                         </div>
-                      </div>
+                      )}
                     </div>
                   )}
 
@@ -705,7 +803,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
           }}></div>
           
           <div className="fixed inset-0 flex items-center justify-center p-4">
-            <div className="bg-white w-full max-w-lg rounded-lg shadow-xl max-h-[90vh] flex flex-col relative">
+            <div className="bg-white w-full max-w-[600px] rounded-lg shadow-xl max-h-[90vh] flex flex-col relative">
               <div className="p-4 border-b flex-shrink-0">
                 <div className="flex justify-between items-center">
                   <h3 className="text-lg font-semibold">

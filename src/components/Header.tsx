@@ -39,6 +39,19 @@ const Header = () => {
     return () => clearInterval(timer);
   }, []);
 
+  // Tambahkan useEffect untuk handle click outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (isDropdownOpen && !target.closest('[data-dropdown]')) {
+        setIsDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isDropdownOpen]);
+
   const handleLogout = async () => {
     const confirmed = await confirm({
       title: 'Konfirmasi Logout',
@@ -116,11 +129,10 @@ const Header = () => {
   };
 
   const formatTime = (date: Date) => {
-    return date.toLocaleTimeString('id-ID', {
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit'
-    });
+    const hours = date.getHours().toString().padStart(2, '0');
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    const seconds = date.getSeconds().toString().padStart(2, '0');
+    return `${hours}:${minutes}:${seconds}`;
   };
   
   return (
@@ -137,6 +149,7 @@ const Header = () => {
           {/* User Profile Section - Responsive untuk semua ukuran */}
           <div className="relative">
             <button
+              data-dropdown
               onClick={() => setIsDropdownOpen(!isDropdownOpen)}
               className="flex items-center space-x-2 sm:space-x-3 py-2 px-2 sm:px-3 rounded-lg hover:bg-gray-100 transition-colors"
             >
@@ -154,9 +167,11 @@ const Header = () => {
               <ChevronDown className="h-3 w-3 sm:h-4 sm:w-4 text-gray-500" />
             </button>
 
-            {/* Dropdown Menu - Responsive */}
             {isDropdownOpen && (
-              <div className="absolute right-0 mt-2 w-40 sm:w-48 bg-white rounded-lg shadow-lg py-1 border border-gray-200">
+              <div 
+                data-dropdown
+                className="absolute right-0 mt-2 w-40 sm:w-48 bg-white rounded-lg shadow-lg py-1 border border-gray-200"
+              >
                 <div className="px-3 sm:px-4 py-2 border-b xs:hidden">
                   <div className="text-xs sm:text-sm font-medium text-gray-900 truncate">
                     {user?.fullName}

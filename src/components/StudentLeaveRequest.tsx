@@ -3,6 +3,8 @@ import { StudentLeaveRequest } from '../types';
 import { useStudents } from '../contexts/StudentContext';
 import { useAuth } from '../contexts/AuthContext';
 import { ChevronDown, ChevronUp } from 'lucide-react';
+import { X } from 'lucide-react';
+import { Calendar } from 'lucide-react';
 
 const StudentLeaveRequestForm: React.FC = () => {
   const { students } = useStudents();
@@ -14,6 +16,7 @@ const StudentLeaveRequestForm: React.FC = () => {
     reason: ''
   });
   const [expandedRequests, setExpandedRequests] = useState<string[]>([]);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
     // Load existing requests from localStorage
@@ -96,6 +99,16 @@ const StudentLeaveRequestForm: React.FC = () => {
             Submit Permintaan Izin
           </button>
         </form>
+      )}
+
+      {Object.keys(groupedRequests).length === 0 && (
+        <div className="text-center py-12 bg-white rounded-lg shadow-sm border">
+          <Calendar className="mx-auto h-12 w-12 text-gray-400" />
+          <h3 className="mt-2 text-sm font-medium text-gray-900">Belum ada permintaan izin yang dibuat hari ini</h3>
+          <p className="mt-1 text-sm text-gray-500">
+            Permintaan izin yang dibuat akan muncul di sini
+          </p>
+        </div>
       )}
 
       <div className="space-y-4">
@@ -202,6 +215,63 @@ const StudentLeaveRequestForm: React.FC = () => {
           </div>
         ))}
       </div>
+
+      {/* Modal form */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 overflow-hidden">
+          <div className="fixed inset-0 bg-black opacity-40" onClick={() => setIsModalOpen(false)}></div>
+          
+          <div className="fixed inset-0 flex items-center justify-center p-4">
+            <div className="bg-white w-full max-w-lg rounded-lg shadow-xl max-h-[90vh] flex flex-col relative">
+              <div className="p-4 border-b flex-shrink-0">
+                <div className="flex justify-between items-center">
+                  <h2 className="text-lg font-semibold">
+                    Tambah Permintaan Izin
+                  </h2>
+                  <button onClick={() => setIsModalOpen(false)} className="text-gray-500 hover:text-gray-700">
+                    <X size={20} />
+                  </button>
+                </div>
+              </div>
+              
+              <div className="flex-1 overflow-y-auto p-4">
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <select
+                      value={request.studentId}
+                      onChange={(e) => setRequest({ ...request, studentId: e.target.value })}
+                      className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                      required
+                    >
+                      <option value="">Pilih siswa</option>
+                      {students.map((student) => (
+                        <option key={student.id} value={student.id}>{student.fullName}</option>
+                      ))}
+                    </select>
+                    <input
+                      type="date"
+                      value={request.date}
+                      onChange={(e) => setRequest({ ...request, date: e.target.value })}
+                      className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                      required
+                    />
+                  </div>
+                  <textarea
+                    value={request.reason}
+                    onChange={(e) => setRequest({ ...request, reason: e.target.value })}
+                    placeholder="Alasan izin"
+                    className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 min-h-[100px]"
+                    required
+                  />
+                  <button type="submit" className="w-full md:w-auto px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors">
+                    Submit Permintaan Izin
+                  </button>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

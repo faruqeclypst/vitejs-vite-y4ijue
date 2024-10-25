@@ -126,7 +126,6 @@ const StudentManagement: React.FC = () => {
   const handleAddOrUpdateStudent = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      // Pastikan barak sama dengan asrama untuk backward compatibility
       const studentData = {
         ...newStudent,
         barak: newStudent.barak
@@ -163,6 +162,9 @@ const StudentManagement: React.FC = () => {
   const handleEditStudent = (student: Student) => {
     setEditingStudent(student);
     setNewStudent(student);
+    // Set selectedGrade berdasarkan kelas siswa
+    const grade = student.class.split('-')[0] as 'X' | 'XI' | 'XII';
+    setSelectedGrade(grade);
     setIsModalOpen(true);
   };
 
@@ -238,6 +240,7 @@ const StudentManagement: React.FC = () => {
 
   const openModal = () => {
     setEditingStudent(null);
+    setSelectedGrade(''); // Reset selectedGrade
     setNewStudent({
       fullName: '',
       gender: 'Laki-laki',
@@ -567,133 +570,134 @@ const StudentManagement: React.FC = () => {
 
       {/* Modal Form */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-50">
-          <div className="min-h-screen px-4 text-center">
-            <span className="inline-block h-screen align-middle" aria-hidden="true">&#8203;</span>
-            
-            <div className="inline-block w-full max-w-4xl p-6 my-8 text-left align-middle transition-all transform bg-white shadow-xl rounded-lg">
-              <div className="border-b pb-4">
+        <div className="fixed inset-0 z-50 overflow-hidden">
+          <div className="fixed inset-0 bg-black opacity-40" onClick={() => setIsModalOpen(false)}></div>
+          
+          <div className="fixed inset-0 flex items-center justify-center p-4">
+            <div className="bg-white w-full max-w-lg rounded-lg shadow-xl max-h-[90vh] flex flex-col relative">
+              <div className="p-4 border-b flex-shrink-0">
                 <div className="flex justify-between items-center">
-                  <h2 className="text-xl font-bold text-gray-800">
+                  <h2 className="text-lg font-semibold">
                     {editingStudent ? 'Edit Siswa' : 'Tambah Siswa Baru'}
                   </h2>
                   <button onClick={() => setIsModalOpen(false)} className="text-gray-500 hover:text-gray-700">
-                    <X size={24} />
+                    <X size={20} />
                   </button>
                 </div>
               </div>
 
-              <form onSubmit={handleAddOrUpdateStudent} className="mt-4">
-                <div className="grid grid-cols-2 gap-4">
-                  {/* Nama Lengkap, Tingkat, dan Kelas */}
-                  <div className="bg-white p-4 rounded-lg border border-gray-200">
-                    {/* Nama Lengkap */}
-                    <div className="mb-4">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Nama Lengkap
-                      </label>
-                      <input
-                        type="text"
-                        value={newStudent.fullName}
-                        onChange={(e) => setNewStudent({ ...newStudent, fullName: e.target.value })}
-                        className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                        required
-                      />
-                    </div>
+              <div className="flex-1 overflow-y-auto p-4">
+                <form onSubmit={handleAddOrUpdateStudent} className="space-y-4">
+                  {/* Nama Lengkap */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Nama Lengkap
+                    </label>
+                    <input
+                      type="text"
+                      value={newStudent.fullName}
+                      onChange={(e) => setNewStudent({ ...newStudent, fullName: e.target.value })}
+                      className="w-full p-2.5 text-sm border rounded-md"
+                      required
+                    />
+                  </div>
 
-                    {/* Tingkat */}
-                    <div className="mb-4">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Tingkat
+                  {/* Tingkat */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Tingkat
+                    </label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {['X', 'XI', 'XII'].map((grade) => (
+                        <button
+                          key={grade}
+                          type="button"
+                          onClick={() => setSelectedGrade(grade as 'X' | 'XI' | 'XII')}
+                          className={`p-2.5 rounded-md transition-colors ${
+                            selectedGrade === grade
+                              ? 'bg-blue-500 text-white'
+                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                          }`}
+                        >
+                          {grade}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Kelas */}
+                  {selectedGrade && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Kelas
                       </label>
                       <div className="grid grid-cols-3 gap-2">
-                        {['X', 'XI', 'XII'].map((grade) => (
+                        {['1', '2', '3', '4', '5', '6'].map((num) => (
                           <button
-                            key={grade}
+                            key={num}
                             type="button"
-                            onClick={() => setSelectedGrade(grade as 'X' | 'XI' | 'XII')}
-                            className={`p-3 rounded-lg transition-colors ${
-                              selectedGrade === grade
+                            onClick={() => setNewStudent({ ...newStudent, class: `${selectedGrade}-${num}` })}
+                            className={`p-2.5 rounded-md transition-colors ${
+                              newStudent.class === `${selectedGrade}-${num}`
                                 ? 'bg-blue-500 text-white'
                                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                             }`}
                           >
-                            {grade}
+                            {`${selectedGrade}-${num}`}
                           </button>
                         ))}
                       </div>
                     </div>
-
-                    {/* Kelas */}
-                    {selectedGrade && (
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Kelas
-                        </label>
-                        <div className="grid grid-cols-3 gap-2">
-                          {['1', '2', '3', '4', '5', '6'].map((num) => (
-                            <button
-                              key={num}
-                              type="button"
-                              onClick={() => setNewStudent({ ...newStudent, class: `${selectedGrade}-${num}` })}
-                              className={`p-3 rounded-lg transition-colors ${
-                                newStudent.class === `${selectedGrade}-${num}`
-                                  ? 'bg-green-500 text-white'
-                                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                              }`}
-                            >
-                              {`${selectedGrade}-${num}`}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
+                  )}
 
                   {/* Barak */}
-                  <div className="bg-white p-4 rounded-lg border border-gray-200">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
                       Barak
                     </label>
-                    <div className="max-h-[400px] overflow-y-auto pr-2"> {/* Tambahkan max height dan scroll */}
-                      <div className="grid grid-cols-2 gap-2">
-                        {availableBaraks.map((barak) => (
-                          <button
-                            key={barak.id}
-                            type="button"
-                            onClick={() => handleBarakSelect(barak.name)}
-                            className={`p-3 rounded-lg transition-colors ${
-                              newStudent.barak === barak.name
-                                ? barak.gender === 'Laki-laki'
-                                  ? 'bg-blue-500 text-white'
-                                  : 'bg-pink-500 text-white'
-                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                            }`}
-                          >
-                            {barak.name}
-                          </button>
-                        ))}
-                      </div>
+                    <div className="grid grid-cols-2 gap-2 max-h-[200px] overflow-y-auto">
+                      {availableBaraks.map((barak) => (
+                        <button
+                          key={barak.id}
+                          type="button"
+                          onClick={() => handleBarakSelect(barak.name)}
+                          className={`p-2.5 rounded-md transition-colors ${
+                            newStudent.barak === barak.name
+                              ? barak.gender === 'Laki-laki'
+                                ? 'bg-blue-500 text-white'
+                                : 'bg-pink-500 text-white'
+                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                          }`}
+                        >
+                          {barak.name}
+                        </button>
+                      ))}
                     </div>
                   </div>
-                </div>
 
-                <div className="flex justify-end space-x-4 mt-6">
-                  <button
-                    type="button"
-                    onClick={() => setIsModalOpen(false)}
-                    className="px-6 py-3 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 font-medium"
-                  >
-                    Batal
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 font-medium"
-                  >
-                    {editingStudent ? 'Update' : 'Simpan'}
-                  </button>
-                </div>
-              </form>
+                  {/* Action Buttons */}
+                  <div className="flex justify-end space-x-3 pt-4 border-t">
+                    <button
+                      type="button"
+                      onClick={() => setIsModalOpen(false)}
+                      className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300"
+                    >
+                      Batal
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={!newStudent.barak}
+                      className={`px-4 py-2 rounded-lg ${
+                        !newStudent.barak 
+                          ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                          : 'bg-blue-500 text-white hover:bg-blue-600'
+                      }`}
+                    >
+                      {editingStudent ? 'Update' : 'Simpan'}
+                    </button>
+                  </div>
+                </form>
+              </div>
             </div>
           </div>
         </div>
@@ -701,10 +705,29 @@ const StudentManagement: React.FC = () => {
 
       {/* Student History Modal */}
       {selectedStudentForHistory && (
-        <StudentLeaveHistory
-          student={selectedStudentForHistory}
-          onClose={() => setSelectedStudentForHistory(null)}
-        />
+        <div className="fixed inset-0 z-50 overflow-hidden">
+          <div className="fixed inset-0 bg-black opacity-40" onClick={() => setSelectedStudentForHistory(null)}></div>
+          
+          <div className="fixed inset-0 flex items-center justify-center p-4">
+            <div className="bg-white w-full max-w-lg rounded-lg shadow-xl max-h-[90vh] flex flex-col relative">
+              <div className="p-4 border-b flex-shrink-0">
+                <div className="flex justify-between items-center">
+                  <h2 className="text-lg font-semibold">Riwayat Perizinan</h2>
+                  <button onClick={() => setSelectedStudentForHistory(null)} className="text-gray-500 hover:text-gray-700">
+                    <X size={20} />
+                  </button>
+                </div>
+              </div>
+              
+              <div className="flex-1 overflow-y-auto p-4">
+                <StudentLeaveHistory
+                  student={selectedStudentForHistory}
+                  onClose={() => setSelectedStudentForHistory(null)}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </>
   );

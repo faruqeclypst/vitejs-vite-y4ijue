@@ -40,7 +40,8 @@ const AppRoutes = () => {
           user ? (isSidebarExpanded ? 'md:ml-64' : 'md:ml-20') : ''
         }`}>
           {user && <Header />}
-          <main className="flex-1 p-3 sm:p-4">
+          <main>
+          {/* <main className="flex-1 p-3 sm:p-4">  biang keror scroll gajelas di landing page */}
             <Routes>
               <Route 
                 path="/login" 

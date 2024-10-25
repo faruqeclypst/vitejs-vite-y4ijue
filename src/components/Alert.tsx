@@ -39,7 +39,7 @@ const Alert: React.FC<AlertProps> = ({ type, message, duration = 3000, onClose }
   };
 
   return (
-    <div className={`fixed bottom-4 right-4 z-50 p-4 rounded-md border-l-4 ${alertClasses[type]} flex items-center`}>
+    <div className={`fixed top-20 right-4 z-50 p-4 rounded-md border-l-4 ${alertClasses[type]} flex items-center shadow-lg`}>
       {icons[type]}
       <span>{message}</span>
     </div>

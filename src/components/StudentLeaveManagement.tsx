@@ -32,7 +32,6 @@ const StudentLeaveManagement: React.FC = () => {
   });
   const [isDocumentModalOpen, setIsDocumentModalOpen] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState<string | null>(null);
-  const [selectedLeave, setSelectedLeave] = useState<StudentLeave | null>(null);
   const [showStatusConfirmModal, setShowStatusConfirmModal] = useState(false);
   const [selectedLeaveForStatus, setSelectedLeaveForStatus] = useState<StudentLeave | null>(null);
   const [newStatus, setNewStatus] = useState<ReturnStatus | null>(null);
@@ -230,7 +229,6 @@ const StudentLeaveManagement: React.FC = () => {
     if (leave.documentUrl) {
       const student = students.find(s => s.id === leave.studentId);
       setSelectedDocument(leave.documentUrl);
-      setSelectedLeave(leave);
       setSelectedStudents(student ? [student] : []);
       setIsDocumentModalOpen(true);
     }
@@ -494,7 +492,25 @@ const StudentLeaveManagement: React.FC = () => {
     <div className="space-y-6">
       {/* Header dan Filter */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full sm:w-auto">
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <Calendar className="h-5 w-5 text-gray-500" />
+          <input
+            type="date"
+            value={selectedDate}
+            onChange={(e) => setSelectedDate(e.target.value)}
+            className="w-full sm:w-auto p-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          {filteredLeavesByDate.length > 0 && (
+            <button
+              onClick={shareToWhatsApp}
+              className="w-full sm:w-auto bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg flex items-center justify-center text-base"
+            >
+              <Share className="h-5 w-5 mr-2" />
+              Share WhatsApp
+            </button>
+          )}
           <button
             onClick={openModal}
             className="w-full sm:w-auto bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center justify-center text-base"
@@ -502,25 +518,7 @@ const StudentLeaveManagement: React.FC = () => {
             <Plus className="h-5 w-5 mr-2" />
             Tambah Perizinan
           </button>
-          <div className="flex items-center gap-2 w-full sm:w-auto">
-            <Calendar className="h-5 w-5 text-gray-500" />
-            <input
-              type="date"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              className="w-full sm:w-auto p-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
         </div>
-        {filteredLeavesByDate.length > 0 && (
-          <button
-            onClick={shareToWhatsApp}
-            className="w-full sm:w-auto bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg flex items-center justify-center text-base"
-          >
-            <Share className="h-5 w-5 mr-2" />
-            Share WhatsApp
-          </button>
-        )}
       </div>
 
       {/* Table/Card View */}
@@ -734,240 +732,277 @@ const StudentLeaveManagement: React.FC = () => {
         </div>
       </div>
 
+      {/* Empty State */}
+      {filteredLeavesByDate.length === 0 && (
+        <div className="text-center py-12 bg-white rounded-lg shadow-sm border">
+          <Calendar className="mx-auto h-12 w-12 text-gray-400" />
+          <h3 className="mt-2 text-sm font-medium text-gray-900">Belum ada perizinan yang dibuat hari ini</h3>
+          <p className="mt-1 text-sm text-gray-500">
+            Klik tombol "Tambah Perizinan" untuk membuat perizinan baru
+          </p>
+        </div>
+      )}
+
       {/* Modal form */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-[60] overflow-y-auto">
-          <div className="fixed inset-0 bg-black bg-opacity-50"></div>
-          <div className="relative min-h-screen flex items-center justify-center p-4">
-            <div className="bg-white w-full max-w-4xl rounded-lg shadow-xl overflow-hidden relative">
-              <div className="p-6 bg-gray-50 border-b flex justify-between items-center">
-                <h3 className="text-xl font-bold text-gray-800">
-                  {editingLeave ? 'Edit Perizinan' : 'Tambah Perizinan Baru'}
-                </h3>
-                <button onClick={() => setIsModalOpen(false)} className="text-gray-500 hover:text-gray-700">
-                  <X className="h-6 w-6" />
-                </button>
+        <div className="fixed inset-0 z-50 overflow-hidden">
+          <div className="fixed inset-0 bg-black opacity-40" onClick={() => setIsModalOpen(false)}></div>
+          
+          <div className="fixed inset-0 flex items-center justify-center p-4">
+            <div className="bg-white w-full max-w-[1200px] rounded-lg shadow-xl max-h-[90vh] flex flex-col relative">
+              <div className="p-4 border-b flex-shrink-0">
+                <div className="flex justify-between items-center">
+                  <h2 className="text-lg font-semibold">
+                    {editingLeave ? 'Edit Perizinan' : 'Tambah Perizinan Baru'}
+                  </h2>
+                  <button onClick={() => setIsModalOpen(false)} className="text-gray-500 hover:text-gray-700">
+                    <X size={20} />
+                  </button>
+                </div>
               </div>
-              <div className="p-6">
+              
+              <div className="flex-1 overflow-y-auto p-4">
                 <form onSubmit={handleSubmit} className="space-y-6">
-                  {/* Dropdown Siswa */}
-                  <div className="bg-white p-4 rounded-lg border border-gray-200">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      {editingLeave ? 'Siswa' : 'Pilih Siswa'} {selectedStudents.length > 0 && `(${selectedStudents.length} dipilih)`}
-                    </label>
-                    <div className="relative" ref={dropdownRef}>
-                      <input
-                        type="text"
-                        placeholder="Cari siswa..."
-                        value={searchTerm}
-                        onChange={(e) => {
-                          setSearchTerm(e.target.value);
-                          if (!editingLeave) setIsDropdownOpen(true);
-                        }}
-                        onClick={() => !editingLeave && setIsDropdownOpen(true)}
-                        className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 ${
-                          editingLeave ? 'bg-gray-100' : ''
-                        }`}
-                        readOnly={!!editingLeave}
-                      />
-                      {/* Tampilkan siswa yang sudah dipilih */}
-                      {selectedStudents.length > 0 && (
-                        <div className="mt-2 flex flex-wrap gap-2">
-                          {selectedStudents.map((student) => (
-                            <div
-                              key={student.id}
-                              className={`inline-flex items-center px-3 py-1.5 rounded-lg ${
-                                student.gender === 'Laki-laki'
-                                  ? 'bg-blue-100 text-blue-800'
-                                  : 'bg-pink-100 text-pink-800'
+                  <div className="grid grid-cols-1 lg:grid-cols-3  gap-6">
+                    {/* Kolom 1: Pilih Siswa */}
+                    <div className="space-y-4">
+                      <div className="bg-white p-4 rounded-lg border border-gray-200">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          {editingLeave ? 'Siswa' : 'Pilih Siswa'} {selectedStudents.length > 0 && `(${selectedStudents.length} dipilih)`}
+                        </label>
+                        <div className="relative" ref={dropdownRef}>
+                          <input
+                            type="text"
+                            placeholder="Cari siswa..."
+                            value={searchTerm}
+                            onChange={(e) => {
+                              setSearchTerm(e.target.value);
+                              if (!editingLeave) setIsDropdownOpen(true);
+                            }}
+                            onClick={() => !editingLeave && setIsDropdownOpen(true)}
+                            className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 ${
+                              editingLeave ? 'bg-gray-100' : ''
+                            }`}
+                            readOnly={!!editingLeave}
+                          />
+                          {/* Tampilkan siswa yang sudah dipilih */}
+                          {selectedStudents.length > 0 && (
+                            <div className="mt-2">
+                              <div className="text-sm text-gray-500 mb-2">
+                                {selectedStudents.length} siswa terpilih
+                              </div>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[240px] overflow-y-auto p-1">
+                                {selectedStudents.map((student) => (
+                                  <div
+                                    key={student.id}
+                                    className={`flex items-center justify-between p-2 rounded-lg ${
+                                      student.gender === 'Laki-laki'
+                                        ? 'bg-blue-50 border border-blue-200'
+                                        : 'bg-pink-50 border border-pink-200'
+                                    }`}
+                                  >
+                                    <div className="min-w-0 flex-1">
+                                      <div className="flex items-center space-x-1">
+                                        <span className={`text-sm font-medium truncate ${
+                                          student.gender === 'Laki-laki' ? 'text-blue-700' : 'text-pink-700'
+                                        }`}>
+                                          {student.fullName}
+                                        </span>
+                                        <span className={`text-xs px-1.5 py-0.5 rounded-full ${
+                                          student.gender === 'Laki-laki'
+                                            ? 'bg-blue-100 text-blue-600'
+                                            : 'bg-pink-100 text-pink-600'
+                                        }`}>
+                                          {student.class}
+                                        </span>
+                                      </div>
+                                      <div className="text-xs text-gray-500 truncate">
+                                        {student.barak}
+                                      </div>
+                                    </div>
+                                    {!editingLeave && (
+                                      <button
+                                        type="button"
+                                        onClick={() => setSelectedStudents(prev => prev.filter(s => s.id !== student.id))}
+                                        className={`ml-2 p-1 rounded-full hover:bg-opacity-80 ${
+                                          student.gender === 'Laki-laki'
+                                            ? 'hover:bg-blue-100 text-blue-600'
+                                            : 'hover:bg-pink-100 text-pink-600'
+                                        }`}
+                                      >
+                                        <X className="h-4 w-4" />
+                                      </button>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          {/* Dropdown */}
+                          {!editingLeave && isDropdownOpen && filteredStudents.length > 0 && (
+                            <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg max-h-80 overflow-auto">
+                              {filteredStudents
+                                .filter(student => !selectedStudents.some(s => s.id === student.id))
+                                .map((student) => (
+                                  <div
+                                    key={student.id}
+                                    onClick={() => {
+                                      setSelectedStudents(prev => [...prev, student]);
+                                      setSearchTerm('');
+                                    }}
+                                    className="p-3 hover:bg-gray-100 cursor-pointer border-b last:border-b-0"
+                                  >
+                                    <div className="flex items-center justify-between">
+                                      <div className="font-medium">{student.fullName}</div>
+                                      <div className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                                        student.gender === 'Laki-laki'
+                                          ? 'bg-blue-100 text-blue-800'
+                                          : 'bg-pink-100 text-pink-800'
+                                      }`}>
+                                        {student.gender}
+                                      </div>
+                                    </div>
+                                    <div className="text-sm text-gray-500 flex items-center gap-2 mt-1">
+                                      <span className="px-2 py-0.5 rounded bg-gray-100">{student.class}</span>
+                                      <span className="text-gray-400">•</span>
+                                      <span className="px-2 py-0.5 rounded bg-gray-100">{student.barak}</span>
+                                    </div>
+                                  </div>
+                                ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Kolom 2: Jenis Izin dan Waktu */}
+                    <div className="space-y-4">
+                      <div className="bg-white p-4 rounded-lg border border-gray-200">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Jenis Izin
+                        </label>
+                        <div className="grid grid-cols-2 gap-2">
+                          {leaveTypes.map((type) => (
+                            <button
+                              key={type}
+                              type="button"
+                              onClick={() => setNewLeave({ ...newLeave, leaveType: type })}
+                              className={`p-2 rounded-lg transition-colors ${
+                                newLeave.leaveType === type
+                                  ? 'bg-blue-500 text-white'
+                                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                               }`}
                             >
-                              <div className="flex items-center gap-2">
-                                <span className="font-medium">{student.fullName}</span>
-                                <span className="text-sm opacity-75">•</span>
-                                <span className="text-sm">{student.class}</span>
-                                <span className="text-sm opacity-75">•</span>
-                                <span className="text-sm">{student.barak}</span>
-                              </div>
-                              {!editingLeave && (
-                                <button
-                                  type="button"
-                                  onClick={() => setSelectedStudents(prev => prev.filter(s => s.id !== student.id))}
-                                  className={`ml-2 ${
-                                    student.gender === 'Laki-laki'
-                                      ? 'text-blue-600 hover:text-blue-800'
-                                      : 'text-pink-600 hover:text-pink-800'
-                                  }`}
-                                >
-                                  <X className="h-4 w-4" />
-                                </button>
-                              )}
-                            </div>
+                              {type}
+                            </button>
                           ))}
                         </div>
-                      )}
-                      {/* Dropdown */}
-                      {!editingLeave && isDropdownOpen && filteredStudents.length > 0 && (
-                        <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg max-h-60 overflow-auto">
-                          {filteredStudents
-                            .filter(student => !selectedStudents.some(s => s.id === student.id))
-                            .map((student) => (
-                              <div
-                                key={student.id}
-                                onClick={() => {
-                                  setSelectedStudents(prev => [...prev, student]);
-                                  setSearchTerm('');
-                                  // Tidak perlu menutup dropdown di sini agar user bisa memilih lebih dari satu siswa
-                                }}
-                                className="p-3 hover:bg-gray-100 cursor-pointer border-b last:border-b-0"
-                              >
-                                <div className="flex items-center justify-between">
-                                  <div className="font-medium">{student.fullName}</div>
-                                  <div className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                                    student.gender === 'Laki-laki'
-                                      ? 'bg-blue-100 text-blue-800'
-                                      : 'bg-pink-100 text-pink-800'
-                                  }`}>
-                                    {student.gender}
-                                  </div>
-                                </div>
-                                <div className="text-sm text-gray-500 flex items-center gap-2 mt-1">
-                                  <span className="px-2 py-0.5 rounded bg-gray-100">{student.class}</span>
-                                  <span className="text-gray-400">•</span>
-                                  <span className="px-2 py-0.5 rounded bg-gray-100">{student.barak}</span>
-                                </div>
-                              </div>
-                            ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Jenis Izin */}
-                  <div className="bg-white p-4 rounded-lg border border-gray-200">
-                    <label className="block text-base font-medium text-gray-700 mb-2">
-                      Jenis Izin
-                    </label>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
-                      {leaveTypes.map((type) => (
-                        <button
-                          key={type}
-                          type="button"
-                          onClick={() => setNewLeave({ ...newLeave, leaveType: type })}
-                          className={`p-2 rounded-lg transition-colors ${
-                            newLeave.leaveType === type
-                              ? 'bg-blue-500 text-white'
-                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                          }`}
-                        >
-                          {type}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Waktu Izin */}
-                  <div className="bg-white p-4 rounded-lg border border-gray-200">
-                    <label className="block text-base font-medium text-gray-700 mb-2">
-                      Waktu Izin
-                    </label>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className="space-y-2">
-                        <label className="block text-sm text-gray-600">Mulai</label>
-                        <div className="grid grid-cols-2 gap-2">
-                          <input
-                            type="date"
-                            value={newLeave.startDate}
-                            onChange={(e) => setNewLeave({ ...newLeave, startDate: e.target.value })}
-                            className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                          />
-                          <input
-                            type="time"
-                            value={newLeave.startTime}
-                            onChange={(e) => setNewLeave({ ...newLeave, startTime: e.target.value })}
-                            className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                          />
-                        </div>
                       </div>
-                      <div className="space-y-2">
-                        <label className="block text-sm text-gray-600">Selesai</label>
-                        <div className="grid grid-cols-2 gap-2">
-                          <input
-                            type="date"
-                            value={newLeave.endDate}
-                            onChange={(e) => setNewLeave({ ...newLeave, endDate: e.target.value })}
-                            className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                          />
-                          <input
-                            type="time"
-                            value={newLeave.endTime}
-                            onChange={(e) => setNewLeave({ ...newLeave, endTime: e.target.value })}
-                            className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                          />
+
+                      <div className="bg-white p-4 rounded-lg border border-gray-200">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Waktu Izin
+                        </label>
+                        <div className="space-y-4">
+                          <div>
+                            <label className="block text-sm text-gray-600 mb-1">Mulai</label>
+                            <div className="grid grid-cols-2 gap-2">
+                              <input
+                                type="date"
+                                value={newLeave.startDate}
+                                onChange={(e) => setNewLeave({ ...newLeave, startDate: e.target.value })}
+                                className="w-full p-2.5 text-sm border rounded-md"
+                              />
+                              <input
+                                type="time"
+                                value={newLeave.startTime}
+                                onChange={(e) => setNewLeave({ ...newLeave, startTime: e.target.value })}
+                                className="w-full p-2.5 text-sm border rounded-md"
+                              />
+                            </div>
+                          </div>
+                          <div>
+                            <label className="block text-sm text-gray-600 mb-1">Selesai</label>
+                            <div className="grid grid-cols-2 gap-2">
+                              <input
+                                type="date"
+                                value={newLeave.endDate}
+                                onChange={(e) => setNewLeave({ ...newLeave, endDate: e.target.value })}
+                                className="w-full p-2.5 text-sm border rounded-md"
+                              />
+                              <input
+                                type="time"
+                                value={newLeave.endTime}
+                                onChange={(e) => setNewLeave({ ...newLeave, endTime: e.target.value })}
+                                className="w-full p-2.5 text-sm border rounded-md"
+                              />
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
 
-                  {/* Keterangan dan Upload */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="bg-white p-4 rounded-lg border border-gray-200">
-                      <label className="block text-base font-medium text-gray-700 mb-2">
-                        Keterangan
-                      </label>
-                      <textarea
-                        value={newLeave.keterangan}
-                        onChange={(e) => setNewLeave({ ...newLeave, keterangan: e.target.value })}
-                        className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 min-h-[120px]"
-                        placeholder="Tambahkan keterangan..."
-                      />
-                    </div>
-
-                    <div className="bg-white p-4 rounded-lg border border-gray-200">
-                      <label className="block text-base font-medium text-gray-700 mb-2">
-                        Bukti Surat/Dokumen
-                      </label>
-                      {editingLeave && editingLeave.documentUrl ? (
-                        <div className="mb-3 flex items-center justify-between bg-gray-50 p-3 rounded-lg">
-                          <span className="text-sm text-gray-600">
-                            File saat ini: {getFileNameFromUrl(editingLeave.documentUrl)}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => handleViewDocument(editingLeave)}
-                            className="text-blue-600 hover:text-blue-800 text-sm underline"
-                          >
-                            Lihat Dokumen
-                          </button>
-                        </div>
-                      ) : null}
-                      <div className="space-y-2">
-                        <input
-                          type="file"
-                          onChange={handleFileUpload}
-                          className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                          accept=".pdf,.jpg,.jpeg,.png"
+                    {/* Kolom 3: Keterangan dan Upload */}
+                    <div className="space-y-4">
+                      <div className="bg-white p-4 rounded-lg border border-gray-200">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Keterangan
+                        </label>
+                        <textarea
+                          value={newLeave.keterangan}
+                          onChange={(e) => setNewLeave({ ...newLeave, keterangan: e.target.value })}
+                          className="w-full p-2.5 text-sm border rounded-md min-h-[120px]"
+                          placeholder="Tambahkan keterangan..."
                         />
-                        <p className="text-sm text-gray-500">
-                          {editingLeave?.documentUrl 
-                            ? "Upload file baru untuk mengganti dokumen yang ada" 
-                            : "Upload file (PDF, JPG, PNG)"}
-                        </p>
+                      </div>
+
+                      <div className="bg-white p-4 rounded-lg border border-gray-200">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Bukti Surat/Dokumen
+                        </label>
+                        {editingLeave && editingLeave.documentUrl ? (
+                          <div className="mb-3 flex items-center justify-between bg-gray-50 p-3 rounded-lg">
+                            <span className="text-sm text-gray-600">
+                              File saat ini: {getFileNameFromUrl(editingLeave.documentUrl)}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleViewDocument(editingLeave)}
+                              className="text-blue-600 hover:text-blue-800 text-sm underline"
+                            >
+                              Lihat Dokumen
+                            </button>
+                          </div>
+                        ) : null}
+                        <div className="space-y-2">
+                          <input
+                            type="file"
+                            onChange={handleFileUpload}
+                            className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                            accept=".pdf,.jpg,.jpeg,.png"
+                          />
+                          <p className="text-sm text-gray-500">
+                            {editingLeave?.documentUrl 
+                              ? "Upload file baru untuk mengganti dokumen yang ada" 
+                              : "Upload file (PDF, JPG, PNG)"}
+                          </p>
+                        </div>
                       </div>
                     </div>
                   </div>
 
-                  <div className="flex justify-end space-x-4 pt-4">
+                  {/* Action Buttons */}
+                  <div className="flex justify-end space-x-3 pt-4 border-t">
                     <button
                       type="button"
                       onClick={() => setIsModalOpen(false)}
-                      className="px-6 py-3 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 font-medium"
+                      className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300"
                     >
                       Batal
                     </button>
                     <button
                       type="submit"
-                      className={`px-6 py-3 rounded-lg font-medium ${
+                      className={`px-4 py-2 rounded-lg ${
                         selectedStudents.length === 0 
                           ? 'bg-gray-400 cursor-not-allowed text-white' 
                           : 'bg-blue-500 hover:bg-blue-600 text-white'
@@ -986,35 +1021,27 @@ const StudentLeaveManagement: React.FC = () => {
 
       {/* Document Modal */}
       {isDocumentModalOpen && selectedDocument && (
-        <div className="fixed inset-0 z-[60] overflow-y-auto">
-          <div className="fixed inset-0 bg-black bg-opacity-50"></div>
-          <div className="relative min-h-screen flex items-center justify-center p-4">
-            <div className="bg-white w-full max-w-5xl rounded-lg shadow-xl overflow-hidden relative">
-              <div className="p-4 bg-gray-50 border-b">
+        <div className="fixed inset-0 z-50 overflow-hidden">
+          <div className="fixed inset-0 bg-black opacity-40" onClick={() => {
+            setIsDocumentModalOpen(false);
+            setSelectedDocument(null);
+          }}></div>
+          
+          <div className="fixed inset-0 flex items-center justify-center p-4">
+            <div className="bg-white w-full max-w-[800px] rounded-lg shadow-xl max-h-[90vh] flex flex-col relative"> {/* Ubah max-w-lg menjadi max-w-[800px] */}
+              <div className="p-4 border-b flex-shrink-0">
                 <div className="flex justify-between items-center">
-                  <div>
-                    <h3 className="text-lg font-semibold">Dokumen Perizinan</h3>
-                    {selectedLeave && selectedStudents && (
-                      <div className="mt-1 text-sm text-gray-600">
-                        <p>Siswa: {selectedStudents.map(s => s.fullName).join(', ')}</p>
-                        <p>Barak: {selectedStudents.map(s => s.barak).join(', ')}</p>
-                      </div>
-                    )}
-                  </div>
-                  <button
-                    onClick={() => {
-                      setIsDocumentModalOpen(false);
-                      setSelectedDocument(null);
-                      setSelectedLeave(null);
-                      setSelectedStudents([]);
-                    }}
-                    className="text-gray-500 hover:text-gray-700"
-                  >
-                    <X className="h-6 w-6" />
+                  <h2 className="text-lg font-semibold">Dokumen Perizinan</h2>
+                  <button onClick={() => {
+                    setIsDocumentModalOpen(false);
+                    setSelectedDocument(null);
+                  }} className="text-gray-500 hover:text-gray-700">
+                    <X size={20} />
                   </button>
                 </div>
               </div>
-              <div className="p-4 h-[80vh]">
+              
+              <div className="flex-1 overflow-y-auto p-4">
                 <iframe
                   src={selectedDocument}
                   className="w-full h-full rounded-lg"
@@ -1083,31 +1110,50 @@ const StudentLeaveManagement: React.FC = () => {
 
       {/* Status Confirmation Modal */}
       {showStatusConfirmModal && (
-        <div className="fixed inset-0 z-[60] overflow-y-auto">
-          <div className="fixed inset-0 bg-black bg-opacity-50"></div>
-          <div className="relative min-h-screen flex items-center justify-center p-4">
-            <div className="bg-white rounded-lg p-8 max-w-md mx-auto relative">
-              <h3 className="text-xl font-bold mb-4">Konfirmasi Perubahan Status</h3>
-              <p className="text-gray-600 mb-6">
-                Apakah Anda yakin ingin mengubah status menjadi "{newStatus}"?
-              </p>
-              <div className="flex justify-end space-x-4">
-                <button
-                  onClick={() => {
+        <div className="fixed inset-0 z-50 overflow-hidden">
+          <div className="fixed inset-0 bg-black opacity-40" onClick={() => {
+            setShowStatusConfirmModal(false);
+            setSelectedLeaveForStatus(null);
+            setNewStatus(null);
+          }}></div>
+          
+          <div className="fixed inset-0 flex items-center justify-center p-4">
+            <div className="bg-white w-full max-w-lg rounded-lg shadow-xl max-h-[90vh] flex flex-col relative">
+              <div className="p-4 border-b flex-shrink-0">
+                <div className="flex justify-between items-center">
+                  <h2 className="text-lg font-semibold">Konfirmasi Perubahan Status</h2>
+                  <button onClick={() => {
                     setShowStatusConfirmModal(false);
                     setSelectedLeaveForStatus(null);
                     setNewStatus(null);
-                  }}
-                  className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300"
-                >
-                  Batal
-                </button>
-                <button
-                  onClick={confirmStatusChange}
-                  className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
-                >
-                  Konfirmasi
-                </button>
+                  }} className="text-gray-500 hover:text-gray-700">
+                    <X size={20} />
+                  </button>
+                </div>
+              </div>
+              
+              <div className="flex-1 overflow-y-auto p-4">
+                <p className="text-gray-600 mb-6">
+                  Apakah Anda yakin ingin mengubah status menjadi "{newStatus}"?
+                </p>
+                <div className="flex justify-end space-x-4">
+                  <button
+                    onClick={() => {
+                      setShowStatusConfirmModal(false);
+                      setSelectedLeaveForStatus(null);
+                      setNewStatus(null);
+                    }}
+                    className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    onClick={confirmStatusChange}
+                    className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+                  >
+                    Konfirmasi
+                  </button>
+                </div>
               </div>
             </div>
           </div>
