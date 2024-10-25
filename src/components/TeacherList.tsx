@@ -121,18 +121,18 @@ const TeacherList: React.FC<TeacherListProps> = ({
                     <h3 className="font-medium text-gray-900">{teacher.name}</h3>
                     <p className="text-sm text-gray-500 mt-1">Kode: {teacher.code}</p>
                   </div>
-                  <div className="flex space-x-2">
+                  <div className="flex space-x-3">
                     <button
                       onClick={() => onEdit(teacher)}
-                      className="p-2 text-blue-500 hover:bg-blue-50 rounded-full"
+                      className="p-3 text-blue-500 hover:bg-blue-50 rounded-full"
                     >
-                      <Edit size={18} />
+                      <Edit size={22} />
                     </button>
                     <button
                       onClick={() => onDelete(teacher.id)}
-                      className="p-2 text-red-500 hover:bg-red-50 rounded-full"
+                      className="p-3 text-red-500 hover:bg-red-50 rounded-full"
                     >
-                      <Trash2 size={18} />
+                      <Trash2 size={22} />
                     </button>
                   </div>
                 </div>

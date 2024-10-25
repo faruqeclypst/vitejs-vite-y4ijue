@@ -27,21 +27,18 @@ const Login: React.FC = () => {
 
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-blue-500 to-purple-600 py-12 px-4 sm:px-6 lg:px-8 overflow-hidden">
-      <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-purple-600"></div>
+      <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-blue-600"></div>
       <div className="max-w-md w-full bg-white rounded-xl shadow-2xl p-8 space-y-8 relative z-10">
         {/* Logo/Icon */}
         <div className="text-center">
           <img
-            src="/logo-sekolah.png" // Pastikan logo ada di folder public
+            src="../public/mosa.png" // Pastikan logo ada di folder public
             alt="Logo"
-            className="mx-auto h-20 w-auto"
+            className="mx-auto h-40 w-auto"
           />
-          <h2 className="mt-6 text-3xl font-extrabold text-gray-900">
-            Sistem Piket & Asrama
+          <h2 className="mt-3 text-3xl font-extrabold text-gray-900">
+            Sistem Manajemen Piket & Asrama
           </h2>
-          <p className="mt-2 text-sm text-gray-600">
-            Masuk untuk mengakses sistem
-          </p>
         </div>
 
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
@@ -115,6 +112,11 @@ const Login: React.FC = () => {
               'Sign in'
             )}
           </button>
+
+          {/* Tambahkan credit di sini */}
+          <div className="text-center mt-4 text-sm text-gray-500">
+            Created by 🚀 Alfaruq Asri, S.Pd &copy;{new Date().getFullYear()}
+          </div>
         </form>
       </div>
     </div>

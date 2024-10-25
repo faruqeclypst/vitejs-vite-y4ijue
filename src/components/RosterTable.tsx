@@ -49,92 +49,104 @@ const AttendanceDetail: React.FC<AttendanceDetailProps> = ({ teacherId, teacherN
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-auto bg-black bg-opacity-50 flex items-center justify-center p-4">
-      <div className="bg-white w-full max-w-4xl rounded-lg shadow-xl">
-        <div className="p-6 bg-gray-50 border-b flex justify-between items-center">
-          <h2 className="text-2xl font-bold text-gray-800">
-            Detail Kehadiran - {teacherName}
-          </h2>
-          <button onClick={onClose} className="text-gray-600 hover:text-gray-800">
-            <X size={24} />
-          </button>
-        </div>
-        <div className="p-6 max-h-[70vh] overflow-y-auto">
-          <div className="mb-4">
-            <input
-              type="date"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              className="w-full p-2 border rounded"
-            />
+    <div className="fixed inset-0 z-50 overflow-hidden">
+      <div className="fixed inset-0 bg-black opacity-40" onClick={onClose}></div>
+      
+      <div className="fixed inset-0 flex items-center justify-center p-4">
+        <div className="bg-white w-full max-w-lg rounded-lg shadow-xl max-h-[90vh] flex flex-col relative">
+          <div className="p-4 border-b flex-shrink-0">
+            <div className="flex justify-between items-center">
+              <h2 className="text-lg font-semibold">
+                Detail Kehadiran - {teacherName}
+              </h2>
+              <button
+                onClick={onClose}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <X size={20} />
+              </button>
+            </div>
           </div>
-          <div className="space-y-4">
-            {Object.entries(groupedAttendance)
-              .filter(([date]) => !selectedDate || date === selectedDate)
-              .sort(([dateA], [dateB]) => new Date(dateB).getTime() - new Date(dateA).getTime())
-              .map(([date, records]) => (
-                <div key={date} className="border rounded-lg p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center space-x-2">
-                      <Calendar className="text-gray-500" size={20} />
-                      <span className="font-semibold">
-                        {new Date(date).toLocaleDateString('id-ID', {
-                          weekday: 'long',
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric'
-                        })}
-                      </span>
+          
+          <div className="flex-1 overflow-y-auto p-4">
+            <div className="mb-4">
+              <input
+                type="date"
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                className="w-full p-2 border rounded"
+              />
+            </div>
+            
+            {/* Konten detail kehadiran tetap sama */}
+            <div className="space-y-4">
+              {Object.entries(groupedAttendance)
+                .filter(([date]) => !selectedDate || date === selectedDate)
+                .sort(([dateA], [dateB]) => new Date(dateB).getTime() - new Date(dateA).getTime())
+                .map(([date, records]) => (
+                  <div key={date} className="border rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center space-x-2">
+                        <Calendar className="text-gray-500" size={20} />
+                        <span className="font-semibold">
+                          {new Date(date).toLocaleDateString('id-ID', {
+                            weekday: 'long',
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric'
+                          })}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="space-y-3">
+                      {records.map(record => {
+                        if (!record || !record.id) return null;
+                        
+                        const rosterEntry = roster.find(r => r.id === record.rosterId);
+                        if (!rosterEntry) return null;
+
+                        // Hitung jam yang tidak masuk
+                        const missingHours = rosterEntry.hours.filter(
+                          hour => !record.presentHours?.includes(hour)
+                        );
+                        
+                        return (
+                          <div key={record.id} className="flex items-center justify-between bg-gray-50 p-3 rounded">
+                            <div>
+                              <div className="font-medium">{rosterEntry.classId}</div>
+                              <div className="text-sm text-gray-500">
+                                Jam Hadir: JP {record.presentHours?.sort((a, b) => a - b).map(h => ` ${h}`).join(',')}
+                              </div>
+                              {missingHours.length > 0 && (
+                                <div className="text-sm text-red-500">
+                                  Jam Tidak Hadir: JP {missingHours.sort((a, b) => a - b).map(h => ` ${h}`).join(',')}
+                                </div>
+                              )}
+                              {record.keterangan && (
+                                <div className="text-sm text-gray-600 mt-1">
+                                  Keterangan: {record.keterangan}
+                                </div>
+                              )}
+                            </div>
+                            <button
+                              onClick={() => handleDelete(record.id)}
+                              className="text-red-500 hover:text-red-700"
+                            >
+                              <Trash2 size={18} />
+                            </button>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
-                  <div className="space-y-3">
-                    {records.map(record => {
-                      if (!record || !record.id) return null;
-                      
-                      const rosterEntry = roster.find(r => r.id === record.rosterId);
-                      if (!rosterEntry) return null;
-
-                      // Hitung jam yang tidak masuk
-                      const missingHours = rosterEntry.hours.filter(
-                        hour => !record.presentHours?.includes(hour)
-                      );
-                      
-                      return (
-                        <div key={record.id} className="flex items-center justify-between bg-gray-50 p-3 rounded">
-                          <div>
-                            <div className="font-medium">{rosterEntry.classId}</div>
-                            <div className="text-sm text-gray-500">
-                              Jam Hadir: JP {record.presentHours?.sort((a, b) => a - b).map(h => ` ${h}`).join(',')}
-                            </div>
-                            {missingHours.length > 0 && (
-                              <div className="text-sm text-red-500">
-                                Jam Tidak Hadir: JP {missingHours.sort((a, b) => a - b).map(h => ` ${h}`).join(',')}
-                              </div>
-                            )}
-                            {record.keterangan && (
-                              <div className="text-sm text-gray-600 mt-1">
-                                Keterangan: {record.keterangan}
-                              </div>
-                            )}
-                          </div>
-                          <button
-                            onClick={() => handleDelete(record.id)}
-                            className="text-red-500 hover:text-red-700"
-                          >
-                            <Trash2 size={18} />
-                          </button>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))}
-          </div>
-          {Object.keys(groupedAttendance).length === 0 && (
-            <div className="text-center text-gray-500 py-8">
-              Tidak ada data kehadiran
+                ))}
             </div>
-          )}
+            {Object.keys(groupedAttendance).length === 0 && (
+              <div className="text-center text-gray-500 py-8">
+                Tidak ada data kehadiran
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -254,7 +266,7 @@ const RosterTable: React.FC<RosterTableProps> = ({ roster, teachers, onDelete, o
                         e.stopPropagation();
                         setShowAttendanceDetail(teacher.id);
                       }}
-                      className="text-blue-500 hover:text-blue-700 p-2"
+                      className="bg-blue-500 text-white p-2 rounded-lg hover:bg-blue-600"
                       title="Lihat Detail Kehadiran"
                     >
                       <Calendar size={18} />
