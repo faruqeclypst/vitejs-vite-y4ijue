@@ -451,7 +451,7 @@ const StudentManagement: React.FC = () => {
   };
 
   return (
-    <div className="space-y-4">
+    <>
       {/* Alert dan ConfirmationModal */}
       {alert && (
         <Alert
@@ -471,100 +471,98 @@ const StudentManagement: React.FC = () => {
         cancelText={confirmOptions?.cancelText ?? 'Batal'}
       />
 
-      <div className="bg-white shadow-md rounded-lg p-4">
-        {/* Header dengan Search dan Actions */}
-        <div className="flex flex-col sm:flex-row justify-between items-center gap-3">
-          <div className="relative w-full sm:w-64">
-            <input
-              type="text"
-              placeholder="Cari siswa..."
-              className="w-full p-2 pl-8 border rounded-lg"
-            />
-            <Search className="absolute left-2 top-2.5 text-gray-400" size={18} />
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <button
-              onClick={openModal}
-              className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2"
-            >
-              <Plus size={18} />
-              <span>Tambah Siswa</span>
-            </button>
-            <label className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 cursor-pointer">
-              <Plus size={18} />
-              <span>Import CSV</span>
-              <input type="file" accept=".csv" onChange={handleImportCSV} className="hidden" />
-            </label>
-            <button 
-              onClick={handleExportCSV}
-              className="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg flex items-center gap-2"
-            >
-              <Plus size={18} />
-              <span>Export CSV</span>
-            </button>
-          </div>
+      {/* Header dengan Search dan Actions */}
+      <div className="flex flex-col sm:flex-row justify-between items-center gap-3">
+        <div className="relative w-full sm:w-64">
+          <input
+            type="text"
+            placeholder="Cari siswa..."
+            className="w-full p-2 pl-8 border rounded-lg"
+          />
+          <Search className="absolute left-2 top-2.5 text-gray-400" size={18} />
         </div>
-
-        {/* Tabs */}
-        <div className="border border-gray-200 p-1 mt-4">
-          <nav className="flex space-x-1">
-            <button
-              onClick={() => setActiveTab('active')}
-              className={`flex-1 sm:flex-none px-4 py-2 rounded-lg transition-colors ${
-                activeTab === 'active'
-                  ? 'bg-blue-500 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              Siswa Aktif
-            </button>
-            <button
-              onClick={() => setActiveTab('deleted')}
-              className={`flex-1 sm:flex-none px-4 py-2 rounded-lg transition-colors ${
-                activeTab === 'deleted'
-                  ? 'bg-blue-500 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              Siswa Terhapus
-            </button>
-          </nav>
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={openModal}
+            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2"
+          >
+            <Plus size={18} />
+            <span>Tambah Siswa</span>
+          </button>
+          <label className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 cursor-pointer">
+            <Plus size={18} />
+            <span>Import CSV</span>
+            <input type="file" accept=".csv" onChange={handleImportCSV} className="hidden" />
+          </label>
+          <button 
+            onClick={handleExportCSV}
+            className="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg flex items-center gap-2"
+          >
+            <Plus size={18} />
+            <span>Export CSV</span>
+          </button>
         </div>
+      </div>
 
-        {/* Main Content Panel */}
-        <div className={`grid grid-cols-1 ${
-          Object.keys(groupedStudents).length > 1 ? 'lg:grid-cols-2' : ''
-        } gap-4 mt-4`}>
-          {Object.entries(groupedStudents).map(([barakName, students]) => (
-            <div key={barakName} className={`rounded-lg shadow-sm border border-gray-200 overflow-hidden ${
-              Object.keys(groupedStudents).length === 1 ? 'col-span-full' : ''
-            }`}>
-              <div className="p-4 bg-gray-50 border-b">
-                <h3 className="text-lg font-semibold text-gray-800">{barakName}</h3>
-              </div>
-              <div className="p-4">
-                {renderStudentTable(students, barakName)}
-              </div>
+      {/* Tabs */}
+      <div className="border border-gray-200 p-1 mt-4">
+        <nav className="flex space-x-1">
+          <button
+            onClick={() => setActiveTab('active')}
+            className={`flex-1 sm:flex-none px-4 py-2 rounded-lg transition-colors ${
+              activeTab === 'active'
+                ? 'bg-blue-500 text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            Siswa Aktif
+          </button>
+          <button
+            onClick={() => setActiveTab('deleted')}
+            className={`flex-1 sm:flex-none px-4 py-2 rounded-lg transition-colors ${
+              activeTab === 'deleted'
+                ? 'bg-blue-500 text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            Siswa Terhapus
+          </button>
+        </nav>
+      </div>
+
+      {/* Main Content Panel */}
+      <div className={`grid grid-cols-1 ${
+        Object.keys(groupedStudents).length > 1 ? 'lg:grid-cols-2' : ''
+      } gap-4 mt-4`}>
+        {Object.entries(groupedStudents).map(([barakName, students]) => (
+          <div key={barakName} className={`rounded-lg shadow-sm border border-gray-200 overflow-hidden ${
+            Object.keys(groupedStudents).length === 1 ? 'col-span-full' : ''
+          }`}>
+            <div className="p-4 bg-gray-50 border-b">
+              <h3 className="text-lg font-semibold text-gray-800">{barakName}</h3>
             </div>
-          ))}
-
-          {Object.keys(groupedStudents).length === 0 && (
-            <div className="col-span-full">
-              <div className="text-center py-12 rounded-lg shadow-sm border border-gray-200">
-                <Users className="mx-auto h-12 w-12 text-gray-400" />
-                <h3 className="mt-2 text-sm font-medium text-gray-900">
-                  {activeTab === 'active' ? 'Tidak ada siswa aktif' : 'Tidak ada siswa terhapus'}
-                </h3>
-                <p className="mt-1 text-sm text-gray-500">
-                  {activeTab === 'active' 
-                    ? 'Mulai dengan menambahkan siswa baru'
-                    : 'Semua siswa masih aktif'
-                  }
-                </p>
-              </div>
+            <div className="p-4">
+              {renderStudentTable(students, barakName)}
             </div>
-          )}
-        </div>
+          </div>
+        ))}
+
+        {Object.keys(groupedStudents).length === 0 && (
+          <div className="col-span-full">
+            <div className="text-center py-12 rounded-lg shadow-sm border border-gray-200">
+              <Users className="mx-auto h-12 w-12 text-gray-400" />
+              <h3 className="mt-2 text-sm font-medium text-gray-900">
+                {activeTab === 'active' ? 'Tidak ada siswa aktif' : 'Tidak ada siswa terhapus'}
+              </h3>
+              <p className="mt-1 text-sm text-gray-500">
+                {activeTab === 'active' 
+                  ? 'Mulai dengan menambahkan siswa baru'
+                  : 'Semua siswa masih aktif'
+                }
+              </p>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Modal Form */}
@@ -708,7 +706,7 @@ const StudentManagement: React.FC = () => {
           onClose={() => setSelectedStudentForHistory(null)}
         />
       )}
-    </div>
+    </>
   );
 };
 

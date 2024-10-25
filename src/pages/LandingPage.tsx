@@ -103,7 +103,7 @@ const LandingPage: React.FC = () => {
         { title: 'Total Barak', value: relevantBaraks.length, icon: ClipboardList, color: "bg-green-500 text-white" },
         { title: 'Perizinan Aktif', value: activeLeavesToday.length, icon: UserCheck, color: "bg-yellow-500 text-white" },
         { title: 'Siswa Laki-laki', value: maleStudents, icon: Users, color: "bg-indigo-500 text-white" },
-        { title: 'Siswa Perempuan', value: femaleStudents, icon: Users, color: "bg-pink-500 text-white" },
+        { title: 'Siswi Perempuan', value: femaleStudents, icon: Users, color: "bg-pink-500 text-white" },
         { title: 'Perizinan Selesai', value: completedLeaves.length, icon: UserCheck, color: "bg-purple-500 text-white" }
       ]);
     }
@@ -130,9 +130,9 @@ const Header: React.FC<{ userRole?: string }> = ({ userRole }) => {
 
   return (
     <div className="text-center mb-6 sm:mb-12">
-      <h2 className="h2">
+      <h1 className="h1">
         {title}
-      </h2>
+      </h1>
       <p className="mt-3 sm:mt-6 text-base sm:text-xl md:text-2xl text-gray-600 max-w-3xl mx-auto px-2">
         {subtitle}
       </p>
