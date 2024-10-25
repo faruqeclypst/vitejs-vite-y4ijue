@@ -1,6 +1,6 @@
 import React from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Users, ClipboardList, Calendar, LogOut, UserCog, Home, Menu, X, GraduationCap, FileText, Building, LucideIcon } from 'lucide-react';
+import { Link, useLocation } from 'react-router-dom';
+import { Users, ClipboardList, Calendar, Home, Menu, X, GraduationCap, FileText, Building, UserCog, LucideIcon } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import ConfirmationModal from './ConfirmationModal';
 import useConfirmation from '../hooks/useConfirmation';
@@ -10,89 +10,80 @@ interface SidebarProps {
   setIsExpanded: (expanded: boolean) => void;
 }
 
-// Perbaiki interface NavItem
 interface NavItem {
   path: string;
-  icon: LucideIcon;  // Gunakan LucideIcon type
+  icon: LucideIcon;
   label: string;
   roles: string[];
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ isExpanded, setIsExpanded }) => {
   const location = useLocation();
-  const { user, logout } = useAuth();
-  const navigate = useNavigate();
-  const { confirm, isOpen, options, handleConfirm, handleCancel } = useConfirmation();
-
-  const handleLogout = async () => {
-    const confirmed = await confirm({
-      title: 'Konfirmasi Logout',
-      message: 'Apakah Anda yakin ingin keluar?',
-      confirmText: 'Ya, Keluar',
-      cancelText: 'Batal'
-    });
-
-    if (confirmed) {
-      logout();
-      navigate('/login');
-    }
-  };
+  const { user } = useAuth();
+  const { isOpen, options, handleConfirm, handleCancel } = useConfirmation();
 
   if (!user) return null;
 
-  // Update navItems untuk mengatur akses menu
+  // Update navItems untuk akses menu yang lebih spesifik
   const navItems: NavItem[] = [
+    // Menu Home - Semua role memiliki akses
     { 
       path: '/', 
       icon: Home, 
-      label: 'Home', 
-      roles: ['admin', 'piket', 'wakil_kepala', 'pengasuh', 'admin_asrama'] 
+      label: 'Dashboard', 
+      roles: ['admin', 'piket', 'admin_asrama', 'pengasuh'] 
     },
+
+    // Menu Akademik - Hanya untuk admin dan piket
     { 
       path: '/teachers', 
       icon: Users, 
-      label: 'Guru', 
-      roles: ['admin'] 
+      label: 'Data Guru', 
+      roles: ['admin', 'piket'] 
     },
     { 
       path: '/roster', 
       icon: ClipboardList, 
-      label: 'Roster', 
+      label: 'Jadwal Guru', 
       roles: ['admin', 'piket'] 
     },
     { 
       path: '/attendance', 
       icon: Calendar, 
-      label: 'Absen', 
-      roles: ['admin', 'piket', 'wakil_kepala'] 
+      label: 'Absensi Guru', 
+      roles: ['admin', 'piket'] 
     },
+
+    // Menu Asrama - Untuk admin_asrama dan pengasuh
     { 
       path: '/barak', 
       icon: Building, 
-      label: 'Manajemen Barak', 
-      roles: ['admin', 'admin_asrama'] 
+      label: 'Data Barak', 
+      roles: ['admin_asrama'] 
     },
     { 
       path: '/students', 
       icon: GraduationCap, 
-      label: 'Siswa', 
+      label: 'Data Siswa', 
       roles: ['admin_asrama', 'pengasuh'] 
     },
     { 
       path: '/student-leave', 
       icon: FileText, 
-      label: 'Perizinan', 
+      label: 'Data Perizinan', 
       roles: ['admin_asrama', 'pengasuh'] 
     },
+
+    // Menu Pengaturan - Hanya untuk admin dan admin_asrama
     { 
       path: '/user-management', 
       icon: UserCog, 
-      label: 'User', 
+      label: 'Manajemen User', 
       roles: ['admin', 'admin_asrama'] 
     }
   ];
 
-  const filteredNavItems = navItems.filter(item => item.roles.includes(user.role));
+  const filteredNavItems = navItems.filter(item => item.roles.includes(user?.role || ''));
 
   const NavItem: React.FC<{ 
     item: NavItem, 
@@ -116,49 +107,34 @@ const Sidebar: React.FC<SidebarProps> = ({ isExpanded, setIsExpanded }) => {
   );
 
   const DesktopSidebar = () => (
-    <nav className={`bg-blue-700 text-white ${isExpanded ? 'w-80' : 'w-24'} min-h-screen p-4 transition-all duration-300 hidden md:block fixed left-0 top-0 bottom-0 z-40 flex flex-col`}>
-      <div className={`flex ${isExpanded ? 'justify-between' : 'justify-center'} items-center mb-8 sticky top-0 bg-blue-700 z-10`}>
-        {isExpanded && <h1 className="text-2xl font-bold">Piket MOSA</h1>}
+    <nav className={`bg-blue-700 text-white ${
+      isExpanded ? 'w-64' : 'w-20'
+    } min-h-screen p-4 transition-all duration-300 hidden md:flex flex-col fixed left-0 top-0 bottom-0 z-40`}>
+      <div className={`flex ${isExpanded ? 'justify-between' : 'justify-center'} items-center mb-8`}>
+        {isExpanded && <h1 className="text-xl font-bold">Piket MOSA</h1>}
         <button onClick={() => setIsExpanded(!isExpanded)} className="p-2 rounded-full hover:bg-blue-600">
           {isExpanded ? <X size={24} /> : <Menu size={24} />}
         </button>
       </div>
       
       {/* Menu Items */}
-      <ul className="space-y-2 flex-1 overflow-y-auto">
+      <ul className="space-y-2">
         {filteredNavItems.map((item) => (
           <NavItem key={item.path} item={item} />
         ))}
       </ul>
-
-      {/* Logout Button - Fixed at bottom */}
-      <div className="pt-4 border-t border-blue-600 mt-auto">
-        <button
-          onClick={handleLogout}
-          className={`flex items-center ${isExpanded ? 'justify-start' : 'justify-center'} p-3 rounded-lg text-blue-100 hover:bg-blue-600 hover:text-white transition-colors duration-200 w-full`}
-        >
-          <LogOut size={24} />
-          {isExpanded && <span className="ml-3 font-bold">Logout</span>}
-        </button>
-      </div>
     </nav>
   );
 
   const MobileSidebar = () => (
     <nav className="fixed bottom-0 left-0 right-0 bg-blue-700 text-white md:hidden z-50">
-      <ul className="flex justify-around py-2 px-4">
-        {filteredNavItems.map((item) => (
-          <NavItem key={item.path} item={item} isMobile />
-        ))}
-        <li>
-          <button
-            onClick={handleLogout}
-            className="flex items-center justify-center p-2 rounded-lg text-blue-100 hover:bg-blue-600 hover:text-white transition-colors duration-200"
-          >
-            <LogOut size={20} />
-          </button>
-        </li>
-      </ul>
+      <div className="overflow-x-auto">
+        <ul className="flex items-center justify-around py-2 px-4">
+          {filteredNavItems.map((item) => (
+            <NavItem key={item.path} item={item} isMobile />
+          ))}
+        </ul>
+      </div>
     </nav>
   );
 

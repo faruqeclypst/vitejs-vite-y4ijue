@@ -52,35 +52,49 @@ const RosterPage: React.FC = () => {
 
   return (
     <div className="p-4">
-      <h1 className="text-3xl font-bold mb-4 text-gray-800">Kelola Jadwal</h1>
-      
-      <RosterTable
-        roster={roster}
-        teachers={teachers}
-        onDelete={handleDeleteRosterEntry}
-        onAdd={handleAddRosterEntry}
-        onUpdate={handleUpdateRosterEntry}
-        classes={availableClasses}
-      />
+      <div className="max-w-6xl mx-auto">
+        <div className="flex flex-col space-y-4">
+          {/* Header */}
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">
+              Kelola Jadwal
+            </h1>
+          </div>
 
-      {alert && (
-        <Alert
-          type={alert.type}
-          message={alert.message}
-          duration={alert.duration}
-          onClose={hideAlert}
-        />
-      )}
+          {/* Main Content */}
+          <div className="bg-white shadow-md rounded-lg p-4">
+            <RosterTable
+              roster={roster}
+              teachers={teachers}
+              onDelete={handleDeleteRosterEntry}
+              onAdd={handleAddRosterEntry}
+              onUpdate={handleUpdateRosterEntry}
+              classes={availableClasses}
+            />
+          </div>
 
-      <ConfirmationModal
-        isOpen={isOpen}
-        onClose={handleCancel}
-        onConfirm={handleConfirm}
-        title={options?.title || ''}
-        message={options?.message || ''}
-        confirmText={options?.confirmText}
-        cancelText={options?.cancelText}
-      />
+          {/* Alert */}
+          {alert && (
+            <Alert
+              type={alert.type}
+              message={alert.message}
+              duration={alert.duration}
+              onClose={hideAlert}
+            />
+          )}
+
+          {/* Confirmation Modal */}
+          <ConfirmationModal
+            isOpen={isOpen}
+            onClose={handleCancel}
+            onConfirm={handleConfirm}
+            title={options?.title || ''}
+            message={options?.message || ''}
+            confirmText={options?.confirmText}
+            cancelText={options?.cancelText}
+          />
+        </div>
+      </div>
     </div>
   );
 };

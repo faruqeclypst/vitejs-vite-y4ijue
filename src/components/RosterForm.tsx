@@ -16,7 +16,13 @@ interface Conflict {
   conflictWith: string;
 }
 
-const RosterForm: React.FC<RosterFormProps> = ({ teachers, classes, onSubmit, initialData, preselectedTeacherId }) => {
+const RosterForm: React.FC<RosterFormProps> = ({ 
+  teachers, 
+  classes, 
+  onSubmit, 
+  initialData, 
+  preselectedTeacherId 
+}) => {
   const [teacherId, setTeacherId] = useState(preselectedTeacherId || '');
   const [classId, setClassId] = useState('');
   const [dayOfWeek, setDayOfWeek] = useState<DayOfWeek | ''>('');
@@ -33,7 +39,6 @@ const RosterForm: React.FC<RosterFormProps> = ({ teachers, classes, onSubmit, in
       setClassId(initialData.classId);
       setDayOfWeek(initialData.dayOfWeek);
       setHours(initialData.hours);
-      // Add this line to set the grade when editing
       setGrade(initialData.classId.split('-')[0] as 'X' | 'XI' | 'XII');
     } else if (preselectedTeacherId) {
       setTeacherId(preselectedTeacherId);

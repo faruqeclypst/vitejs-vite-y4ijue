@@ -10,46 +10,106 @@
   }
 
   body {
-    @apply text-base;
+    @apply text-base bg-gray-50;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
 
+  /* Responsive Typography */
   h1 {
-    @apply text-4xl font-bold;
+    @apply text-2xl sm:text-3xl lg:text-4xl font-bold;
   }
 
   h2 {
-    @apply text-3xl font-bold;
+    @apply text-xl sm:text-2xl lg:text-3xl font-bold;
   }
 
   h3 {
-    @apply text-2xl font-bold;
+    @apply text-lg sm:text-xl lg:text-2xl font-bold;
   }
 
-  /* Memperbesar ukuran font default untuk tabel */
-  table {
-    @apply text-sm;
+  /* Responsive Spacing */
+  .section-padding {
+    @apply p-4 sm:p-6 lg:p-8;
   }
 
-  /* Memperbesar ukuran font untuk input dan select */
+  .content-margin {
+    @apply mb-4 sm:mb-6 lg:mb-8;
+  }
+
+  /* Responsive Container */
+  .container-responsive {
+    @apply w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+
+  /* Responsive Card */
+  .card-responsive {
+    @apply bg-white shadow-md rounded-lg p-4 sm:p-6 lg:p-8;
+  }
+
+  /* Responsive Grid */
+  .grid-responsive {
+    @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6;
+  }
+
+  /* Responsive Table Container */
+  .table-container {
+    @apply overflow-x-auto bg-white shadow-md rounded-lg;
+  }
+
+  /* Responsive Form Elements */
   input, select, textarea {
-    @apply text-base;
+    @apply w-full p-2 sm:p-3 border rounded-lg focus:ring-2 focus:ring-blue-500;
   }
 
-  /* Memperbesar ukuran font untuk button */
+  /* Responsive Buttons */
   button {
-    @apply text-base;
+    @apply px-4 py-2 sm:px-6 sm:py-3 rounded-lg transition-colors duration-200;
   }
 
-  /* Memperbesar ukuran font untuk label */
-  label {
-    @apply text-base;
+  /* Primary Button */
+  .btn-primary {
+    @apply bg-blue-500 text-white hover:bg-blue-600;
   }
 
-  /* Custom scrollbar untuk tampilan yang lebih baik */
+  /* Secondary Button */
+  .btn-secondary {
+    @apply bg-gray-200 text-gray-800 hover:bg-gray-300;
+  }
+
+  /* Danger Button */
+  .btn-danger {
+    @apply bg-red-500 text-white hover:bg-red-600;
+  }
+
+  /* Success Button */
+  .btn-success {
+    @apply bg-green-500 text-white hover:bg-green-600;
+  }
+
+  /* Modal Container */
+  .modal-container {
+    @apply fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-50 flex items-center justify-center p-4;
+  }
+
+  /* Modal Content */
+  .modal-content {
+    @apply bg-white w-full max-w-2xl rounded-lg shadow-xl overflow-hidden;
+  }
+
+  /* Modal Header */
+  .modal-header {
+    @apply p-4 sm:p-6 bg-gray-50 border-b flex justify-between items-center;
+  }
+
+  /* Modal Body */
+  .modal-body {
+    @apply p-4 sm:p-6;
+  }
+
+  /* Custom Scrollbar */
   ::-webkit-scrollbar {
-    @apply w-2 h-2;
+    @apply w-2;
   }
 
   ::-webkit-scrollbar-track {
@@ -61,20 +121,7 @@
   }
 }
 
-/* Utility classes untuk font weight */
-.font-medium {
-  @apply font-[500];
-}
-
-.font-semibold {
-  @apply font-[600];
-}
-
-.font-bold {
-  @apply font-[700];
-}
-
-/* Animasi untuk transisi */
+/* Animations */
 @keyframes fadeIn {
   from {
     opacity: 0;

@@ -25,25 +25,27 @@ const AttendanceForm: React.FC<AttendanceFormProps> = ({ className, rosterEntry,
   };
 
   return (
-    <form onSubmit={handleSubmit} className="flex items-center space-x-2">
-      <span className="font-medium">{className}:</span>
-      <div className="flex-grow grid grid-cols-8 gap-1">
+    <form onSubmit={handleSubmit} className="flex items-center space-x-4">
+      <span className="font-medium text-gray-700">{className}:</span>
+      <div className="flex-grow grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2">
         {rosterEntry.hours.map((hour) => (
           <button
             key={hour}
             type="button"
             onClick={() => toggleHour(hour)}
-            className={`p-1 text-xs rounded ${
-              presentHours.includes(hour) ? 'bg-green-500 text-white' : 'bg-gray-200'
+            className={`p-2 text-sm rounded-lg transition-colors ${
+              presentHours.includes(hour)
+                ? 'bg-green-500 text-white hover:bg-green-600'
+                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
             }`}
           >
-            {hour}
+            JP {hour}
           </button>
         ))}
       </div>
       <button
         type="submit"
-        className="bg-blue-500 text-white px-2 py-1 rounded text-sm hover:bg-blue-600"
+        className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors"
       >
         Submit
       </button>

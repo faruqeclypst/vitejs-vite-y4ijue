@@ -1,19 +1,109 @@
-import { User } from 'lucide-react';
+import { User, ChevronDown, LogOut, UserCog, X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import useConfirmation from '../hooks/useConfirmation';
+import ConfirmationModal from './ConfirmationModal';
 
 const Header = () => {
-  const { user } = useAuth();
+  const { user, logout, updateUser } = useAuth();
+  const navigate = useNavigate();
   const [currentDateTime, setCurrentDateTime] = useState(new Date());
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
+  const { confirm, isOpen, options, handleConfirm, handleCancel } = useConfirmation();
+
+  // State untuk form edit profile
+  const [editForm, setEditForm] = useState({
+    fullName: user?.fullName || '',
+    username: user?.username || '',
+    password: ''
+  });
+
+  // Update editForm ketika user berubah
+  useEffect(() => {
+    if (user) {
+      setEditForm(prev => ({
+        ...prev,
+        fullName: user.fullName,
+        username: user.username
+      }));
+    }
+  }, [user]);
 
   useEffect(() => {
-    // Update setiap detik
     const timer = setInterval(() => {
       setCurrentDateTime(new Date());
     }, 1000);
 
     return () => clearInterval(timer);
   }, []);
+
+  const handleLogout = async () => {
+    const confirmed = await confirm({
+      title: 'Konfirmasi Logout',
+      message: 'Apakah Anda yakin ingin keluar?',
+      confirmText: 'Ya, Keluar',
+      cancelText: 'Batal'
+    });
+
+    if (confirmed) {
+      logout();
+      navigate('/login');
+    }
+  };
+
+  const handleEditProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+
+    try {
+      // Validasi password jika diisi
+      if (editForm.password && editForm.password.length < 6) {
+        console.log('Password minimal 6 karakter');
+        return;
+      }
+
+      await updateUser(
+        user.id,
+        editForm.username,
+        editForm.password || null,
+        editForm.fullName,
+        user.role,
+        user.barakId
+      );
+
+      // Update local storage
+      const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+      const updatedUser = {
+        ...currentUser,
+        fullName: editForm.fullName
+      };
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+
+      // Update state user secara langsung
+      if (user) {
+        user.fullName = editForm.fullName;
+      }
+
+      // Reset password field
+      setEditForm(prev => ({
+        ...prev,
+        password: ''
+      }));
+
+      // Tutup modal
+      setIsEditProfileOpen(false);
+
+      console.log(editForm.password 
+        ? 'Profil dan password berhasil diperbarui'
+        : 'Profil berhasil diperbarui'
+      );
+
+    } catch (error) {
+      console.error('Gagal memperbarui profil:', error);
+    }
+  };
 
   const formatDate = (date: Date) => {
     const options: Intl.DateTimeFormatOptions = {
@@ -35,19 +125,160 @@ const Header = () => {
   
   return (
     <header className="bg-white shadow-sm sticky top-0 z-10">
-      <div className="h-14 w-full px-4 flex items-center justify-between">
-        <div className="text-gray-700">
-          <span className="font-medium">{formatDate(currentDateTime)}</span>
-          <span className="mx-2">|</span>
-          <span className="font-medium">{formatTime(currentDateTime)}</span>
-        </div>
-        <div className="flex items-center space-x-2">
-          <User className="h-5 w-5 text-gray-500" />
-          <div className="flex flex-col items-end">
-            <span className="text-gray-700 font-medium">{user?.fullName}</span>
+      <div className="max-w-7xl mx-auto">
+        <div className="h-16 px-4 flex items-center justify-between">
+          {/* Date and Time Section */}
+          <div className="hidden sm:flex items-center space-x-2 text-gray-600">
+            <div className="flex items-center space-x-1">
+              <span className="font-medium">{formatDate(currentDateTime)}</span>
+              <span className="text-gray-400">|</span>
+              <span className="font-medium text-blue-600">{formatTime(currentDateTime)}</span>
+            </div>
+          </div>
+
+          {/* Mobile Date */}
+          <div className="sm:hidden text-sm text-gray-600">
+            <div className="font-medium">{formatDate(currentDateTime)}</div>
+            <div className="font-medium text-blue-600">{formatTime(currentDateTime)}</div>
+          </div>
+
+          {/* User Profile Section */}
+          <div className="relative">
+            <button
+              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+              className="flex items-center space-x-3 py-2 px-3 rounded-lg hover:bg-gray-100 transition-colors"
+            >
+              <div className="h-8 w-8 bg-blue-500 rounded-full flex items-center justify-center">
+                <User className="h-5 w-5 text-white" />
+              </div>
+              <div className="hidden sm:block text-right">
+                <div className="text-sm font-medium text-gray-900">{user?.fullName}</div>
+                <div className="text-xs text-gray-500 capitalize">{user?.role?.replace('_', ' ')}</div>
+              </div>
+              <ChevronDown className="h-4 w-4 text-gray-500" />
+            </button>
+
+            {/* Dropdown Menu */}
+            {isDropdownOpen && (
+              <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-1 border border-gray-200">
+                <div className="px-4 py-2 border-b sm:hidden">
+                  <div className="text-sm font-medium text-gray-900">{user?.fullName}</div>
+                  <div className="text-xs text-gray-500 capitalize">{user?.role?.replace('_', ' ')}</div>
+                </div>
+                <button
+                  onClick={() => {
+                    setIsEditProfileOpen(true);
+                    setIsDropdownOpen(false);
+                    setEditForm({
+                      fullName: user?.fullName || '',
+                      username: user?.username || '',
+                      password: ''
+                    });
+                  }}
+                  className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center space-x-2"
+                >
+                  <UserCog size={16} />
+                  <span>Edit Profil</span>
+                </button>
+                <button
+                  onClick={handleLogout}
+                  className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center space-x-2"
+                >
+                  <LogOut size={16} />
+                  <span>Logout</span>
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>
+
+      {/* Edit Profile Modal */}
+      {isEditProfileOpen && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-50">
+          <div className="min-h-screen px-4 text-center">
+            <span className="inline-block h-screen align-middle" aria-hidden="true">&#8203;</span>
+            
+            <div className="inline-block w-full max-w-md p-6 my-8 text-left align-middle transition-all transform bg-white shadow-xl rounded-lg">
+              <div className="flex justify-between items-center mb-4 pb-4 border-b">
+                <h3 className="text-xl font-bold text-gray-900">Edit Profil</h3>
+                <button
+                  onClick={() => setIsEditProfileOpen(false)}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              <form onSubmit={handleEditProfile} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Nama Lengkap
+                  </label>
+                  <input
+                    type="text"
+                    value={editForm.fullName}
+                    onChange={(e) => setEditForm({ ...editForm, fullName: e.target.value })}
+                    required
+                    className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Username
+                  </label>
+                  <input
+                    type="text"
+                    value={editForm.username}
+                    disabled
+                    className="w-full p-2 border rounded-lg bg-gray-100 cursor-not-allowed"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Password Baru (kosongkan jika tidak diubah)
+                  </label>
+                  <input
+                    type="password"
+                    value={editForm.password}
+                    onChange={(e) => setEditForm({ ...editForm, password: e.target.value })}
+                    className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div className="flex justify-end space-x-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setIsEditProfileOpen(false)}
+                    className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+                  >
+                    Simpan
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={isOpen}
+        onClose={handleCancel}
+        onConfirm={handleConfirm}
+        title={options?.title || ''}
+        message={options?.message || ''}
+        confirmText={options?.confirmText}
+        cancelText={options?.cancelText}
+      />
     </header>
   );
 };

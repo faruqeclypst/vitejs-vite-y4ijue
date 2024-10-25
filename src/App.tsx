@@ -25,19 +25,22 @@ const AppRoutes = () => {
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
 
   if (isLoading) {
-    return <div>Loading...</div>;
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      </div>
+    );
   }
 
   return (
     <Router>
       <div className="flex min-h-screen bg-gray-50">
         {user && <Sidebar isExpanded={isSidebarExpanded} setIsExpanded={setIsSidebarExpanded} />}
-        {/* Update margin left berdasarkan status sidebar */}
         <div className={`flex-1 flex flex-col transition-all duration-300 ${
-          user ? (isSidebarExpanded ? 'md:ml-80' : 'md:ml-24') : ''
+          user ? (isSidebarExpanded ? 'md:ml-64' : 'md:ml-20') : ''
         }`}>
           {user && <Header />}
-          <main className="flex-1 p-2 sm:p-4 lg:p-6">
+          <main className="flex-1 container-responsive">
             <div className="w-full max-w-[2000px] mx-auto">
               <Routes>
                 <Route 

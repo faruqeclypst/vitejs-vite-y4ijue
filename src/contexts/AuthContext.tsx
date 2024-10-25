@@ -4,7 +4,8 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signOut,
-  updateProfile
+  updateProfile,
+  updatePassword
 } from 'firebase/auth';
 import { ref, get, set, remove } from 'firebase/database';
 import { db } from '../firebase';
@@ -261,28 +262,41 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const updateUser = async (
     id: string,
-    email: string,
+    username: string,
     password: string | null,
     fullName: string,
     role: UserRole,
     barakId?: string
   ) => {
     try {
+      // Dapatkan email yang benar dengan format @piketmosa.com
+      const email = `${username.toLowerCase()}@piketmosa.com`;
+      
       const userRef = ref(db, `users/${id}`);
       const userData = {
-        username: email.split('@')[0],
-        email,
+        username,
+        email, // Gunakan email yang benar
         fullName,
         role,
         barakId: barakId || null
       };
 
+      // Update data di Realtime Database
       await set(userRef, userData);
 
-      // Jika ada password baru, update di Firebase Auth
+      // Jika ada password baru
       if (password) {
-        // Note: Updating password requires re-authentication
-        // Implement password update logic here
+        try {
+          // Dapatkan user dari Firebase Auth
+          const user = auth.currentUser;
+          if (user) {
+            // Update password
+            await updatePassword(user, password);
+          }
+        } catch (error) {
+          console.error('Error updating password:', error);
+          throw new Error('Gagal memperbarui password');
+        }
       }
     } catch (error) {
       console.error('Update user error:', error);

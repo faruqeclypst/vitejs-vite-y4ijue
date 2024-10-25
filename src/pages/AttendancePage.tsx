@@ -159,144 +159,163 @@ const AttendancePage: React.FC = () => {
   }
 
   return (
-    <div className="p-4 space-y-8">
-      <h1 className="text-3xl font-bold mb-4 text-gray-800">Halaman Kehadiran</h1>
-      
-      <div className="bg-white shadow-md rounded-lg p-6">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-semibold">Catat Kehadiran</h2>
-          <span className="text-lg font-medium text-gray-600">
-            {currentDay || 'Minggu'}
-          </span>
-        </div>
-        <div className="mb-4 flex flex-wrap gap-4">
-          <div className="flex-1 min-w-[200px]">
-            <label htmlFor="date" className="block text-sm font-medium text-gray-700">Tanggal:</label>
-            <input
-              type="date"
-              id="date"
-              value={currentDate}
-              onChange={handleDateChange}
-              disabled={!isAdmin}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
-            />
+    <div className="p-4">
+      <div className="max-w-6xl mx-auto">
+        <div className="flex flex-col space-y-4">
+          {/* Header */}
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">
+              Absensi Guru
+            </h1>
+            <span className="text-lg font-medium text-gray-600">
+              {currentDay || 'Minggu'}
+            </span>
           </div>
-        </div>
-        {currentDay ? (
-          currentRoster.length > 0 ? (
-            <AttendanceTable
-              roster={currentRoster}
-              teachers={teachers}
-              onSubmit={handleAttendanceSubmit}
-              existingAttendance={filteredAttendanceRecords}
-              confirmedTeachers={confirmedTeachers}
+
+          {/* Main Content */}
+          <div className="bg-white shadow-md rounded-lg p-4">
+            <div className="flex flex-wrap gap-4 mb-6">
+              <div className="w-full sm:w-auto flex-1 min-w-[200px]">
+                <label htmlFor="date" className="block text-sm font-medium text-gray-700 mb-2">
+                  Tanggal:
+                </label>
+                <input
+                  type="date"
+                  id="date"
+                  value={currentDate}
+                  onChange={handleDateChange}
+                  disabled={!isAdmin}
+                  className="w-full rounded-lg border-gray-300 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+
+            {currentDay ? (
+              currentRoster.length > 0 ? (
+                <AttendanceTable
+                  roster={currentRoster}
+                  teachers={teachers}
+                  onSubmit={handleAttendanceSubmit}
+                  existingAttendance={filteredAttendanceRecords}
+                  confirmedTeachers={confirmedTeachers}
+                />
+              ) : (
+                <p className="text-gray-500 italic">Tidak ada entri roster untuk hari ini.</p>
+              )
+            ) : (
+              <p className="text-gray-500 italic">Tidak ada jadwal untuk hari Minggu.</p>
+            )}
+          </div>
+
+          {/* Export Section */}
+          {isAdmin && (
+            <div className="bg-white shadow-md rounded-lg p-4">
+              <h2 className="text-xl font-semibold mb-6">Ekspor Data Kehadiran</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Custom Export */}
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <h3 className="text-lg font-medium mb-4">Ekspor Kustom</h3>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Tanggal Mulai
+                      </label>
+                      <input
+                        type="date"
+                        value={exportStartDate.toISOString().split('T')[0]}
+                        onChange={(e) => handleExportStartDateChange(new Date(e.target.value))}
+                        className="w-full rounded-lg border-gray-300"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Tanggal Akhir
+                      </label>
+                      <input
+                        type="date"
+                        value={exportEndDate.toISOString().split('T')[0]}
+                        onChange={(e) => handleExportEndDateChange(new Date(e.target.value))}
+                        className="w-full rounded-lg border-gray-300"
+                      />
+                    </div>
+                    <button
+                      onClick={() => handleExport('custom')}
+                      className="w-full btn-primary"
+                    >
+                      Ekspor Data Kustom
+                    </button>
+                  </div>
+                </div>
+
+                {/* Monthly Export */}
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <h3 className="text-lg font-medium mb-4">Ekspor Bulanan</h3>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Bulan
+                      </label>
+                      <select
+                        value={exportMonth}
+                        onChange={(e) => setExportMonth(parseInt(e.target.value))}
+                        className="w-full rounded-lg border-gray-300"
+                      >
+                        {Array.from({ length: 12 }, (_, i) => (
+                          <option key={i} value={i}>
+                            {new Date(2000, i, 1).toLocaleString('default', { month: 'long' })}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Tahun
+                      </label>
+                      <select
+                        value={exportYear}
+                        onChange={(e) => setExportYear(parseInt(e.target.value))}
+                        className="w-full rounded-lg border-gray-300"
+                      >
+                        {Array.from({ length: 10 }, (_, i) => (
+                          <option key={i} value={new Date().getFullYear() - i}>
+                            {new Date().getFullYear() - i}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <button
+                      onClick={() => handleExport('monthly')}
+                      className="w-full btn-success"
+                    >
+                      Ekspor Data Bulanan
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Alerts and Modals */}
+          {alert && (
+            <Alert
+              type={alert.type}
+              message={alert.message}
+              duration={alert.duration}
+              onClose={hideAlert}
             />
-          ) : (
-            <p className="text-gray-500 italic">Tidak ada entri roster untuk hari ini.</p>
-          )
-        ) : (
-          <p className="text-gray-500 italic">Tidak ada jadwal untuk hari Minggu.</p>
-        )}
+          )}
+
+          <ConfirmationModal
+            isOpen={isOpen}
+            onClose={handleCancel}
+            onConfirm={handleConfirm}
+            title={options?.title || ''}
+            message={options?.message || ''}
+            confirmText={options?.confirmText}
+            cancelText={options?.cancelText}
+          />
+        </div>
       </div>
-
-      {isAdmin && (
-        <div className="bg-white shadow-md rounded-lg p-6">
-          <h2 className="text-xl font-semibold mb-6">Ekspor Data Kehadiran</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <h3 className="text-lg font-medium mb-4">Ekspor Kustom</h3>
-              <div className="space-y-4">
-                <div>
-                  <label htmlFor="startDate" className="block text-sm font-medium text-gray-700 mb-1">Tanggal Mulai</label>
-                  <input
-                    type="date"
-                    id="startDate"
-                    value={exportStartDate.toISOString().split('T')[0]}
-                    onChange={(e) => handleExportStartDateChange(new Date(e.target.value))}
-                    className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
-                  />
-                </div>
-                <div>
-                  <label htmlFor="endDate" className="block text-sm font-medium text-gray-700 mb-1">Tanggal Akhir</label>
-                  <input
-                    type="date"
-                    id="endDate"
-                    value={exportEndDate.toISOString().split('T')[0]}
-                    onChange={(e) => handleExportEndDateChange(new Date(e.target.value))}
-                    className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
-                  />
-                </div>
-                <button
-                  onClick={() => handleExport('custom')}
-                  className="w-full px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                >
-                  Ekspor Data Kustom
-                </button>
-              </div>
-            </div>
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <h3 className="text-lg font-medium mb-4">Ekspor Bulanan</h3>
-              <div className="space-y-4">
-                <div>
-                  <label htmlFor="month" className="block text-sm font-medium text-gray-700 mb-1">Bulan</label>
-                  <select
-                    id="month"
-                    value={exportMonth}
-                    onChange={(e) => setExportMonth(parseInt(e.target.value))}
-                    className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
-                  >
-                    {Array.from({ length: 12 }, (_, i) => (
-                      <option key={i} value={i}>
-                        {new Date(2000, i, 1).toLocaleString('default', { month: 'long' })}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label htmlFor="year" className="block text-sm font-medium text-gray-700 mb-1">Tahun</label>
-                  <select
-                    id="year"
-                    value={exportYear}
-                    onChange={(e) => setExportYear(parseInt(e.target.value))}
-                    className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
-                  >
-                    {Array.from({ length: 10 }, (_, i) => (
-                      <option key={i} value={new Date().getFullYear() - i}>
-                        {new Date().getFullYear() - i}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <button
-                  onClick={() => handleExport('monthly')}
-                  className="w-full px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-                >
-                  Ekspor Data Bulanan
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {alert && (
-        <Alert
-          type={alert.type}
-          message={alert.message}
-          duration={alert.duration}
-          onClose={hideAlert}
-        />
-      )}
-
-      <ConfirmationModal
-        isOpen={isOpen}
-        onClose={handleCancel}
-        onConfirm={handleConfirm}
-        title={options?.title || ''}
-        message={options?.message || ''}
-        confirmText={options?.confirmText}
-        cancelText={options?.cancelText}
-      />
     </div>
   );
 };

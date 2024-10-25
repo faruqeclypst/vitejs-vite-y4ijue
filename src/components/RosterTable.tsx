@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { RosterEntry, Teacher } from '../types';
 import RosterForm from './RosterForm';
-import { ChevronDown, ChevronUp, Edit, Trash2, Plus, X, Calendar } from 'lucide-react';
+import { ChevronDown, ChevronUp, Edit, Trash2, Plus, X, Calendar, Search } from 'lucide-react';
 import { useAttendance } from '../contexts/AttendanceContext';
 
 // Tambahkan interface untuk AttendanceDetail
@@ -156,6 +156,7 @@ const RosterTable: React.FC<RosterTableProps> = ({ roster, teachers, onDelete, o
   const [editingEntry, setEditingEntry] = useState<RosterEntry | null>(null);
   const [addingForTeacher, setAddingForTeacher] = useState<string | null>(null);
   const [showAttendanceDetail, setShowAttendanceDetail] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
 
   const groupedRoster = roster.reduce((acc, entry) => {
     if (!acc[entry.teacherId]) {
@@ -164,6 +165,11 @@ const RosterTable: React.FC<RosterTableProps> = ({ roster, teachers, onDelete, o
     acc[entry.teacherId].push(entry);
     return acc;
   }, {} as Record<string, RosterEntry[]>);
+
+  const filteredTeachers = teachers.filter(teacher =>
+    teacher.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    teacher.code.toLowerCase().includes(searchTerm.toLowerCase())
+  ).sort((a, b) => a.name.localeCompare(b.name));
 
   const toggleTeacher = (teacherId: string) => {
     setOpenTeachers(prev =>
@@ -179,7 +185,7 @@ const RosterTable: React.FC<RosterTableProps> = ({ roster, teachers, onDelete, o
   };
 
   const handleAddForTeacher = (teacherId: string, e: React.MouseEvent) => {
-    e.stopPropagation(); // Prevent the teacher row from toggling open/closed
+    e.stopPropagation();
     setAddingForTeacher(teacherId);
     setIsModalOpen(true);
   };
@@ -192,96 +198,120 @@ const RosterTable: React.FC<RosterTableProps> = ({ roster, teachers, onDelete, o
     return a.classId.localeCompare(b.classId);
   };
 
-  const sortedTeachers = [...teachers].sort((a, b) => a.name.localeCompare(b.name));
-
   return (
-    <div className="bg-white shadow-md rounded-lg p-4">
-      <h2 className="text-xl font-semibold mb-4">Jadwal Guru</h2>
+    <div className="space-y-6">
+      {/* Search and Add */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
+        <div className="relative w-full sm:w-64">
+          <input
+            type="text"
+            placeholder="Cari guru..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full p-2 pl-8 border rounded-lg"
+          />
+          <Search className="absolute left-2 top-2.5 text-gray-400" size={18} />
+        </div>
+      </div>
 
-      {sortedTeachers.map((teacher) => {
-        const entries = groupedRoster[teacher.id] || [];
-        const isOpen = openTeachers.includes(teacher.id);
-        const sortedEntries = entries.sort(sortEntries);
-        return (
-          <div key={teacher.id} className="border rounded-lg overflow-hidden mb-4">
-            <div
-              onClick={() => toggleTeacher(teacher.id)}
-              className="w-full flex justify-between items-center p-4 bg-gray-100 hover:bg-gray-200 cursor-pointer"
-            >
-              <div className="flex items-center space-x-4">
-                <div className="flex items-center space-x-2">
-                  <button
-                    onClick={(e) => handleAddForTeacher(teacher.id, e)}
-                    className="bg-blue-500 text-white p-1 rounded-full hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
-                    title="Tambah Jadwal Baru"
-                  >
-                    <Plus size={16} />
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setShowAttendanceDetail(teacher.id);
-                    }}
-                    className="text-blue-500 hover:text-blue-700"
-                    title="Lihat Detail Kehadiran"
-                  >
-                    <Calendar size={18} />
-                  </button>
-                </div>
-                <h3 className="font-bold text-lg">
-                  {teacher.name} <span className="text-sm font-normal text-gray-600">({teacher.code})</span>
-                </h3>
-              </div>
-              <div>
-                {isOpen ? (
-                  <ChevronUp className="h-5 w-5" />
-                ) : (
-                  <ChevronDown className="h-5 w-5" />
-                )}
-              </div>
-            </div>
-            {isOpen && (
-              <div className="p-4 bg-white">
-                {sortedEntries.length > 0 ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {sortedEntries.map((entry) => (
-                      <div key={entry.id} className="p-2 bg-gray-50 rounded shadow">
-                        <p><span className="font-semibold">{entry.dayOfWeek}:</span> {entry.classId}</p>
-                        <p>Jam: {entry.hours.join(', ')}</p>
-                        <div className="mt-2 space-x-2">
-                          <button
-                            onClick={() => handleEdit(entry)}
-                            className="bg-yellow-500 text-white text-xs px-2 py-1 rounded hover:bg-yellow-600"
-                          >
-                            <Edit size={12} className="inline mr-1" />
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => onDelete(entry.id)}
-                            className="bg-red-500 text-white text-xs px-2 py-1 rounded hover:bg-red-600"
-                          >
-                            <Trash2 size={12} className="inline mr-1" />
-                            Hapus
-                          </button>
-                        </div>
-                      </div>
-                    ))}
+      {/* Teacher List */}
+      <div className="space-y-4">
+        {filteredTeachers.map((teacher) => {
+          const entries = groupedRoster[teacher.id] || [];
+          const isOpen = openTeachers.includes(teacher.id);
+          const sortedEntries = entries.sort(sortEntries);
+
+          return (
+            <div key={teacher.id} className="bg-white shadow-sm rounded-lg overflow-hidden border">
+              <div
+                onClick={() => toggleTeacher(teacher.id)}
+                className="w-full flex justify-between items-center p-4 bg-gray-50 hover:bg-gray-100 cursor-pointer"
+              >
+                <div className="flex items-center space-x-4">
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={(e) => handleAddForTeacher(teacher.id, e)}
+                      className="bg-blue-500 text-white p-2 rounded-lg hover:bg-blue-600"
+                      title="Tambah Jadwal Baru"
+                    >
+                      <Plus size={18} />
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowAttendanceDetail(teacher.id);
+                      }}
+                      className="text-blue-500 hover:text-blue-700 p-2"
+                      title="Lihat Detail Kehadiran"
+                    >
+                      <Calendar size={18} />
+                    </button>
                   </div>
-                ) : (
-                  <p className="text-gray-500 italic">Belum ada jadwal untuk guru ini.</p>
-                )}
+                  <div>
+                    <h3 className="font-medium text-gray-900">{teacher.name}</h3>
+                    <p className="text-sm text-gray-500">{teacher.code}</p>
+                  </div>
+                </div>
+                {isOpen ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
               </div>
-            )}
-          </div>
-        );
-      })}
 
+              {isOpen && (
+                <div className="p-4">
+                  {sortedEntries.length > 0 ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {sortedEntries.map((entry) => (
+                        <div key={entry.id} className="p-4 bg-gray-50 rounded-lg shadow-sm">
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <p className="font-medium">{entry.dayOfWeek}</p>
+                              <p className="text-sm text-gray-600">{entry.classId}</p>
+                              <p className="text-sm text-gray-500">Jam: {entry.hours.join(', ')}</p>
+                            </div>
+                            <div className="flex space-x-2">
+                              <button
+                                onClick={() => handleEdit(entry)}
+                                className="text-blue-500 hover:text-blue-700 p-1"
+                              >
+                                <Edit size={16} />
+                              </button>
+                              <button
+                                onClick={() => onDelete(entry.id)}
+                                className="text-red-500 hover:text-red-700 p-1"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-gray-500 text-center py-4">Belum ada jadwal untuk guru ini</p>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
+
+        {filteredTeachers.length === 0 && (
+          <div className="text-center py-8">
+            <Calendar className="mx-auto h-12 w-12 text-gray-400" />
+            <h3 className="mt-2 text-sm font-medium text-gray-900">Tidak ada guru</h3>
+            <p className="mt-1 text-sm text-gray-500">
+              {searchTerm ? 'Tidak ada hasil pencarian' : 'Mulai dengan menambahkan jadwal'}
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* Modal Form */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 overflow-auto bg-black bg-opacity-50 flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-2xl rounded-lg shadow-xl overflow-hidden">
-            <div className="p-6 bg-gray-50 border-b flex justify-between items-center">
-              <h2 className="text-2xl font-bold text-gray-800">
-                {editingEntry ? 'Edit Entri Jadwal' : 'Jadwal Baru'}
+        <div className="modal-container">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h2 className="text-xl font-bold text-gray-800">
+                {editingEntry ? 'Edit Jadwal' : 'Tambah Jadwal'}
               </h2>
               <button
                 onClick={() => {
@@ -289,12 +319,12 @@ const RosterTable: React.FC<RosterTableProps> = ({ roster, teachers, onDelete, o
                   setEditingEntry(null);
                   setAddingForTeacher(null);
                 }}
-                className="text-gray-600 hover:text-gray-800 transition-colors"
+                className="text-gray-500 hover:text-gray-700"
               >
                 <X size={24} />
               </button>
             </div>
-            <div className="p-6 max-h-[calc(100vh-200px)] overflow-y-auto">
+            <div className="modal-body">
               <RosterForm
                 teachers={teachers.map(teacher => ({
                   ...teacher,
@@ -319,6 +349,7 @@ const RosterTable: React.FC<RosterTableProps> = ({ roster, teachers, onDelete, o
         </div>
       )}
 
+      {/* AttendanceDetail Modal */}
       {showAttendanceDetail && (
         <AttendanceDetail
           teacherId={showAttendanceDetail}
