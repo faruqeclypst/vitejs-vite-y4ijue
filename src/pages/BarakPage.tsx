@@ -12,11 +12,18 @@ const BarakPage = () => {
 
   return (
     <div className="main-container mt-6">
-      <div className="bg-white p-6 rounded-lg shadow-sm mb-6">
-        <h2 className="h2">Manajemen Barak</h2>
-        <p className="mt-2 text-gray-600">Kelola data dan informasi barak asrama</p>
+      <div className="flex flex-col space-y-4">
+        {/* Header Section */}
+        <div className="bg-white p-6 rounded-lg shadow-sm">
+          <h2 className="h2">Manajemen Barak</h2>
+          <p className="mt-2 text-gray-600">Kelola data dan informasi barak asrama</p>
+        </div>
+
+        {/* Content Section */}
+        <div className="bg-white shadow-md rounded-lg p-4">
+          <BarakManagement />
+        </div>
       </div>
-      <BarakManagement />
     </div>
   );
 };
