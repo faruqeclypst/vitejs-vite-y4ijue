@@ -3,7 +3,7 @@ import { Student, availableClasses } from '../types';
 import { useStudents } from '../contexts/StudentContext';
 import { useBarak } from '../contexts/BarakContext'; // Ganti useAsrama dengan useBarak
 import Papa from 'papaparse';
-import { Edit, Trash2, Plus, X, FileText, History } from 'lucide-react';
+import { Edit, Trash2, Plus, X, FileText, History, Search, Users } from 'lucide-react';
 import StudentLeaveHistory from './StudentLeaveHistory';
 import { useAuth } from '../contexts/AuthContext';
 import Alert from '../components/Alert';
@@ -13,6 +13,7 @@ import { db } from '../firebase';
 import ConfirmationModal from '../components/ConfirmationModal';
 import useConfirmation from '../hooks/useConfirmation';
 import { exportStudent } from '../utils/exportStudent';
+import { useStudentLeave } from '../contexts/StudentLeaveContext';
 
 // Update interface untuk tab
 type TabType = 'active' | 'deleted';
@@ -32,11 +33,10 @@ const StudentManagement: React.FC = () => {
   const [selectedGrade, setSelectedGrade] = useState<'X' | 'XI' | 'XII' | ''>('');
   const [selectedStudentForHistory, setSelectedStudentForHistory] = useState<Student | null>(null);
   const { alert, showAlert, hideAlert } = useAlert();
-  const [showConfirmModal, setShowConfirmModal] = useState(false);
-  const [deleteId, setDeleteId] = useState<string | null>(null);
   const [groupedStudents, setGroupedStudents] = useState<Record<string, Student[]>>({ 'Semua Siswa': students });
   const [activeTab, setActiveTab] = useState<TabType>('active');
   const { isOpen: isConfirmOpen, options: confirmOptions, confirm, handleConfirm, handleCancel } = useConfirmation();
+  const { leaves, deleteLeave } = useStudentLeave();
 
   // Tambahkan useEffect untuk memantau perubahan user dan barakId
   useEffect(() => {
@@ -166,15 +166,17 @@ const StudentManagement: React.FC = () => {
     setIsModalOpen(true);
   };
 
-  const handleDelete = (id: string) => {
-    setDeleteId(id);
-    setShowConfirmModal(true);
-  };
+  const handleDelete = async (id: string) => {
+    const confirmed = await confirm({
+      title: 'Konfirmasi Hapus',
+      message: 'Apakah Anda yakin ingin menghapus siswa ini?',
+      confirmText: 'Hapus',
+      cancelText: 'Batal'
+    });
 
-  const confirmDelete = async () => {
-    if (deleteId) {
+    if (confirmed) {
       try {
-        await deleteStudent(deleteId);
+        await deleteStudent(id);
         showAlert({
           type: 'success',
           message: 'Data siswa berhasil dihapus'
@@ -186,8 +188,6 @@ const StudentManagement: React.FC = () => {
         });
       }
     }
-    setShowConfirmModal(false);
-    setDeleteId(null);
   };
 
   const handleImportCSV = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -300,10 +300,15 @@ const StudentManagement: React.FC = () => {
 
     if (confirmed) {
       try {
+        // Hapus perizinan siswa terlebih dahulu
+        const studentLeaves = leaves.filter(leave => leave.studentId === id);
+        await Promise.all(studentLeaves.map(leave => deleteLeave(leave.id)));
+        
+        // Kemudian hapus siswa
         await deleteStudentPermanently(id);
         showAlert({
           type: 'success',
-          message: 'Siswa berhasil dihapus secara permanen'
+          message: 'Siswa dan semua perizinannya berhasil dihapus secara permanen'
         });
       } catch (error) {
         showAlert({
@@ -317,29 +322,26 @@ const StudentManagement: React.FC = () => {
   // Update renderStudentTable
   const renderStudentTable = (students: Student[], barakName: string) => {
     if (!students || students.length === 0) {
-      // Tampilkan 10 baris kosong jika tidak ada data
       return (
-        <div className="overflow-x-auto">
+        <div className="overflow-hidden">
           <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50 sticky top-0 z-10">
+            <thead className="bg-gray-50">
               <tr>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-16">No</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-28">Kelas</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Barak</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32">Jenis Kelamin</th>
-                <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-32">Aksi</th>
+                <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[5%]">No</th>
+                <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama</th>
+                <th className="hidden md:table-cell px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kelas</th>
+                <th className="hidden sm:table-cell px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Gender</th>
+                <th className="px-2 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-[15%]">Aksi</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {[...Array(10)].map((_, index) => (
                 <tr key={index}>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{index + 1}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">-</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">-</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">-</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">-</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-500">-</td>
+                  <td className="px-2 py-3 whitespace-nowrap text-sm text-gray-500">{index + 1}</td>
+                  <td className="px-2 py-3 text-sm text-gray-500">-</td>
+                  <td className="hidden md:table-cell px-2 py-3 text-sm text-gray-500">-</td>
+                  <td className="hidden sm:table-cell px-2 py-3 text-sm text-gray-500">-</td>
+                  <td className="px-2 py-3 text-right text-sm text-gray-500">-</td>
                 </tr>
               ))}
             </tbody>
@@ -352,28 +354,30 @@ const StudentManagement: React.FC = () => {
     const emptyRows = Math.max(0, 10 - students.length);
 
     return (
-      <div className="overflow-x-auto">
+      <div className="overflow-hidden">
         <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50 sticky top-0 z-10">
+          <thead className="bg-gray-50">
             <tr>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-16">No</th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama</th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-28">Kelas</th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Barak</th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32">Jenis Kelamin</th>
-              <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-32">Aksi</th>
+              <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[5%]">No</th>
+              <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama</th>
+              <th className="hidden md:table-cell px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kelas</th>
+              <th className="hidden sm:table-cell px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Gender</th>
+              <th className="px-2 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-[15%]">Aksi</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {students.map((student, index) => (
               <tr key={student.id} className="group hover:bg-gray-50">
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{index + 1}</td>
-                <td className="px-6 py-4 whitespace-nowrap">
+                <td className="px-2 py-3 whitespace-nowrap text-sm text-gray-500">{index + 1}</td>
+                <td className="px-2 py-3">
                   <div className="text-sm font-medium text-gray-900">{student.fullName}</div>
+                  {/* Tampilkan kelas di mobile */}
+                  <div className="md:hidden text-xs text-gray-500 mt-1">
+                    {student.class}
+                  </div>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{student.class}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{student.barak}</td>
-                <td className="px-6 py-4 whitespace-nowrap">
+                <td className="hidden md:table-cell px-2 py-3 text-sm text-gray-500">{student.class}</td>
+                <td className="hidden sm:table-cell px-2 py-3">
                   <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
                     student.gender === 'Laki-laki' 
                       ? 'bg-blue-100 text-blue-800' 
@@ -382,67 +386,62 @@ const StudentManagement: React.FC = () => {
                     {student.gender}
                   </span>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium bg-white group-hover:bg-gray-50 transition-colors">
-                  <div className="flex justify-end space-x-3">
+                <td className="px-2 py-3 text-right text-sm font-medium">
+                  <div className="flex justify-end space-x-1">
                     {activeTab === 'active' && canEditBarak ? (
                       <>
                         <button
                           onClick={() => handleEditStudent(student)}
-                          className="text-blue-600 hover:text-blue-900 transition-colors"
+                          className="text-blue-600 hover:text-blue-900 p-1"
                           title="Edit"
                         >
-                          <Edit className="h-5 w-5" />
+                          <Edit className="h-4 w-4" />
                         </button>
                         <button
                           onClick={() => handleDelete(student.id)}
-                          className="text-red-600 hover:text-red-900 transition-colors"
+                          className="text-red-600 hover:text-red-900 p-1"
                           title="Hapus"
                         >
-                          <Trash2 className="h-5 w-5" />
+                          <Trash2 className="h-4 w-4" />
                         </button>
                       </>
                     ) : activeTab === 'deleted' ? (
                       <>
                         <button
                           onClick={() => handleRestore(student.id)}
-                          className="text-green-600 hover:text-green-900 transition-colors"
+                          className="text-green-600 hover:text-green-900 p-1"
                           title="Pulihkan"
                         >
-                          <History className="h-5 w-5" />
+                          <History className="h-4 w-4" />
                         </button>
                         <button
                           onClick={() => handlePermanentDelete(student.id)}
-                          className="text-red-600 hover:text-red-900 transition-colors"
+                          className="text-red-600 hover:text-red-900 p-1"
                           title="Hapus Permanen"
                         >
-                          <Trash2 className="h-5 w-5" />
+                          <Trash2 className="h-4 w-4" />
                         </button>
                       </>
-                    ) : (
-                      <span className="text-sm text-gray-500 italic">
-                        Tidak ada akses
-                      </span>
-                    )}
+                    ) : null}
                     <button
                       onClick={() => setSelectedStudentForHistory(student)}
-                      className="text-indigo-600 hover:text-indigo-900 transition-colors"
-                      title="Lihat Riwayat Perizinan"
+                      className="text-indigo-600 hover:text-indigo-900 p-1"
+                      title="Lihat Riwayat"
                     >
-                      <FileText className="h-5 w-5" />
+                      <FileText className="h-4 w-4" />
                     </button>
                   </div>
                 </td>
               </tr>
             ))}
-            {/* Tambahkan baris kosong jika data kurang dari 10 */}
+            {/* Empty rows */}
             {[...Array(emptyRows)].map((_, index) => (
               <tr key={`empty-${index}`}>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{students.length + index + 1}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">-</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">-</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">-</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">-</td>
-                <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-500">-</td>
+                <td className="px-2 py-3 whitespace-nowrap text-sm text-gray-500">{students.length + index + 1}</td>
+                <td className="px-2 py-3 text-sm text-gray-500">-</td>
+                <td className="hidden md:table-cell px-2 py-3 text-sm text-gray-500">-</td>
+                <td className="hidden sm:table-cell px-2 py-3 text-sm text-gray-500">-</td>
+                <td className="px-2 py-3 text-right text-sm text-gray-500">-</td>
               </tr>
             ))}
           </tbody>
@@ -452,232 +451,8 @@ const StudentManagement: React.FC = () => {
   };
 
   return (
-    <div className="w-full">
-      {/* Tombol tambah dan import/export */}
-      <div className="flex justify-between items-center mb-6">
-        <div className="flex space-x-4">
-          <button
-            onClick={openModal}
-            className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-lg flex items-center text-base"
-          >
-            <Plus className="h-5 w-5 mr-2" />
-            Tambah Siswa
-          </button>
-          <label className="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg flex items-center text-base cursor-pointer">
-            <Plus className="h-5 w-5 mr-2" />
-            Import CSV
-            <input type="file" accept=".csv" onChange={handleImportCSV} className="hidden" />
-          </label>
-          <button 
-            onClick={handleExportCSV}
-            className="bg-yellow-500 hover:bg-yellow-600 text-white px-6 py-3 rounded-lg flex items-center text-base"
-          >
-            <Plus className="h-5 w-5 mr-2" />
-            Export CSV
-          </button>
-        </div>
-      </div>
-
-      {/* Tambah tabs */}
-      <div className="mb-4 border-b border-gray-200">
-        <nav className="-mb-px flex space-x-8">
-          <button
-            onClick={() => setActiveTab('active')}
-            className={`${
-              activeTab === 'active'
-                ? 'border-blue-500 text-blue-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
-          >
-            Siswa Aktif
-          </button>
-          <button
-            onClick={() => setActiveTab('deleted')}
-            className={`${
-              activeTab === 'deleted'
-                ? 'border-blue-500 text-blue-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
-          >
-            Siswa Terhapus
-          </button>
-        </nav>
-      </div>
-
-      {/* Render tables with dynamic columns */}
-      <div className={`grid grid-cols-1 ${Object.keys(groupedStudents).length > 1 ? 'lg:grid-cols-2' : ''} gap-6`}>
-        {Object.keys(groupedStudents).length > 0 ? (
-          Object.entries(groupedStudents).map(([barakName, students]) => (
-            <div key={barakName} className={`bg-white shadow-md rounded-lg overflow-hidden h-fit ${
-              Object.keys(groupedStudents).length === 1 ? 'lg:col-span-1' : ''
-            }`}>
-              <div className="px-6 py-4 bg-gray-50 border-b">
-                <h3 className="text-lg font-semibold text-gray-800">{barakName}</h3>
-              </div>
-              {renderStudentTable(students, barakName)}
-            </div>
-          ))
-        ) : (
-          <div className="col-span-full text-center py-8 bg-white rounded-lg shadow">
-            <p className="text-gray-500">Tidak ada data siswa yang tersedia</p>
-          </div>
-        )}
-      </div>
-
-      {/* Modal form */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 overflow-auto bg-black bg-opacity-50 flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-2xl rounded-lg shadow-xl overflow-hidden">
-            <div className="p-6 bg-gray-50 border-b flex justify-between items-center">
-              <h2 className="text-xl font-bold text-gray-800">
-                {editingStudent ? 'Edit Siswa' : 'Tambah Siswa'}
-              </h2>
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="text-gray-600 hover:text-gray-800"
-              >
-                <X className="h-6 w-6" />
-              </button>
-            </div>
-            <form onSubmit={handleAddOrUpdateStudent} className="p-6 space-y-6">
-              <div className="bg-white p-4 rounded-lg border border-gray-200">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Nama Lengkap
-                </label>
-                <input
-                  type="text"
-                  value={newStudent.fullName}
-                  onChange={(e) => setNewStudent({ ...newStudent, fullName: e.target.value })}
-                  className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                  required
-                />
-              </div>
-
-              <div className="bg-white p-4 rounded-lg border border-gray-200">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Tingkat
-                </label>
-                <div className="grid grid-cols-3 gap-2">
-                  {['X', 'XI', 'XII'].map((grade) => (
-                    <button
-                      key={grade}
-                      type="button"
-                      onClick={() => setSelectedGrade(grade as 'X' | 'XI' | 'XII')}
-                      className={`p-3 rounded-lg transition-colors ${
-                        selectedGrade === grade
-                          ? 'bg-blue-500 text-white'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                      }`}
-                    >
-                      {grade}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {selectedGrade && (
-                <div className="bg-white p-4 rounded-lg border border-gray-200">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Kelas
-                  </label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {['1', '2', '3', '4', '5', '6'].map((num) => (
-                      <button
-                        key={num}
-                        type="button"
-                        onClick={() => setNewStudent({ ...newStudent, class: `${selectedGrade}-${num}` })}
-                        className={`p-3 rounded-lg transition-colors ${
-                          newStudent.class === `${selectedGrade}-${num}`
-                            ? 'bg-green-500 text-white'
-                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                        }`}
-                      >
-                        {`${selectedGrade}-${num}`}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              <div className="bg-white p-4 rounded-lg border border-gray-200">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Barak
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  {availableBaraks.map((barak) => (
-                    <button
-                      key={barak.id}
-                      type="button"
-                      onClick={() => handleBarakSelect(barak.name)}
-                      className={`p-3 rounded-lg transition-colors ${
-                        newStudent.barak === barak.name
-                          ? barak.gender === 'Laki-laki'
-                            ? 'bg-blue-500 text-white'
-                            : 'bg-pink-500 text-white'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                      }`}
-                    >
-                      {barak.name}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="flex justify-end space-x-4 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-6 py-3 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 font-medium"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 font-medium"
-                >
-                  {editingStudent ? 'Update' : 'Simpan'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Modal riwayat perizinan */}
-      {selectedStudentForHistory && (
-        <StudentLeaveHistory
-          student={selectedStudentForHistory}
-          onClose={() => setSelectedStudentForHistory(null)}
-        />
-      )}
-
-      {/* Modal konfirmasi delete */}
-      {showConfirmModal && (
-        <div className="fixed inset-0 z-50 overflow-auto bg-black bg-opacity-50 flex items-center justify-center">
-          <div className="bg-white rounded-lg p-8 max-w-md mx-auto">
-            <h3 className="text-xl font-bold mb-4">Konfirmasi Hapus</h3>
-            <p className="text-gray-600 mb-6">
-              Apakah Anda yakin ingin menghapus data siswa ini?
-            </p>
-            <div className="flex justify-end space-x-4">
-              <button
-                onClick={() => setShowConfirmModal(false)}
-                className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300"
-              >
-                Batal
-              </button>
-              <button
-                onClick={confirmDelete}
-                className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600"
-              >
-                Hapus
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Alert component */}
+    <div className="space-y-4">
+      {/* Alert dan ConfirmationModal */}
       {alert && (
         <Alert
           type={alert.type}
@@ -686,16 +461,253 @@ const StudentManagement: React.FC = () => {
         />
       )}
 
-      {/* Tambahkan ConfirmationModal */}
       <ConfirmationModal
         isOpen={isConfirmOpen}
         onClose={handleCancel}
         onConfirm={handleConfirm}
-        title={confirmOptions?.title || ''}
-        message={confirmOptions?.message || ''}
-        confirmText={confirmOptions?.confirmText}
-        cancelText={confirmOptions?.cancelText}
+        title={confirmOptions?.title ?? ''}
+        message={confirmOptions?.message ?? ''}
+        confirmText={confirmOptions?.confirmText ?? 'Konfirmasi'}
+        cancelText={confirmOptions?.cancelText ?? 'Batal'}
       />
+
+      <div className="bg-white shadow-md rounded-lg p-4">
+        {/* Header dengan Search dan Actions */}
+        <div className="flex flex-col sm:flex-row justify-between items-center gap-3">
+          <div className="relative w-full sm:w-64">
+            <input
+              type="text"
+              placeholder="Cari siswa..."
+              className="w-full p-2 pl-8 border rounded-lg"
+            />
+            <Search className="absolute left-2 top-2.5 text-gray-400" size={18} />
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={openModal}
+              className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2"
+            >
+              <Plus size={18} />
+              <span>Tambah Siswa</span>
+            </button>
+            <label className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 cursor-pointer">
+              <Plus size={18} />
+              <span>Import CSV</span>
+              <input type="file" accept=".csv" onChange={handleImportCSV} className="hidden" />
+            </label>
+            <button 
+              onClick={handleExportCSV}
+              className="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg flex items-center gap-2"
+            >
+              <Plus size={18} />
+              <span>Export CSV</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Tabs */}
+        <div className="border border-gray-200 p-1 mt-4">
+          <nav className="flex space-x-1">
+            <button
+              onClick={() => setActiveTab('active')}
+              className={`flex-1 sm:flex-none px-4 py-2 rounded-lg transition-colors ${
+                activeTab === 'active'
+                  ? 'bg-blue-500 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              Siswa Aktif
+            </button>
+            <button
+              onClick={() => setActiveTab('deleted')}
+              className={`flex-1 sm:flex-none px-4 py-2 rounded-lg transition-colors ${
+                activeTab === 'deleted'
+                  ? 'bg-blue-500 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              Siswa Terhapus
+            </button>
+          </nav>
+        </div>
+
+        {/* Main Content Panel */}
+        <div className={`grid grid-cols-1 ${
+          Object.keys(groupedStudents).length > 1 ? 'lg:grid-cols-2' : ''
+        } gap-4 mt-4`}>
+          {Object.entries(groupedStudents).map(([barakName, students]) => (
+            <div key={barakName} className={`rounded-lg shadow-sm border border-gray-200 overflow-hidden ${
+              Object.keys(groupedStudents).length === 1 ? 'col-span-full' : ''
+            }`}>
+              <div className="p-4 bg-gray-50 border-b">
+                <h3 className="text-lg font-semibold text-gray-800">{barakName}</h3>
+              </div>
+              <div className="p-4">
+                {renderStudentTable(students, barakName)}
+              </div>
+            </div>
+          ))}
+
+          {Object.keys(groupedStudents).length === 0 && (
+            <div className="col-span-full">
+              <div className="text-center py-12 rounded-lg shadow-sm border border-gray-200">
+                <Users className="mx-auto h-12 w-12 text-gray-400" />
+                <h3 className="mt-2 text-sm font-medium text-gray-900">
+                  {activeTab === 'active' ? 'Tidak ada siswa aktif' : 'Tidak ada siswa terhapus'}
+                </h3>
+                <p className="mt-1 text-sm text-gray-500">
+                  {activeTab === 'active' 
+                    ? 'Mulai dengan menambahkan siswa baru'
+                    : 'Semua siswa masih aktif'
+                  }
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Modal Form */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-50">
+          <div className="min-h-screen px-4 text-center">
+            <span className="inline-block h-screen align-middle" aria-hidden="true">&#8203;</span>
+            
+            <div className="inline-block w-full max-w-4xl p-6 my-8 text-left align-middle transition-all transform bg-white shadow-xl rounded-lg">
+              <div className="border-b pb-4">
+                <div className="flex justify-between items-center">
+                  <h2 className="text-xl font-bold text-gray-800">
+                    {editingStudent ? 'Edit Siswa' : 'Tambah Siswa Baru'}
+                  </h2>
+                  <button onClick={() => setIsModalOpen(false)} className="text-gray-500 hover:text-gray-700">
+                    <X size={24} />
+                  </button>
+                </div>
+              </div>
+
+              <form onSubmit={handleAddOrUpdateStudent} className="mt-4">
+                <div className="grid grid-cols-2 gap-4">
+                  {/* Nama Lengkap, Tingkat, dan Kelas */}
+                  <div className="bg-white p-4 rounded-lg border border-gray-200">
+                    {/* Nama Lengkap */}
+                    <div className="mb-4">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Nama Lengkap
+                      </label>
+                      <input
+                        type="text"
+                        value={newStudent.fullName}
+                        onChange={(e) => setNewStudent({ ...newStudent, fullName: e.target.value })}
+                        className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                        required
+                      />
+                    </div>
+
+                    {/* Tingkat */}
+                    <div className="mb-4">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Tingkat
+                      </label>
+                      <div className="grid grid-cols-3 gap-2">
+                        {['X', 'XI', 'XII'].map((grade) => (
+                          <button
+                            key={grade}
+                            type="button"
+                            onClick={() => setSelectedGrade(grade as 'X' | 'XI' | 'XII')}
+                            className={`p-3 rounded-lg transition-colors ${
+                              selectedGrade === grade
+                                ? 'bg-blue-500 text-white'
+                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                            }`}
+                          >
+                            {grade}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Kelas */}
+                    {selectedGrade && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Kelas
+                        </label>
+                        <div className="grid grid-cols-3 gap-2">
+                          {['1', '2', '3', '4', '5', '6'].map((num) => (
+                            <button
+                              key={num}
+                              type="button"
+                              onClick={() => setNewStudent({ ...newStudent, class: `${selectedGrade}-${num}` })}
+                              className={`p-3 rounded-lg transition-colors ${
+                                newStudent.class === `${selectedGrade}-${num}`
+                                  ? 'bg-green-500 text-white'
+                                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                              }`}
+                            >
+                              {`${selectedGrade}-${num}`}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Barak */}
+                  <div className="bg-white p-4 rounded-lg border border-gray-200">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Barak
+                    </label>
+                    <div className="max-h-[400px] overflow-y-auto pr-2"> {/* Tambahkan max height dan scroll */}
+                      <div className="grid grid-cols-2 gap-2">
+                        {availableBaraks.map((barak) => (
+                          <button
+                            key={barak.id}
+                            type="button"
+                            onClick={() => handleBarakSelect(barak.name)}
+                            className={`p-3 rounded-lg transition-colors ${
+                              newStudent.barak === barak.name
+                                ? barak.gender === 'Laki-laki'
+                                  ? 'bg-blue-500 text-white'
+                                  : 'bg-pink-500 text-white'
+                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                            }`}
+                          >
+                            {barak.name}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex justify-end space-x-4 mt-6">
+                  <button
+                    type="button"
+                    onClick={() => setIsModalOpen(false)}
+                    className="px-6 py-3 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 font-medium"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 font-medium"
+                  >
+                    {editingStudent ? 'Update' : 'Simpan'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Student History Modal */}
+      {selectedStudentForHistory && (
+        <StudentLeaveHistory
+          student={selectedStudentForHistory}
+          onClose={() => setSelectedStudentForHistory(null)}
+        />
+      )}
     </div>
   );
 };

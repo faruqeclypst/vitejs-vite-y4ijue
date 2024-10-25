@@ -61,37 +61,39 @@ const StudentLeaveRequestForm: React.FC = () => {
   }, {} as Record<string, StudentLeaveRequest[]>);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 max-w-full">
       <h2 className="text-2xl font-bold mb-4">Permintaan Izin Siswa</h2>
       {(user?.role === 'admin' || user?.role === 'piket') && (
         <form onSubmit={handleSubmit} className="space-y-4">
-          <select
-            value={request.studentId}
-            onChange={(e) => setRequest({ ...request, studentId: e.target.value })}
-            className="w-full p-2 border rounded"
-            required
-          >
-            <option value="">Select a student</option>
-            {students.map((student) => (
-              <option key={student.id} value={student.id}>{student.fullName}</option>
-            ))}
-          </select>
-          <input
-            type="date"
-            value={request.date}
-            onChange={(e) => setRequest({ ...request, date: e.target.value })}
-            className="w-full p-2 border rounded"
-            required
-          />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <select
+              value={request.studentId}
+              onChange={(e) => setRequest({ ...request, studentId: e.target.value })}
+              className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+              required
+            >
+              <option value="">Pilih siswa</option>
+              {students.map((student) => (
+                <option key={student.id} value={student.id}>{student.fullName}</option>
+              ))}
+            </select>
+            <input
+              type="date"
+              value={request.date}
+              onChange={(e) => setRequest({ ...request, date: e.target.value })}
+              className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+              required
+            />
+          </div>
           <textarea
             value={request.reason}
             onChange={(e) => setRequest({ ...request, reason: e.target.value })}
-            placeholder="Reason for leave"
-            className="w-full p-2 border rounded"
+            placeholder="Alasan izin"
+            className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 min-h-[100px]"
             required
           />
-          <button type="submit" className="w-full p-2 bg-blue-500 text-white rounded">
-            Submit Leave Request
+          <button type="submit" className="w-full md:w-auto px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors">
+            Submit Permintaan Izin
           </button>
         </form>
       )}
@@ -111,47 +113,90 @@ const StudentLeaveRequestForm: React.FC = () => {
               )}
             </button>
             {expandedRequests.includes(status) && (
-              <div className="p-4">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student</th>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reason</th>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
+              <div className="overflow-x-auto">
+                <div className="inline-block min-w-full align-middle">
+                  {/* Desktop View */}
+                  <div className="hidden md:block">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Siswa</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tanggal</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Alasan</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Aksi</th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {statusRequests.map((req) => {
+                          const student = students.find(s => s.id === req.studentId);
+                          return (
+                            <tr key={req.id} className="hover:bg-gray-50">
+                              <td className="px-4 py-4 whitespace-nowrap">{student?.fullName}</td>
+                              <td className="px-4 py-4 whitespace-nowrap">{req.date}</td>
+                              <td className="px-4 py-4">
+                                <div className="max-w-xs truncate">{req.reason}</div>
+                              </td>
+                              <td className="px-4 py-4">
+                                {req.status === 'Pending' && (user?.role === 'admin' || user?.role === 'wakil_kepala') && (
+                                  <div className="flex space-x-2">
+                                    <button
+                                      onClick={() => handleStatusChange(req.id, 'Approved')}
+                                      className="bg-green-500 hover:bg-green-600 text-white font-medium py-1 px-3 rounded-lg text-sm"
+                                    >
+                                      Setuju
+                                    </button>
+                                    <button
+                                      onClick={() => handleStatusChange(req.id, 'Rejected')}
+                                      className="bg-red-500 hover:bg-red-600 text-white font-medium py-1 px-3 rounded-lg text-sm"
+                                    >
+                                      Tolak
+                                    </button>
+                                  </div>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Mobile View */}
+                  <div className="md:hidden">
                     {statusRequests.map((req) => {
                       const student = students.find(s => s.id === req.studentId);
                       return (
-                        <tr key={req.id}>
-                          <td className="px-6 py-4 whitespace-nowrap">{student?.fullName}</td>
-                          <td className="px-6 py-4 whitespace-nowrap">{req.date}</td>
-                          <td className="px-6 py-4 whitespace-nowrap">{req.reason}</td>
-                          <td className="px-6 py-4 whitespace-nowrap">
+                        <div key={req.id} className="bg-white shadow rounded-lg mb-4 p-4">
+                          <div className="space-y-3">
+                            <div>
+                              <div className="font-medium text-gray-900">{student?.fullName}</div>
+                              <div className="text-sm text-gray-500">{req.date}</div>
+                            </div>
+                            <div className="text-sm text-gray-600">
+                              <span className="font-medium">Alasan:</span> {req.reason}
+                            </div>
                             {req.status === 'Pending' && (user?.role === 'admin' || user?.role === 'wakil_kepala') && (
-                              <>
+                              <div className="flex flex-col space-y-2 sm:flex-row sm:space-y-0 sm:space-x-2">
                                 <button
                                   onClick={() => handleStatusChange(req.id, 'Approved')}
-                                  className="bg-green-500 hover:bg-green-600 text-white font-bold py-1 px-2 rounded mr-2"
+                                  className="bg-green-500 hover:bg-green-600 text-white font-medium py-2 px-4 rounded-lg text-sm w-full sm:w-auto"
                                 >
-                                  Approve
+                                  Setuju
                                 </button>
                                 <button
                                   onClick={() => handleStatusChange(req.id, 'Rejected')}
-                                  className="bg-red-500 hover:bg-red-600 text-white font-bold py-1 px-2 rounded"
+                                  className="bg-red-500 hover:bg-red-600 text-white font-medium py-2 px-4 rounded-lg text-sm w-full sm:w-auto"
                                 >
-                                  Reject
+                                  Tolak
                                 </button>
-                              </>
+                              </div>
                             )}
-                          </td>
-                        </tr>
+                          </div>
+                        </div>
                       );
                     })}
-                  </tbody>
-                </table>
+                  </div>
+                </div>
               </div>
             )}
           </div>
