@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import TeacherForm from '../components/TeacherForm';
 import TeacherList from '../components/TeacherList';
 import Alert from '../components/Alert';
 import ConfirmationModal from '../components/ConfirmationModal';
@@ -46,11 +45,6 @@ const TeachersPage: React.FC = () => {
     }
   };
 
-  const handleAdd = () => {
-    setEditingTeacher(null);
-    setIsFormOpen(true);
-  };
-
   return (
     <div className="main-container mt-6">
       <div className="flex flex-col space-y-4">
@@ -64,20 +58,21 @@ const TeachersPage: React.FC = () => {
         <div className="bg-white shadow-md rounded-lg p-4">
           <TeacherList
             teachers={teachers}
+            showModal={isFormOpen}
+            onOpenModal={() => {
+              setEditingTeacher(null);
+              setIsFormOpen(true);
+            }}
+            onCloseModal={() => {
+              setIsFormOpen(false);
+              setEditingTeacher(null);
+            }}
+            onSubmit={handleSubmit}
             onEdit={handleEdit}
             onDelete={handleDelete}
-            onAdd={handleAdd}
+            selectedTeacher={editingTeacher}
           />
         </div>
-
-        {/* Form Modal */}
-        {isFormOpen && (
-          <TeacherForm
-            onSubmit={handleSubmit}
-            initialTeacher={editingTeacher}
-            onClose={() => setIsFormOpen(false)}
-          />
-        )}
 
         {/* Alert */}
         {alert && (

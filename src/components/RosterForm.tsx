@@ -136,14 +136,14 @@ const RosterForm: React.FC<RosterFormProps> = ({
     : [];
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-8">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <form onSubmit={handleSubmit} className="p-4 space-y-4">
+      <div className="grid grid-cols-1 gap-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Guru</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Guru</label>
           <select
             value={teacherId}
             onChange={(e) => setTeacherId(e.target.value)}
-            className="w-full p-2 border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+            className="w-full p-2.5 text-sm border rounded-md"
             required
             disabled={Boolean(initialData || preselectedTeacherId)}
           >
@@ -155,17 +155,17 @@ const RosterForm: React.FC<RosterFormProps> = ({
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Tingkatan Kelas</label>
-          <div className="flex space-x-2">
+          <label className="block text-sm font-medium text-gray-700 mb-1">Tingkatan Kelas</label>
+          <div className="grid grid-cols-3 gap-2">
             {gradeOptions.map((g) => (
               <button
                 key={g}
                 type="button"
                 onClick={() => setGrade(g as "X" | "XI" | "XII")}
-                className={`flex-1 py-2 px-4 rounded-md transition-colors ${
+                className={`py-2 px-3 text-sm rounded-md ${
                   grade === g 
                     ? 'bg-blue-500 text-white' 
-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    : 'bg-gray-200 text-gray-700'
                 }`}
               >
                 {g}
@@ -177,17 +177,17 @@ const RosterForm: React.FC<RosterFormProps> = ({
 
       {grade && (
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Kelas</label>
-          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
+          <label className="block text-sm font-medium text-gray-700 mb-1">Kelas</label>
+          <div className="grid grid-cols-3 gap-2">
             {filteredClasses.map((cls) => (
               <button
                 key={cls}
-                type="button"
+                type="button" 
                 onClick={() => setClassId(cls)}
-                className={`p-2 rounded-md transition-colors ${
+                className={`p-2 text-sm rounded-md ${
                   classId === cls 
                     ? 'bg-blue-500 text-white' 
-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    : 'bg-gray-200 text-gray-700'
                 }`}
               >
                 {cls}
@@ -198,7 +198,7 @@ const RosterForm: React.FC<RosterFormProps> = ({
       )}
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">Hari</label>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Hari</label>
         <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
           {days.map((day) => (
             <button
@@ -218,7 +218,7 @@ const RosterForm: React.FC<RosterFormProps> = ({
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">Jam Pelajaran</label>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Jam Pelajaran</label>
         <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2">
           {dayOfWeek && Array.from({ length: daySchedule[dayOfWeek] }, (_, i) => i + 1).map((hour) => {
             const isUpacara = dayOfWeek === 'Senin' && hour === 1;

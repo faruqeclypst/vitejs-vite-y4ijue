@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { RosterEntry, Teacher } from '../types';
 import RosterForm from './RosterForm';
 import { ChevronDown, ChevronUp, Edit, Trash2, Plus, X, Calendar, Search } from 'lucide-react';
@@ -198,6 +198,19 @@ const RosterTable: React.FC<RosterTableProps> = ({ roster, teachers, onDelete, o
     return a.classId.localeCompare(b.classId);
   };
 
+  // Tambahkan useEffect untuk mengatur scroll
+  useEffect(() => {
+    if (isModalOpen || showAttendanceDetail) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [isModalOpen, showAttendanceDetail]);
+
   return (
     <div className="space-y-6">
       {/* Search and Add */}
@@ -307,43 +320,54 @@ const RosterTable: React.FC<RosterTableProps> = ({ roster, teachers, onDelete, o
 
       {/* Modal Form */}
       {isModalOpen && (
-        <div className="modal-container">
-          <div className="modal-content">
-            <div className="modal-header">
-              <h2 className="text-xl font-bold text-gray-800">
-                {editingEntry ? 'Edit Jadwal' : 'Tambah Jadwal'}
-              </h2>
-              <button
-                onClick={() => {
-                  setIsModalOpen(false);
-                  setEditingEntry(null);
-                  setAddingForTeacher(null);
-                }}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <X size={24} />
-              </button>
-            </div>
-            <div className="modal-body">
-              <RosterForm
-                teachers={teachers.map(teacher => ({
-                  ...teacher,
-                  name: `${teacher.name} (${teacher.code})`
-                }))}
-                classes={classes}
-                onSubmit={(entry) => {
-                  if (editingEntry) {
-                    onUpdate(editingEntry.id, entry);
-                  } else {
-                    onAdd({ ...entry, teacherId: addingForTeacher! });
-                  }
-                  setIsModalOpen(false);
-                  setEditingEntry(null);
-                  setAddingForTeacher(null);
-                }}
-                initialData={editingEntry}
-                preselectedTeacherId={addingForTeacher}
-              />
+        <div className="fixed inset-0 z-50 overflow-hidden">
+          <div className="fixed inset-0 bg-black opacity-40" onClick={() => {
+            setIsModalOpen(false);
+            setEditingEntry(null);
+            setAddingForTeacher(null);
+          }}></div>
+          
+          <div className="fixed inset-0 flex items-center justify-center p-4">
+            <div className="bg-white w-full max-w-lg rounded-lg shadow-xl max-h-[90vh] flex flex-col relative">
+              <div className="p-4 border-b flex-shrink-0">
+                <div className="flex justify-between items-center">
+                  <h2 className="text-lg font-semibold">
+                    {editingEntry ? 'Edit Jadwal' : 'Tambah Jadwal'}
+                  </h2>
+                  <button
+                    onClick={() => {
+                      setIsModalOpen(false);
+                      setEditingEntry(null);
+                      setAddingForTeacher(null);
+                    }}
+                    className="text-gray-500 hover:text-gray-700"
+                  >
+                    <X size={20} />
+                  </button>
+                </div>
+              </div>
+              
+              <div className="flex-1 overflow-y-auto">
+                <RosterForm
+                  teachers={teachers.map(teacher => ({
+                    ...teacher,
+                    name: `${teacher.name} (${teacher.code})`
+                  }))}
+                  classes={classes}
+                  onSubmit={(entry) => {
+                    if (editingEntry) {
+                      onUpdate(editingEntry.id, entry);
+                    } else {
+                      onAdd({ ...entry, teacherId: addingForTeacher! });
+                    }
+                    setIsModalOpen(false);
+                    setEditingEntry(null);
+                    setAddingForTeacher(null);
+                  }}
+                  initialData={editingEntry}
+                  preselectedTeacherId={addingForTeacher}
+                />
+              </div>
             </div>
           </div>
         </div>

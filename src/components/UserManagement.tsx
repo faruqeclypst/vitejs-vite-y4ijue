@@ -538,25 +538,24 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
 
       {/* Modal Form */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-50">
-          <div className="min-h-screen px-4 text-center">
-            {/* Trick untuk vertical centering */}
-            <span className="inline-block h-screen align-middle" aria-hidden="true">&#8203;</span>
-            
-            <div className="inline-block w-full max-w-3xl p-6 my-8 text-left align-middle transition-all transform bg-white shadow-xl rounded-lg">
-              <div className="border-b pb-4">
+        <div className="fixed inset-0 z-50 overflow-hidden">
+          <div className="fixed inset-0 bg-black opacity-40" onClick={() => setIsModalOpen(false)}></div>
+          
+          <div className="fixed inset-0 flex items-center justify-center p-4">
+            <div className="bg-white w-full max-w-lg rounded-lg shadow-xl max-h-[90vh] flex flex-col relative">
+              <div className="p-4 border-b flex-shrink-0">
                 <div className="flex justify-between items-center">
-                  <h2 className="text-xl font-bold text-gray-800">
+                  <h2 className="text-lg font-semibold">
                     {editingUser ? 'Edit User' : 'Tambah User Baru'}
                   </h2>
                   <button onClick={() => setIsModalOpen(false)} className="text-gray-500 hover:text-gray-700">
-                    <X size={24} />
+                    <X size={20} />
                   </button>
                 </div>
               </div>
 
-              <div className="mt-4 max-h-[calc(100vh-16rem)] overflow-y-auto">
-                <form onSubmit={handleSubmit} className="space-y-6">
+              <div className="flex-1 overflow-y-auto p-4">
+                <form onSubmit={handleSubmit} className="space-y-4">
                   {/* Informasi Dasar - 2 Kolom */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-4">
@@ -699,14 +698,17 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
 
       {/* Modal Ganti Password */}
       {isChangePasswordModalOpen && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-50">
-          <div className="min-h-screen px-4 text-center">
-            <span className="inline-block h-screen align-middle" aria-hidden="true">&#8203;</span>
-            
-            <div className="inline-block w-full max-w-md p-6 my-8 text-left align-middle transition-all transform bg-white shadow-xl rounded-lg">
-              <div className="border-b pb-4">
+        <div className="fixed inset-0 z-50 overflow-hidden">
+          <div className="fixed inset-0 bg-black opacity-40" onClick={() => {
+            setIsChangePasswordModalOpen(false);
+            setUserForPasswordChange(null);
+          }}></div>
+          
+          <div className="fixed inset-0 flex items-center justify-center p-4">
+            <div className="bg-white w-full max-w-lg rounded-lg shadow-xl max-h-[90vh] flex flex-col relative">
+              <div className="p-4 border-b flex-shrink-0">
                 <div className="flex justify-between items-center">
-                  <h3 className="text-xl font-bold text-gray-800">
+                  <h3 className="text-lg font-semibold">
                     Ganti Password - {userForPasswordChange?.username}
                   </h3>
                   <button
@@ -716,15 +718,15 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
                     }}
                     className="text-gray-500 hover:text-gray-700"
                   >
-                    <X size={24} />
+                    <X size={20} />
                   </button>
                 </div>
               </div>
 
-              <div className="mt-4">
-                <form onSubmit={handleChangePassword} className="space-y-6">
+              <div className="flex-1 overflow-y-auto p-4">
+                <form onSubmit={handleChangePassword} className="space-y-4">
                   <div>
-                    <label className="block text-base font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
                       Password Baru
                     </label>
                     <input
@@ -732,23 +734,23 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
                       value={newPassword}
                       onChange={(e) => setNewPassword(e.target.value)}
                       required
-                      className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                      className="w-full p-2.5 text-sm border rounded-md"
                     />
                   </div>
-                  <div className="flex justify-end space-x-4">
+                  <div className="flex justify-end space-x-3">
                     <button
                       type="button"
                       onClick={() => {
                         setIsChangePasswordModalOpen(false);
                         setUserForPasswordChange(null);
                       }}
-                      className="px-6 py-3 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 font-medium"
+                      className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300"
                     >
                       Batal
                     </button>
                     <button
                       type="submit"
-                      className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 font-medium"
+                      className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
                     >
                       Simpan
                     </button>
