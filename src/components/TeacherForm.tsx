@@ -29,8 +29,8 @@ const TeacherForm: React.FC<TeacherFormProps> = ({ onSubmit, initialTeacher, onC
   };
 
   return (
-    <div className="bg-white w-full max-w-lg rounded-lg shadow-xl max-h-[90vh] flex flex-col relative">
-      <div className="p-4 border-b flex-shrink-0">
+    <div className="bg-white w-full max-w-lg rounded-lg shadow-xl flex flex-col relative">
+      <div className="p-4 border-b">
         <div className="flex justify-between items-center">
           <h2 className="text-lg font-semibold">
             {initialTeacher ? 'Edit Guru' : 'Tambah Guru'}
@@ -41,7 +41,7 @@ const TeacherForm: React.FC<TeacherFormProps> = ({ onSubmit, initialTeacher, onC
         </div>
       </div>
       
-      <div className="flex-1 overflow-y-auto p-4">
+      <div className="p-4">
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Nama Guru</label>

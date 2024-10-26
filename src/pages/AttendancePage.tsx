@@ -60,9 +60,8 @@ const AttendancePage: React.FC = () => {
     }
   };
 
-  const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleDateChange = (newDate: string) => {
     if (isAdmin) {
-      const newDate = e.target.value;
       setCurrentDate(newDate);
     }
   };
@@ -163,133 +162,91 @@ const AttendancePage: React.FC = () => {
       <div className="flex flex-col space-y-4">
         {/* Header Section */}
         <div className="bg-white p-6 rounded-lg shadow-sm">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <div>
-              <h2 className="h2">Absensi Guru</h2>
-              <p className="mt-2 text-gray-600">Kelola dan pantau kehadiran guru dalam mengajar</p>
-            </div>
-            <span className="px-4 py-2 bg-blue-100 text-blue-800 rounded-lg font-medium">
-              {currentDay || 'Minggu'}
-            </span>
+          <h2 className="h2">Absensi Guru</h2>
+          <p className="mt-2 text-gray-600">Kelola dan pantau kehadiran guru dalam mengajar</p>
+        </div>
+
+        {/* Content Section - Gabungan date dan table */}
+        <div className="bg-white shadow-sm rounded-lg">
+          <div className="p-4">
+            <AttendanceTable
+              roster={currentRoster}
+              teachers={teachers}
+              onSubmit={handleAttendanceSubmit}
+              existingAttendance={filteredAttendanceRecords}
+              confirmedTeachers={confirmedTeachers}
+              currentDate={currentDate}
+              onDateChange={handleDateChange}
+              isAdmin={isAdmin}
+            />
           </div>
         </div>
 
-        {/* Content Section */}
-        <div className="bg-white shadow-md rounded-lg p-4">
-          <div className="flex flex-wrap gap-4 mb-6">
-            <div className="w-full sm:w-auto flex-1 min-w-[200px]">
-              <label htmlFor="date" className="block text-sm font-medium text-gray-700 mb-2">
-                Tanggal:
-              </label>
-              <input
-                type="date"
-                id="date"
-                value={currentDate}
-                onChange={handleDateChange}
-                disabled={!isAdmin}
-                className="w-full rounded-lg border-gray-300 focus:ring-blue-500"
-              />
-            </div>
-          </div>
-
-          {currentDay ? (
-            currentRoster.length > 0 ? (
-              <AttendanceTable
-                roster={currentRoster}
-                teachers={teachers}
-                onSubmit={handleAttendanceSubmit}
-                existingAttendance={filteredAttendanceRecords}
-                confirmedTeachers={confirmedTeachers}
-              />
-            ) : (
-              <p className="text-gray-500 italic">Tidak ada entri roster untuk hari ini.</p>
-            )
-          ) : (
-            <p className="text-gray-500 italic">Tidak ada jadwal untuk hari Minggu.</p>
-          )}
-        </div>
-
-        {/* Export Section */}
+        {/* Export Section - Hanya untuk Admin */}
         {isAdmin && (
-          <div className="bg-white shadow-md rounded-lg p-4">
-            <h2 className="text-xl font-semibold mb-6">Ekspor Data Kehadiran</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Custom Export */}
+          <div className="bg-white p-4 rounded-lg shadow-sm">
+            <h3 className="text-lg font-medium text-gray-900 mb-4">Ekspor Data Kehadiran</h3>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {/* Export Custom */}
               <div className="bg-gray-50 p-4 rounded-lg">
-                <h3 className="text-lg font-medium mb-4">Ekspor Kustom</h3>
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Tanggal Mulai
-                    </label>
-                    <input
-                      type="date"
-                      value={exportStartDate.toISOString().split('T')[0]}
-                      onChange={(e) => handleExportStartDateChange(new Date(e.target.value))}
-                      className="w-full rounded-lg border-gray-300"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Tanggal Akhir
-                    </label>
-                    <input
-                      type="date"
-                      value={exportEndDate.toISOString().split('T')[0]}
-                      onChange={(e) => handleExportEndDateChange(new Date(e.target.value))}
-                      className="w-full rounded-lg border-gray-300"
-                    />
-                  </div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Ekspor Kustom
+                </label>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <input
+                    type="date"
+                    value={exportStartDate.toISOString().split('T')[0]}
+                    onChange={(e) => handleExportStartDateChange(new Date(e.target.value))}
+                    className="flex-1 p-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                  />
+                  <input
+                    type="date"
+                    value={exportEndDate.toISOString().split('T')[0]}
+                    onChange={(e) => handleExportEndDateChange(new Date(e.target.value))}
+                    className="flex-1 p-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                  />
                   <button
                     onClick={() => handleExport('custom')}
-                    className="w-full btn-primary"
+                    className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 whitespace-nowrap"
                   >
-                    Ekspor Data Kustom
+                    Ekspor
                   </button>
                 </div>
               </div>
 
-              {/* Monthly Export */}
+              {/* Export Monthly */}
               <div className="bg-gray-50 p-4 rounded-lg">
-                <h3 className="text-lg font-medium mb-4">Ekspor Bulanan</h3>
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Bulan
-                    </label>
-                    <select
-                      value={exportMonth}
-                      onChange={(e) => setExportMonth(parseInt(e.target.value))}
-                      className="w-full rounded-lg border-gray-300"
-                    >
-                      {Array.from({ length: 12 }, (_, i) => (
-                        <option key={i} value={i}>
-                          {new Date(2000, i, 1).toLocaleString('default', { month: 'long' })}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Tahun
-                    </label>
-                    <select
-                      value={exportYear}
-                      onChange={(e) => setExportYear(parseInt(e.target.value))}
-                      className="w-full rounded-lg border-gray-300"
-                    >
-                      {Array.from({ length: 10 }, (_, i) => (
-                        <option key={i} value={new Date().getFullYear() - i}>
-                          {new Date().getFullYear() - i}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Ekspor Bulanan
+                </label>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <select
+                    value={exportMonth}
+                    onChange={(e) => setExportMonth(parseInt(e.target.value))}
+                    className="flex-1 p-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                  >
+                    {Array.from({ length: 12 }, (_, i) => (
+                      <option key={i} value={i}>
+                        {new Date(2000, i, 1).toLocaleString('default', { month: 'long' })}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    value={exportYear}
+                    onChange={(e) => setExportYear(parseInt(e.target.value))}
+                    className="flex-1 p-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                  >
+                    {Array.from({ length: 10 }, (_, i) => (
+                      <option key={i} value={new Date().getFullYear() - i}>
+                        {new Date().getFullYear() - i}
+                      </option>
+                    ))}
+                  </select>
                   <button
                     onClick={() => handleExport('monthly')}
-                    className="w-full btn-success"
+                    className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 whitespace-nowrap"
                   >
-                    Ekspor Data Bulanan
+                    Ekspor
                   </button>
                 </div>
               </div>
@@ -302,11 +259,9 @@ const AttendancePage: React.FC = () => {
           <Alert
             type={alert.type}
             message={alert.message}
-            duration={alert.duration}
             onClose={hideAlert}
           />
         )}
-
         <ConfirmationModal
           isOpen={isOpen}
           onClose={handleCancel}

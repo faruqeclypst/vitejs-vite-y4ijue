@@ -50,17 +50,20 @@ const TeacherList: React.FC<TeacherListProps> = ({
         <div className="fixed inset-0 z-50 overflow-hidden">
           <div className="fixed inset-0 bg-black opacity-40" onClick={onCloseModal}></div>
           
-          <div className="fixed inset-0 flex items-center justify-center p-4">
-            <TeacherForm 
-              onSubmit={onSubmit} 
-              initialTeacher={selectedTeacher} 
-              onClose={onCloseModal} 
-            />
+          {/* Tambahkan overflow-y-auto dan max-h-screen */}
+          <div className="fixed inset-0 overflow-y-auto">
+            <div className="flex items-center justify-center min-h-screen p-4">
+              <TeacherForm 
+                onSubmit={onSubmit} 
+                initialTeacher={selectedTeacher} 
+                onClose={onCloseModal} 
+              />
+            </div>
           </div>
         </div>
       )}
 
-      <div className="space-y-4 bg-white rounded-lg shadow-sm p-3 sm:p-4">
+      <div className="space-y-4 p-3 sm:p-4">
         {/* Header with Search and Add */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
           <div className="relative w-full sm:w-64">
@@ -170,7 +173,7 @@ const TeacherList: React.FC<TeacherListProps> = ({
           <div className="sm:hidden space-y-4">
             {filteredAndSortedTeachers.map((teacher) => (
               <div key={teacher.id} className="bg-white p-4 rounded-lg shadow-sm border">
-                <div className="flex justify-between items-start">
+                <div className="flex justify-between items-center">
                   <div>
                     <h3 className="font-medium text-gray-900">{teacher.name}</h3>
                     <p className="text-sm text-gray-500 mt-1">Kode: {teacher.code}</p>

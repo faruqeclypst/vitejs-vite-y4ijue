@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import TeacherList from '../components/TeacherList';
 import Alert from '../components/Alert';
 import ConfirmationModal from '../components/ConfirmationModal';
@@ -13,6 +13,19 @@ const TeachersPage: React.FC = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const { alert, showAlert, hideAlert } = useAlert();
   const { isOpen, options, confirm, handleConfirm, handleCancel } = useConfirmation();
+
+  // Tambahkan useEffect untuk mengatur overflow pada body
+  useEffect(() => {
+    if (isFormOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [isFormOpen]);
 
   const handleSubmit = (teacher: Omit<Teacher, 'id'>) => {
     if (editingTeacher) {
@@ -91,7 +104,7 @@ const TeachersPage: React.FC = () => {
         </div>
 
         {/* Content Section */}
-        <div className="bg-white shadow-md rounded-lg p-4">
+        <div className="bg-white shadow-md rounded-lg">
           <TeacherList
             teachers={allTeachers}
             showModal={isFormOpen}

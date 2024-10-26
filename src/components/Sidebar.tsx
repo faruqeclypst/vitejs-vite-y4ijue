@@ -39,7 +39,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isExpanded, setIsExpanded }) => {
       path: '/teachers', 
       icon: Users, 
       label: 'Data Guru', 
-      roles: ['admin', 'piket'] 
+      roles: ['admin'] 
     },
     { 
       path: '/roster', 
