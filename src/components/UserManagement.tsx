@@ -4,29 +4,19 @@ import { useBarak } from '../contexts/BarakContext';
 import { X, Plus, Search, Edit, Trash2, Key, Users, Eye, EyeOff } from 'lucide-react';
 import { ref, onValue } from 'firebase/database';
 import { db } from '../firebase';
-import { UserRole, Barak } from '../types'; // Hapus import User, gunakan dari AuthContext
+import { UserRole, Barak } from '../types';
 import Alert from './Alert';
 import useAlert from '../hooks/useAlert';
 import ConfirmationModal from './ConfirmationModal';
 import useConfirmation from '../hooks/useConfirmation';
+import { User } from '../contexts/AuthContext';
 
 interface UserManagementProps {
   onUserAdded?: () => void;
 }
 
-// Gunakan tipe User dari AuthContext
-type User = {
-  id: string;
-  username: string;
-  fullName: string;
-  role: UserRole;
-  barakId?: string;
-  email: string;
-  isDefaultAccount?: boolean;
-};
-
 const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
-  const { baraks } = useBarak(); // Rename untuk kejelasan
+  const { baraks } = useBarak();
   const { user: currentUser } = useAuth();
   const [username, setUsername] = useState('');
   const [fullName, setFullName] = useState('');
@@ -46,6 +36,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
   const [openBarakDropdown, setOpenBarakDropdown] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     fetchUsers();
@@ -71,7 +62,6 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
         )
       );
     } else if (currentUser?.role === 'admin_asrama') {
-      // Admin asrama melihat pengasuh dan admin_asrama lain
       setUsers(
         fetchedUsers.filter((user) => 
           ['pengasuh', 'admin_asrama'].includes(user.role) &&
@@ -79,7 +69,6 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
         )
       );
     } else if (currentUser?.role === 'admin') {
-      // Admin biasa melihat admin, piket, dan wakil_kepala
       setUsers(
         fetchedUsers.filter((user) => 
           ['admin', 'piket', 'wakil_kepala'].includes(user.role) &&
@@ -142,9 +131,18 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      // Hanya perlu barakId untuk role pengasuh
+      // Validasi password untuk user baru
+      if (!editingUser && (!password || password.length < 6)) {
+        showAlert({
+          type: 'error',
+          message: 'Password minimal 6 karakter'
+        });
+        return;
+      }
+
+      // Validasi barak untuk pengasuh
       const needsBarak = role === 'pengasuh';
-      const barakIdToUse = needsBarak ? selectedBaraks.join(',') : undefined; // Ubah null menjadi undefined
+      const barakIdToUse = needsBarak ? selectedBaraks.join(',') : undefined;
 
       if (needsBarak && selectedBaraks.length === 0) {
         showAlert({
@@ -154,35 +152,23 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
         return;
       }
 
+      setIsLoading(true);
+
       if (editingUser) {
         await updateUser(
           editingUser.id,
           username,
-          password ? { oldPassword: '', newPassword: password, requireOldPassword: false } : null,
+          password || null, // Ubah ini
           fullName,
           role,
-          barakIdToUse // Sekarang bertipe string | undefined
+          barakIdToUse
         );
         showAlert({
           type: 'success',
           message: 'User berhasil diperbarui'
         });
       } else {
-        if (!password) {
-          showAlert({
-            type: 'error',
-            message: 'Password harus diisi untuk user baru'
-          });
-          return;
-        }
-
-        await addUser(
-          username,
-          password,
-          fullName,
-          role,
-          barakIdToUse // Sekarang bertipe string | undefined
-        );
+        await addUser(username, password, fullName, role, barakIdToUse);
         showAlert({
           type: 'success',
           message: 'User baru berhasil ditambahkan'
@@ -195,10 +181,13 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
         onUserAdded();
       }
     } catch (error) {
+      console.error('Submit error:', error);
       showAlert({
         type: 'error',
         message: error instanceof Error ? error.message : 'Gagal menyimpan data user'
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -208,7 +197,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
     setUsername(user.username);
     setFullName(user.fullName);
     setRole(user.role);
-    setPassword(''); // Reset password saat edit
+    setPassword('');
     if (user.barakId) {
       setSelectedBaraks(user.barakId.split(','));
     } else {
@@ -244,38 +233,48 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
     }
   };
 
-  // Fungsi untuk mengganti password
+  // Update fungsi handleChangePassword
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      if (userForPasswordChange) {
-        await updateUser(
-          userForPasswordChange.id,
-          userForPasswordChange.username,
-          { 
-            oldPassword: '', 
-            newPassword: newPassword,
-            requireOldPassword: false // Flag untuk menandakan tidak perlu validasi password lama
-          },
-          userForPasswordChange.fullName,
-          userForPasswordChange.role,
-          userForPasswordChange.barakId
-        );
+      if (!userForPasswordChange) return;
+
+      if (newPassword.length < 6) {
         showAlert({
-          type: 'success',
-          message: 'Password berhasil diperbarui',
-          duration: 3000
+          type: 'error',
+          message: 'Password minimal 6 karakter'
         });
-        setNewPassword('');
-        setIsChangePasswordModalOpen(false);
-        setUserForPasswordChange(null);
+        return;
       }
+
+      setIsLoading(true);
+
+      await updateUser(
+        userForPasswordChange.id,
+        userForPasswordChange.username,
+        newPassword, // Ubah ini
+        userForPasswordChange.fullName,
+        userForPasswordChange.role,
+        userForPasswordChange.barakId
+      );
+
+      setNewPassword('');
+      setIsChangePasswordModalOpen(false);
+      setUserForPasswordChange(null);
+
+      showAlert({
+        type: 'success',
+        message: 'Password berhasil diperbarui'
+      });
+
     } catch (error) {
+      console.error('Change password error:', error);
       showAlert({
         type: 'error',
-        message: error instanceof Error ? error.message : 'Gagal memperbarui password',
-        duration: 3000
+        message: error instanceof Error ? error.message : 'Gagal memperbarui password'
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -885,14 +884,24 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
                         setUserForPasswordChange(null);
                       }}
                       className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300"
+                      disabled={isLoading}
                     >
                       Batal
                     </button>
                     <button
                       type="submit"
-                      className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+                      className={`px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 flex items-center gap-2
+                        ${isLoading ? 'opacity-75 cursor-not-allowed' : ''}`}
+                      disabled={isLoading}
                     >
-                      Simpan
+                      {isLoading ? (
+                        <>
+                          <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></span>
+                          <span>Menyimpan...</span>
+                        </>
+                      ) : (
+                        'Simpan'
+                      )}
                     </button>
                   </div>
                 </form>

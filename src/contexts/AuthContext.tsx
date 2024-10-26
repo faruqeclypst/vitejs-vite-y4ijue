@@ -1,30 +1,32 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import { 
-  getAuth, 
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  signOut,
-  updateProfile,
-  updatePassword
-} from 'firebase/auth';
 import { ref, get, set, remove } from 'firebase/database';
 import { db } from '../firebase';
 import { UserRole } from '../types';
 
-// Gunakan type yang sama dengan yang ada di types.ts
+// Interface User
 export interface User {
   id: string;
   username: string;
   fullName: string;
   role: UserRole;
-  barakId?: string; // Hapus asramaId
-  email: string;
+  barakId?: string;
+  password: string; // Tambah field password
+  isDefaultAccount: boolean;
+}
+
+// Tambahkan interface untuk userData
+interface UserData {
+  username: string;
+  fullName: string;
+  role: UserRole;
+  barakId?: string;
+  password: string;
   isDefaultAccount: boolean;
 }
 
 interface AuthContextType {
   user: User | null;
-  login: (email: string, password: string) => Promise<void>;
+  login: (username: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   addUser: (
     username: string,
@@ -37,7 +39,7 @@ interface AuthContextType {
   updateUser: (
     userId: string,
     username: string,
-    password: { oldPassword: string; newPassword: string; requireOldPassword: boolean; } | null,
+    password: string | null,
     fullName: string,
     role: UserRole,
     barakId?: string
@@ -47,169 +49,72 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
-const auth = getAuth();
-
-// Deklarasikan formatEmail di luar AuthProvider agar bisa digunakan di mana saja
-const formatEmail = (username: string): string => {
-  const sanitizedUsername = username.trim().toLowerCase();
-  return `${sanitizedUsername}@gmail.com`;
-};
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isInitialSetup, setIsInitialSetup] = useState(false);
 
-  const checkInitialSetup = async () => {
-    const usersRef = ref(db, 'users');
-    const snapshot = await get(usersRef);
-    if (!snapshot.exists()) {
-      setIsInitialSetup(true);
-    }
-    setIsLoading(false);
-  };
-
+  // Check initial setup
   useEffect(() => {
+    const checkInitialSetup = async () => {
+      const usersRef = ref(db, 'users');
+      const snapshot = await get(usersRef);
+      if (!snapshot.exists()) {
+        setIsInitialSetup(true);
+      }
+      setIsLoading(false);
+    };
     checkInitialSetup();
   }, []);
 
-  const initialSetup = async (
-    adminMasterUsername: string,
-    adminMasterPassword: string,
-    adminUsername: string,
-    adminPassword: string,
-    adminBarakUsername: string,
-    adminBarakPassword: string
-  ) => {
-    try {
-      // Buat admin master terlebih dahulu
-      await createAdminMaster(
-        adminMasterUsername,
-        adminMasterPassword,
-        'Administrator Master'
-      );
-
-      // Sign out setelah membuat admin master
-      await signOut(auth);
-
-      // Buat akun admin dengan email yang diformat
-      const adminEmail = formatEmail(adminUsername);
-      const adminCredential = await createUserWithEmailAndPassword(auth, adminEmail, adminPassword);
-      await updateProfile(adminCredential.user, {
-        displayName: 'Administrator'
-      });
-      await set(ref(db, `users/${adminCredential.user.uid}`), {
-        username: adminUsername,
-        email: adminEmail,
-        fullName: 'Administrator',
-        role: 'admin',
-        barakId: null,
-        isDefaultAccount: true
-      });
-
-      // Sign out setelah membuat admin
-      await signOut(auth);
-
-      // Buat akun admin_asrama dengan email yang diformat
-      const adminBarakEmail = formatEmail(adminBarakUsername);
-      const adminBarakCredential = await createUserWithEmailAndPassword(auth, adminBarakEmail, adminBarakPassword);
-      await updateProfile(adminBarakCredential.user, {
-        displayName: 'Admin Asrama'
-      });
-      await set(ref(db, `users/${adminBarakCredential.user.uid}`), {
-        username: adminBarakUsername,
-        email: adminBarakEmail,
-        fullName: 'Admin Asrama',
-        role: 'admin_asrama',
-        barakId: null,
-        isDefaultAccount: true
-      });
-
-      // Sign out setelah membuat admin_asrama
-      await signOut(auth);
-
-      setIsInitialSetup(false);
-      return true;
-    } catch (error) {
-      console.error('Error in initial setup:', error);
-      throw error;
-    }
-  };
-
-  useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
-      if (firebaseUser) {
-        // Ambil data tambahan user dari Realtime Database
-        const userRef = ref(db, `users/${firebaseUser.uid}`);
-        const snapshot = await get(userRef);
-        const userData = snapshot.val();
-        
-        if (userData) {
-          setUser({
-            id: firebaseUser.uid,
-            email: firebaseUser.email!,
-            username: userData.username,
-            fullName: userData.fullName,
-            role: userData.role,
-            barakId: userData.barakId,
-            isDefaultAccount: userData.isDefaultAccount
-          });
-        }
-      } else {
-        setUser(null);
-      }
-      setIsLoading(false);
-    });
-
-    return () => unsubscribe();
-  }, []);
-
+  // Login function
   const login = async (username: string, password: string) => {
     try {
-      const email = formatEmail(username);
-      console.log('Attempting login with email:', email);
-      
-      // Simpan password untuk re-login nanti
-      localStorage.setItem('tempPassword', password);
-      
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      const userRef = ref(db, `users/${userCredential.user.uid}`);
-      const snapshot = await get(userRef);
-      const userData = snapshot.val();
-      
-      if (!userData) {
-        localStorage.removeItem('tempPassword');
-        throw new Error('Data pengguna tidak ditemukan');
-      }
+      const usersRef = ref(db, 'users');
+      const snapshot = await get(usersRef);
+      const users = snapshot.val();
 
-      // Tidak perlu set user manual karena sudah ditangani oleh onAuthStateChanged
-      return;
+      if (!users) throw new Error('Tidak ada data pengguna');
 
-    } catch (error: any) {
-      console.error('Login error:', error);
-      localStorage.removeItem('tempPassword');
-      
-      if (error.code === 'auth/invalid-credential' || 
-          error.code === 'auth/invalid-email' || 
-          error.code === 'auth/user-not-found' ||
-          error.code === 'auth/wrong-password') {
+      const userFound = Object.entries(users).find(([_, data]) => {
+        const userData = data as UserData;
+        return userData.username === username && userData.password === password;
+      });
+
+      if (!userFound) {
         throw new Error('Username atau password salah');
       }
-      
-      throw new Error('Gagal melakukan login. Silakan coba lagi.');
-    }
-  };
 
-  const logout = async () => {
-    try {
-      localStorage.removeItem('tempPassword');
-      await signOut(auth);
+      const [userId, data] = userFound;
+      const userData = data as UserData;
+      
+      const loggedInUser: User = {
+        id: userId,
+        username: userData.username,
+        fullName: userData.fullName,
+        role: userData.role,
+        barakId: userData.barakId,
+        password: userData.password,
+        isDefaultAccount: userData.isDefaultAccount
+      };
+
+      setUser(loggedInUser);
+      localStorage.setItem('currentUser', JSON.stringify(loggedInUser));
+
     } catch (error) {
-      console.error('Logout error:', error);
+      console.error('Login error:', error);
       throw error;
     }
   };
 
+  // Logout function
+  const logout = async () => {
+    setUser(null);
+    localStorage.removeItem('currentUser');
+  };
+
+  // Add user function
   const addUser = async (
     username: string,
     password: string,
@@ -218,184 +123,102 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     barakId?: string
   ) => {
     try {
-      const email = formatEmail(username);
-
-      // Cek apakah email sudah ada
+      // Check if username exists
       const usersRef = ref(db, 'users');
       const snapshot = await get(usersRef);
       const users = snapshot.val();
       
       if (users) {
-        const emailExists = Object.values(users).some(
-          (user: any) => user.email === email
+        const usernameExists = Object.values(users).some(
+          (user: any) => user.username === username
         );
-        if (emailExists) {
+        if (usernameExists) {
           throw new Error('Username sudah digunakan');
         }
       }
 
-      // Simpan auth state saat ini
-      const currentAuth = auth.currentUser;
-
-      try {
-        // Buat user baru
-        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-        const { uid } = userCredential.user;
-
-        // Update display name
-        await updateProfile(userCredential.user, {
-          displayName: fullName
-        });
-
-        // Simpan data di Realtime Database
-        await set(ref(db, `users/${uid}`), {
-          username,
-          email,
-          fullName,
-          role,
-          barakId: barakId || null,
-          isDefaultAccount: false,
-          isMasterAdmin: false
-        });
-
-        // Kembalikan ke auth state sebelumnya tanpa sign out/sign in
-        if (currentAuth) {
-          auth.updateCurrentUser(currentAuth);
-        }
-
-      } catch (error) {
-        // Kembalikan ke auth state sebelumnya jika terjadi error
-        if (currentAuth) {
-          auth.updateCurrentUser(currentAuth);
-        }
-        throw error;
-      }
-
-    } catch (error: any) {
-      if (error.code === 'auth/email-already-in-use') {
-        throw new Error('Username sudah digunakan');
-      }
-      console.error('Add user error:', error);
-      throw error;
-    }
-  };
-
-  const updateUser = async (
-    id: string,
-    username: string,
-    password: { oldPassword: string; newPassword: string; requireOldPassword: boolean; } | null,
-    fullName: string,
-    role: UserRole,
-    barakId?: string
-  ) => {
-    try {
-      // Simpan kredensial user saat ini
-      const currentUser = auth.currentUser;
-      const currentEmail = currentUser?.email;
-      const email = formatEmail(username);
-
-      // Jika ada password baru
-      if (password) {
-        try {
-          // Jika perubahan password memerlukan password lama (dari Header/profil)
-          if (password.requireOldPassword) {
-            try {
-              // Coba sign in dengan password lama tanpa sign out dulu
-              const tempCredential = await signInWithEmailAndPassword(auth, email, password.oldPassword);
-              
-              // Update password
-              await updatePassword(tempCredential.user, password.newPassword);
-              
-              // Update tempPassword jika yang diupdate adalah user saat ini
-              if (id === currentUser?.uid) {
-                localStorage.setItem('tempPassword', password.newPassword);
-              }
-            } catch (error) {
-              throw new Error('Password lama tidak sesuai');
-            }
-          } 
-          // Jika perubahan password dari UserManagement (tidak perlu password lama)
-          else {
-            try {
-              // Simpan state login saat ini
-              const savedEmail = currentEmail;
-              const savedPassword = localStorage.getItem('tempPassword');
-
-              // Sign out sementara
-              await signOut(auth);
-
-              try {
-                // Sign in dengan akun yang akan diupdate
-                await signInWithEmailAndPassword(auth, email, password.oldPassword);
-                
-                // Update password
-                if (auth.currentUser) {
-                  await updatePassword(auth.currentUser, password.newPassword);
-                }
-
-                // Sign out user yang diupdate
-                await signOut(auth);
-
-                // Re-login dengan akun admin
-                if (savedEmail && savedPassword) {
-                  await signInWithEmailAndPassword(auth, savedEmail, savedPassword);
-                }
-              } catch (error) {
-                // Re-login dengan akun admin jika terjadi error
-                if (savedEmail && savedPassword) {
-                  await signInWithEmailAndPassword(auth, savedEmail, savedPassword);
-                }
-                console.error('Error in password update:', error);
-                throw new Error('Gagal mengubah password');
-              }
-            } catch (error) {
-              console.error('Error updating password:', error);
-              throw error;
-            }
-          }
-        } catch (error) {
-          console.error('Error updating password:', error);
-          throw error;
-        }
-      }
-
-      // Update data di Realtime Database
+      // Generate new user ID
+      const newUserId = Date.now().toString();
+      
+      // Create new user data
       const userData = {
         username,
-        email: formatEmail(username),
+        password,
         fullName,
         role,
         barakId: barakId || null,
         isDefaultAccount: false
       };
 
-      const userRef = ref(db, `users/${id}`);
-      await set(userRef, userData);
+      // Save to database
+      await set(ref(db, `users/${newUserId}`), userData);
 
     } catch (error) {
-      console.error('Update user error:', error);
-      if (error instanceof Error) {
-        throw error;
-      } else {
-        throw new Error('Gagal memperbarui data user');
-      }
+      console.error('Add user error:', error);
+      throw error;
     }
   };
 
+  // Update user function
+  const updateUser = async (
+    userId: string,
+    username: string,
+    password: string | null,
+    fullName: string,
+    role: UserRole,
+    barakId?: string
+  ) => {
+    try {
+      const userRef = ref(db, `users/${userId}`);
+      const snapshot = await get(userRef);
+      const existingData = snapshot.val();
+
+      if (!existingData) {
+        throw new Error('User tidak ditemukan');
+      }
+
+      // Update user data
+      const updatedData = {
+        ...existingData,
+        username,
+        fullName,
+        role,
+        barakId: barakId || null,
+        ...(password && { password }) // Update password hanya jika ada
+      };
+
+      await set(userRef, updatedData);
+
+      // Update current user if it's the same user
+      if (user && user.id === userId) {
+        setUser({
+          ...user,
+          username,
+          fullName,
+          role,
+          barakId,
+          ...(password && { password })
+        });
+        localStorage.setItem('currentUser', JSON.stringify(user));
+      }
+
+    } catch (error) {
+      console.error('Update user error:', error);
+      throw error;
+    }
+  };
+
+  // Delete user function
   const deleteUser = async (id: string) => {
     try {
-      // Delete from Realtime Database
-      const userRef = ref(db, `users/${id}`);
-      await remove(userRef);
-
-      // Note: Deleting user from Firebase Auth requires admin SDK
-      // Implement user deletion from Auth here
+      await remove(ref(db, `users/${id}`));
     } catch (error) {
       console.error('Delete user error:', error);
       throw error;
     }
   };
 
+  // Get users function
   const getUsers = async (): Promise<User[]> => {
     const usersRef = ref(db, 'users');
     const snapshot = await get(usersRef);
@@ -403,17 +226,55 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     if (!users) return [];
 
-    return Object.entries(users).map(([id, userData]: [string, any]) => ({
-      id,
-      email: userData.email,
-      username: userData.username,
-      fullName: userData.fullName,
-      role: userData.role,
-      barakId: userData.barakId,
-      isDefaultAccount: userData.isDefaultAccount
-    }));
+    return Object.entries(users).map(([id, data]) => {
+      const userData = data as UserData;
+      return {
+        id,
+        username: userData.username,
+        fullName: userData.fullName,
+        role: userData.role,
+        barakId: userData.barakId,
+        password: userData.password,
+        isDefaultAccount: userData.isDefaultAccount
+      };
+    });
   };
 
+  // Check for stored user on mount
+  useEffect(() => {
+    const storedUser = localStorage.getItem('currentUser');
+    if (storedUser) {
+      setUser(JSON.parse(storedUser));
+    }
+    setIsLoading(false);
+  }, []);
+
+  // Tambahkan fungsi initialSetup di dalam AuthProvider
+  const handleInitialSetup = async (
+    adminMasterUsername: string,
+    adminMasterPassword: string
+  ) => {
+    try {
+      // Create admin master only
+      const adminMasterId = Date.now().toString();
+      await set(ref(db, `users/${adminMasterId}`), {
+        username: adminMasterUsername,
+        password: adminMasterPassword,
+        fullName: 'Administrator Master',
+        role: 'admin_master',
+        isDefaultAccount: true
+      });
+
+      // Set isInitialSetup ke false setelah setup berhasil
+      setIsInitialSetup(false);
+      return true;
+    } catch (error) {
+      console.error('Error in initial setup:', error);
+      throw error;
+    }
+  };
+
+  // Loading state
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -422,10 +283,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     );
   }
 
+  // Initial setup state - Update bagian ini
   if (isInitialSetup) {
-    return (
-      <InitialSetup onSetupComplete={initialSetup} />
-    );
+    return <InitialSetup onSetupComplete={handleInitialSetup} />;
   }
 
   return (
@@ -444,23 +304,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   );
 };
 
-// Komponen InitialSetup
-const InitialSetup: React.FC<{
+// Hook
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+};
+
+// Tambahkan interface untuk InitialSetupProps
+interface InitialSetupProps {
   onSetupComplete: (
     adminMasterUsername: string,
-    adminMasterPassword: string,
-    adminUsername: string,
-    adminPassword: string,
-    adminBarakUsername: string,
-    adminBarakPassword: string
+    adminMasterPassword: string
   ) => Promise<boolean>;
-}> = ({ onSetupComplete }) => {
+}
+
+// Tambahkan komponen InitialSetup
+const InitialSetup: React.FC<InitialSetupProps> = ({ onSetupComplete }) => {
   const [adminMasterUsername, setAdminMasterUsername] = useState('');
   const [adminMasterPassword, setAdminMasterPassword] = useState('');
-  const [adminUsername, setAdminUsername] = useState('');
-  const [adminPassword, setAdminPassword] = useState('');
-  const [adminBarakUsername, setAdminBarakUsername] = useState('');
-  const [adminBarakPassword, setAdminBarakPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
@@ -472,11 +336,7 @@ const InitialSetup: React.FC<{
     try {
       await onSetupComplete(
         adminMasterUsername,
-        adminMasterPassword,
-        adminUsername,
-        adminPassword,
-        adminBarakUsername,
-        adminBarakPassword
+        adminMasterPassword
       );
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Terjadi kesalahan saat setup');
@@ -487,99 +347,37 @@ const InitialSetup: React.FC<{
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-100">
-      <div className="w-full max-w-xl p-8 bg-white rounded-lg shadow-md">
+      <div className="w-full max-w-md p-8 bg-white rounded-lg shadow-md">
         <h2 className="text-2xl font-bold text-center text-gray-800 mb-6">
           Initial Setup
         </h2>
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Admin Master Section */}
-          <div className="border-b pb-6">
-            <h3 className="text-lg font-semibold mb-4 text-red-600">Administrator Master</h3>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Username Admin Master
-                </label>
-                <input
-                  type="text"
-                  value={adminMasterUsername}
-                  onChange={(e) => setAdminMasterUsername(e.target.value)}
-                  required
-                  className="w-full px-4 py-2 border rounded-md focus:ring-2 focus:ring-red-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Password Admin Master
-                </label>
-                <input
-                  type="password"
-                  value={adminMasterPassword}
-                  onChange={(e) => setAdminMasterPassword(e.target.value)}
-                  required
-                  className="w-full px-4 py-2 border rounded-md focus:ring-2 focus:ring-red-500"
-                />
-              </div>
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold text-red-600">Administrator Master</h3>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Username Admin Master
+              </label>
+              <input
+                type="text"
+                value={adminMasterUsername}
+                onChange={(e) => setAdminMasterUsername(e.target.value)}
+                required
+                className="w-full px-4 py-2 border rounded-md focus:ring-2 focus:ring-red-500"
+              />
             </div>
-          </div>
-
-          <div className="border-b pb-6">
-            <h3 className="text-lg font-semibold mb-4">Administrator</h3>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Username Admin
-                </label>
-                <input
-                  type="text"
-                  value={adminUsername}
-                  onChange={(e) => setAdminUsername(e.target.value)}
-                  required
-                  className="w-full px-4 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Password Admin
-                </label>
-                <input
-                  type="password"
-                  value={adminPassword}
-                  onChange={(e) => setAdminPassword(e.target.value)}
-                  required
-                  className="w-full px-4 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="border-b pb-6">
-            <h3 className="text-lg font-semibold mb-4">Admin Asrama</h3>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Username Admin Asrama
-                </label>
-                <input
-                  type="text"
-                  value={adminBarakUsername}
-                  onChange={(e) => setAdminBarakUsername(e.target.value)}
-                  required
-                  className="w-full px-4 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Password Admin Asrama
-                </label>
-                <input
-                  type="password"
-                  value={adminBarakPassword}
-                  onChange={(e) => setAdminBarakPassword(e.target.value)}
-                  required
-                  className="w-full px-4 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Password Admin Master
+              </label>
+              <input
+                type="password"
+                value={adminMasterPassword}
+                onChange={(e) => setAdminMasterPassword(e.target.value)}
+                required
+                className="w-full px-4 py-2 border rounded-md focus:ring-2 focus:ring-red-500"
+              />
             </div>
           </div>
 
@@ -603,42 +401,3 @@ const InitialSetup: React.FC<{
     </div>
   );
 };
-
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
-};
-
-// Update createAdminMaster untuk menggunakan formatEmail yang sudah dideklarasikan
-const createAdminMaster = async (
-  username: string,
-  password: string,
-  fullName: string
-) => {
-  try {
-    const email = formatEmail(username); // Gunakan formatEmail yang sudah dideklarasikan
-    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-    
-    await updateProfile(userCredential.user, {
-      displayName: fullName
-    });
-
-    await set(ref(db, `users/${userCredential.user.uid}`), {
-      username,
-      email,
-      fullName,
-      role: 'admin_master',
-      isDefaultAccount: true,
-      isMasterAdmin: true
-    });
-
-    return true;
-  } catch (error) {
-    console.error('Error creating admin master:', error);
-    throw error;
-  }
-};
-
