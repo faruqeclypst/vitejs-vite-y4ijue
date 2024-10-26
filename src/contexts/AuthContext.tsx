@@ -5,22 +5,23 @@ import {
   signInWithEmailAndPassword,
   signOut,
   updateProfile,
-  updatePassword
+  updatePassword,
+  EmailAuthProvider,
+  reauthenticateWithCredential // Tambah ini
 } from 'firebase/auth';
 import { ref, get, set, remove } from 'firebase/database';
 import { db } from '../firebase';
-
-// Gunakan type yang sama dengan yang ada di types.ts
-type UserRole = 'admin' | 'piket' | 'wakil_kepala' | 'pengasuh' | 'admin_asrama' | 'admin_barak';
+import { UserRole } from '../types';
 
 export interface User {
   id: string;
   username: string;
   fullName: string;
   role: UserRole;
-  barakId?: string; // Hapus asramaId
+  barakId?: string;
   email: string;
-  isDefaultAccount: boolean;
+  isDefaultAccount?: boolean;
+  profileImage?: string; // Add this line
 }
 
 interface AuthContextType {
@@ -41,7 +42,9 @@ interface AuthContextType {
     password: string | null,
     fullName: string,
     role: UserRole,
-    barakId?: string
+    barakId?: string,
+    profileImage?: string,
+    currentPassword?: string // Tambah parameter ini
   ) => Promise<void>;
   deleteUser: (id: string) => Promise<void>;
   isLoading: boolean;
@@ -135,7 +138,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             fullName: userData.fullName,
             role: userData.role,
             barakId: userData.barakId,
-            isDefaultAccount: userData.isDefaultAccount
+            isDefaultAccount: userData.isDefaultAccount,
+            profileImage: userData.profileImage // Add this line
           });
         }
       } else {
@@ -261,41 +265,71 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const updateUser = async (
-    id: string,
+    userId: string,
     username: string,
     password: string | null,
     fullName: string,
     role: UserRole,
-    barakId?: string
+    barakId?: string,
+    profileImage?: string,
+    currentPassword?: string
   ) => {
     try {
-      // Dapatkan email yang benar dengan format @piketmosa.com
-      const email = `${username.toLowerCase()}@piketmosa.com`;
-      
-      const userRef = ref(db, `users/${id}`);
+      const userRef = ref(db, `users/${userId}`);
       const userData = {
         username,
-        email, // Gunakan email yang benar
+        email: `${username.toLowerCase()}@piketmosa.com`,
         fullName,
         role,
-        barakId: barakId || null
+        barakId: barakId || null,
+        profileImage: profileImage || null
       };
 
-      // Update data di Realtime Database
+      // Update user data di database
       await set(userRef, userData);
 
-      // Jika ada password baru
+      // Update local user state
+      if (user && userId === user.id) {
+        setUser(prev => prev ? {
+          ...prev,
+          username,
+          fullName,
+          role,
+          barakId,
+          profileImage
+        } : null);
+      }
+
+      // Jika ada password baru yang akan diupdate
       if (password) {
         try {
-          // Dapatkan user dari Firebase Auth
-          const user = auth.currentUser;
-          if (user) {
-            // Update password
-            await updatePassword(user, password);
+          const currentUser = auth.currentUser;
+          if (!currentUser) {
+            throw new Error('User tidak ditemukan');
           }
+
+          if (!currentPassword) {
+            throw new Error('Password lama diperlukan untuk mengubah password');
+          }
+
+          // Re-authenticate user sebelum mengubah password
+          try {
+            const credential = EmailAuthProvider.credential(
+              currentUser.email!,
+              currentPassword
+            );
+            await reauthenticateWithCredential(currentUser, credential);
+          } catch (error) {
+            console.error('Re-authentication error:', error);
+            throw new Error('Password lama yang Anda masukkan salah');
+          }
+
+          // Update password setelah re-authentication berhasil
+          await updatePassword(currentUser, password);
+
         } catch (error) {
           console.error('Error updating password:', error);
-          throw new Error('Gagal memperbarui password');
+          throw error;
         }
       }
     } catch (error) {

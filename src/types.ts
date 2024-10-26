@@ -72,17 +72,26 @@ export interface StudentLeave {
   returnStatus?: ReturnStatus;
 }
 
-export type UserRole = 'admin' | 'admin_barak' | 'admin_asrama' | 'pengasuh' | 'piket' | 'wakil_kepala';
+export type UserRole = 
+  | 'admin' 
+  | 'admin_asrama' 
+  | 'pengasuh'
+  | 'piket'
+  | 'guru'
+  | 'wakil_kepala'
+  | 'kepala_sekolah'
+  | 'pkd'
+  | 'bimbingan_konseling';
 
 export interface User {
   id: string;
   username: string;
   fullName: string;
   role: UserRole;
-  asramaId?: string;
   barakId?: string;
   email: string;
   isDefaultAccount?: boolean;
+  profileImage?: string; // Add this line
 }
 
 export interface Barak {

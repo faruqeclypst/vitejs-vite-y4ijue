@@ -92,7 +92,11 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
       return [
         { value: 'admin' as UserRole, label: 'Admin' },
         { value: 'piket' as UserRole, label: 'Piket' },
-        // { value: 'wakil_kepala' as UserRole, label: 'Wakil Kepala' }
+        { value: 'guru' as UserRole, label: 'Guru' },
+        { value: 'wakil_kepala' as UserRole, label: 'Wakil Kepala' },
+        { value: 'kepala_sekolah' as UserRole, label: 'Kepala Sekolah' },
+        { value: 'pkd' as UserRole, label: 'PKD' },
+        { value: 'bimbingan_konseling' as UserRole, label: 'Bimbingan Konseling' }
       ];
     }
     return [];
@@ -102,7 +106,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
     setUsername('');
     setPassword('');
     setFullName('');
-    setRole(currentUser?.role === 'admin_barak' ? 'pengasuh' : 'admin');
+    setRole(currentUser?.role === 'admin_asrama' ? 'pengasuh' : 'admin');
     setSelectedBaraks([]);
     setEditingUser(null);
     setIsModalOpen(false);
@@ -117,7 +121,6 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      // Hanya perlu barakId untuk role pengasuh
       const needsBarak = role === 'pengasuh';
       const barakIdToUse = needsBarak ? selectedBaraks.join(',') : undefined;
 
@@ -129,8 +132,8 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
         return;
       }
 
-      // Validasi untuk admin_barak yang menambah pengasuh
-      if (currentUser?.role === 'admin_barak' && role === 'pengasuh') {
+      // Update validation for admin_asrama
+      if (currentUser?.role === 'admin_asrama' && role === 'pengasuh') {
         const adminBarakIds = currentUser.barakId?.split(',') || [];
         const hasAccess = selectedBaraks.every(id => adminBarakIds.includes(id));
         if (!hasAccess) {
@@ -148,7 +151,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
           username,
           password || null,
           fullName,
-          role,
+          role as UserRole, // Tambahkan type assertion
           barakIdToUse
         );
         showAlert({
@@ -168,7 +171,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
           username,
           password,
           fullName,
-          role,
+          role as UserRole, // Tambahkan type assertion
           barakIdToUse
         );
         showAlert({
@@ -242,7 +245,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
           userForPasswordChange.username,
           newPassword,
           userForPasswordChange.fullName,
-          userForPasswordChange.role as UserRole,
+          userForPasswordChange.role as UserRole, // Tambahkan type assertion
           userForPasswordChange.barakId
         );
         showAlert({
@@ -473,7 +476,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
                 <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Lengkap</th>
                 <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Username</th>
                 <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
-                {(currentUser?.role === 'admin_barak' || currentUser?.role === 'admin_asrama') && (
+                {(currentUser?.role === 'admin_asrama') && (
                   <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Barak</th>
                 )}
                 <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
@@ -489,7 +492,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
                       {user.role}
                     </span>
                   </td>
-                  {(currentUser?.role === 'admin_barak' || currentUser?.role === 'admin_asrama') && (
+                  {(currentUser?.role === 'admin_asrama') && (
                     <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500">
                       <BarakDropdown barakId={user.barakId} userName={user.fullName} />
                     </td>
@@ -537,7 +540,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
                     <span className="px-2 py-0.5 text-xs rounded-full bg-blue-100 text-blue-800">
                       {user.role}
                     </span>
-                    {(currentUser?.role === 'admin_barak' || currentUser?.role === 'admin_asrama') && (
+                    {(currentUser?.role === 'admin_asrama') && (
                       <BarakDropdown barakId={user.barakId} userName={user.fullName} />
                     )}
                   </div>
