@@ -155,25 +155,47 @@ const StudentManagement: React.FC = () => {
       };
 
       if (editingStudent) {
-        await updateStudent(editingStudent.id, studentData);
-        showAlert({
-          type: 'success',
-          message: 'Data siswa berhasil diperbarui'
+        // Tutup modal form terlebih dahulu
+        setIsModalOpen(false);
+
+        const confirmed = await confirm({
+          title: 'Konfirmasi Perubahan',
+          message: 'Anda yakin ingin melakukan perubahan data siswa/barak/kelas? Perubahan tidak dapat dikembalikan.',
+          confirmText: 'Ya, Ubah',
+          cancelText: 'Batal'
         });
+
+        if (confirmed) {
+          await updateStudent(editingStudent.id, studentData);
+          showAlert({
+            type: 'success',
+            message: 'Data siswa berhasil diperbarui'
+          });
+          setNewStudent({
+            fullName: '',
+            gender: 'Laki-laki',
+            class: availableClasses[0],
+            barak: ''
+          });
+        } else {
+          // Jika user membatalkan, buka kembali modal form
+          setIsModalOpen(true);
+          return;
+        }
       } else {
         await addStudent(studentData);
         showAlert({
           type: 'success',
           message: 'Data siswa berhasil ditambahkan'
         });
+        setNewStudent({
+          fullName: '',
+          gender: 'Laki-laki',
+          class: availableClasses[0],
+          barak: ''
+        });
+        setIsModalOpen(false);
       }
-      setNewStudent({
-        fullName: '',
-        gender: 'Laki-laki',
-        class: availableClasses[0],
-        barak: ''
-      });
-      setIsModalOpen(false);
     } catch (error) {
       showAlert({
         type: 'error',
