@@ -24,76 +24,76 @@ const Sidebar: React.FC<SidebarProps> = ({ isExpanded, setIsExpanded }) => {
 
   if (!user) return null;
 
-  // Update navItems untuk akses menu yang lebih spesifik
+  // Update navItems untuk admin_master
   const navItems: NavItem[] = [
     // Menu Home - Semua role memiliki akses
     { 
       path: '/', 
       icon: Home, 
       label: 'Dashboard', 
-      roles: ['admin', 'piket', 'admin_asrama', 'pengasuh'] 
+      roles: ['admin_master', 'admin', 'piket', 'admin_asrama', 'pengasuh'] 
     },
 
-    // Menu Akademik - Hanya untuk admin dan piket
+    // Menu Akademik - Admin master dan admin
     { 
       path: '/teachers', 
       icon: Users, 
       label: 'Data Guru', 
-      roles: ['admin'] 
+      roles: ['admin_master', 'admin'] 
     },
     { 
       path: '/roster', 
       icon: ClipboardList, 
       label: 'Jadwal Guru', 
-      roles: ['admin', 'piket'] 
+      roles: ['admin_master', 'admin', 'piket'] 
     },
     { 
       path: '/attendance', 
       icon: Calendar, 
       label: 'Absensi Guru', 
-      roles: ['admin', 'piket'] 
+      roles: ['admin_master', 'admin', 'piket'] 
     },
 
-    // Menu Asrama - Untuk admin_asrama dan pengasuh
+    // Menu Asrama - Admin master dan admin asrama
     { 
       path: '/barak', 
       icon: Building, 
       label: 'Data Barak', 
-      roles: ['admin_asrama'] 
+      roles: ['admin_master', 'admin_asrama'] 
     },
     { 
       path: '/students', 
       icon: GraduationCap, 
       label: 'Data Siswa', 
-      roles: ['admin_asrama', 'pengasuh'] 
+      roles: ['admin_master', 'admin_asrama', 'pengasuh'] 
     },
     { 
       path: '/student-leave', 
       icon: FileText, 
       label: 'Data Perizinan', 
-      roles: ['admin_asrama', 'pengasuh'] 
+      roles: ['admin_master', 'admin_asrama', 'pengasuh'] 
     },
 
-    // Menu Pengaturan - Hanya untuk admin dan admin_asrama
+    // Menu Pengaturan - Admin master dan admin
     { 
       path: '/user-management', 
       icon: UserCog, 
       label: 'Manajemen User', 
-      roles: ['admin', 'admin_asrama'] 
+      roles: ['admin_master', 'admin', 'admin_asrama'] 
     },
 
-    // Tambahkan menu baru untuk Pelanggaran dan Pembinaan
+    // Menu Pelanggaran dan Pembinaan
     { 
       path: '/violations', 
       icon: AlertTriangle, 
       label: 'Pelanggaran', 
-      roles: ['admin', 'admin_asrama', 'pengasuh'] 
+      roles: ['admin_master', 'admin', 'admin_asrama', 'pengasuh'] 
     },
     { 
       path: '/guidance', 
       icon: Megaphone, 
       label: 'Pembinaan', 
-      roles: ['admin', 'admin_asrama', 'pengasuh'] 
+      roles: ['admin_master', 'admin', 'admin_asrama', 'pengasuh'] 
     },
   ];
 

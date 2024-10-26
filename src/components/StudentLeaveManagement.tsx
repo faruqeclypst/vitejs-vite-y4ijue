@@ -308,29 +308,27 @@ const StudentLeaveManagement: React.FC = () => {
   };
 
   // Update fungsi hasAccessToBarak
-  const hasAccessToBarak = (studentBarak: string) => {
+  const hasAccessToBarak = (barakName: string) => {
     if (!currentUser) return false;
     
-    if (currentUser.role === 'admin_asrama') {
-      return true; // Admin asrama punya akses ke semua barak
+    // Admin master punya akses ke semua barak
+    if (currentUser.role === 'admin_master') {
+      return true;
     }
     
+    // Admin asrama juga punya akses ke semua barak
+    if (currentUser.role === 'admin_asrama') {
+      return true;
+    }
+    
+    // Pengasuh hanya punya akses ke barak yang ditugaskan
     if (currentUser.role === 'pengasuh' && currentUser.barakId) {
       const userBarakIds = currentUser.barakId.split(',');
       const userBaraks = baraks
         .filter(b => userBarakIds.includes(b.id))
         .map(b => b.name);
       
-      // Debug info
-      console.log('Debug Info:');
-      console.log('Current User:', currentUser);
-      console.log('User Barak IDs:', userBarakIds);
-      console.log('User Baraks:', userBaraks);
-      console.log('Student Barak:', studentBarak);
-      console.log('Has Access:', userBaraks.includes(studentBarak));
-      
-      // Cek apakah nama barak siswa ada dalam daftar barak yang dikelola pengasuh
-      return userBaraks.includes(studentBarak);
+      return userBaraks.includes(barakName);
     }
     
     return false;

@@ -72,7 +72,7 @@ export interface StudentLeave {
   returnStatus?: ReturnStatus;
 }
 
-export type UserRole = 'admin' | 'admin_barak' | 'admin_asrama' | 'pengasuh' | 'piket' | 'wakil_kepala';
+export type UserRole = 'admin_master' | 'admin' | 'piket' | 'wakil_kepala' | 'pengasuh' | 'admin_asrama' | 'admin_barak';
 
 export interface User {
   id: string;
@@ -83,6 +83,7 @@ export interface User {
   barakId?: string;
   email: string;
   isDefaultAccount?: boolean;
+  isMasterAdmin?: boolean;
 }
 
 export interface Barak {

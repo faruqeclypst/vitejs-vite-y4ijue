@@ -1,9 +1,10 @@
-import { User, ChevronDown, LogOut, UserCog, X } from 'lucide-react';
+import { User, ChevronDown, LogOut, UserCog, X, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useConfirmation from '../hooks/useConfirmation';
 import ConfirmationModal from './ConfirmationModal';
+import { signInWithEmailAndPassword, getAuth } from 'firebase/auth';
 
 const Header = () => {
   const { user, logout, updateUser } = useAuth();
@@ -12,11 +13,13 @@ const Header = () => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
   const { confirm, isOpen, options, handleConfirm, handleCancel } = useConfirmation();
+  const auth = getAuth();
 
   // State untuk form edit profile
   const [editForm, setEditForm] = useState({
     fullName: user?.fullName || '',
     username: user?.username || '',
+    oldPassword: '', // Tambah field password lama
     password: ''
   });
 
@@ -52,69 +55,77 @@ const Header = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isDropdownOpen]);
 
-  const handleLogout = async () => {
-    const confirmed = await confirm({
-      title: 'Konfirmasi Logout',
-      message: 'Apakah Anda yakin ingin keluar?',
-      confirmText: 'Ya, Keluar',
-      cancelText: 'Batal'
-    });
-
-    if (confirmed) {
-      logout();
-      navigate('/login');
-    }
-  };
-
+  // Update handleEditProfile
   const handleEditProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
 
     try {
       // Validasi password jika diisi
-      if (editForm.password && editForm.password.length < 6) {
-        console.log('Password minimal 6 karakter');
-        return;
+      if (editForm.password) {
+        if (editForm.password.length < 6) {
+          alert('Password baru minimal 6 karakter');
+          return;
+        }
+
+        if (!editForm.oldPassword) {
+          alert('Password lama harus diisi untuk mengubah password');
+          return;
+        }
+
+        if (editForm.oldPassword === editForm.password) {
+          alert('Password baru tidak boleh sama dengan password lama');
+          return;
+        }
+
+        // Coba login dengan password lama terlebih dahulu
+        try {
+          const email = `${user.username.toLowerCase()}@piketmosa.com`;
+          await signInWithEmailAndPassword(auth, email, editForm.oldPassword);
+        } catch (error) {
+          alert('Password lama tidak sesuai');
+          return;
+        }
       }
 
+      // Update user data
       await updateUser(
         user.id,
         editForm.username,
-        editForm.password || null,
+        editForm.password ? {
+          oldPassword: editForm.oldPassword,
+          newPassword: editForm.password,
+          requireOldPassword: true
+        } : null,
         editForm.fullName,
         user.role,
         user.barakId
       );
 
-      // Update local storage
-      const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
-      const updatedUser = {
-        ...currentUser,
-        fullName: editForm.fullName
-      };
-      localStorage.setItem('user', JSON.stringify(updatedUser));
-
-      // Update state user secara langsung
-      if (user) {
-        user.fullName = editForm.fullName;
-      }
-
-      // Reset password field
+      // Reset form
       setEditForm(prev => ({
         ...prev,
+        oldPassword: '',
         password: ''
       }));
 
       // Tutup modal
       setIsEditProfileOpen(false);
 
-      console.log(editForm.password 
-        ? 'Profil dan password berhasil diperbarui'
-        : 'Profil berhasil diperbarui'
-      );
+      // Simpan password baru ke localStorage jika password diubah
+      if (editForm.password) {
+        localStorage.setItem('tempPassword', editForm.password);
+      }
+
+      alert('Profil berhasil diperbarui');
 
     } catch (error) {
       console.error('Gagal memperbarui profil:', error);
+      if (error instanceof Error) {
+        alert(error.message);
+      } else {
+        alert('Gagal memperbarui profil. Silakan coba lagi.');
+      }
     }
   };
 
@@ -135,6 +146,26 @@ const Header = () => {
     return `${hours}:${minutes}:${seconds}`;
   };
   
+  // Update fungsi logout untuk membersihkan tempPassword
+  const handleLogout = async () => {
+    const confirmed = await confirm({
+      title: 'Konfirmasi Logout',
+      message: 'Apakah Anda yakin ingin keluar?',
+      confirmText: 'Ya, Keluar',
+      cancelText: 'Batal'
+    });
+
+    if (confirmed) {
+      localStorage.removeItem('tempPassword'); // Hapus tempPassword saat logout
+      await logout();
+      navigate('/login');
+    }
+  };
+
+  // Tambahkan state untuk show/hide password
+  const [showOldPassword, setShowOldPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+
   return (
     <header className="bg-white shadow-sm sticky top-0 z-10">
       <div className="w-full mx-auto px-2 sm:px-4">
@@ -187,6 +218,7 @@ const Header = () => {
                     setEditForm({
                       fullName: user?.fullName || '',
                       username: user?.username || '',
+                      oldPassword: '',
                       password: ''
                     });
                   }}
@@ -251,16 +283,47 @@ const Header = () => {
                   />
                 </div>
 
+                {/* Password Fields */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Password Lama
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showOldPassword ? "text" : "password"}
+                      value={editForm.oldPassword}
+                      onChange={(e) => setEditForm({ ...editForm, oldPassword: e.target.value })}
+                      className="w-full p-2 pr-10 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowOldPassword(!showOldPassword)}
+                      className="absolute right-2 top-2.5 text-gray-400 hover:text-gray-600"
+                    >
+                      {showOldPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </div>
+                </div>
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Password Baru (kosongkan jika tidak diubah)
                   </label>
-                  <input
-                    type="password"
-                    value={editForm.password}
-                    onChange={(e) => setEditForm({ ...editForm, password: e.target.value })}
-                    className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                  />
+                  <div className="relative">
+                    <input
+                      type={showNewPassword ? "text" : "password"}
+                      value={editForm.password}
+                      onChange={(e) => setEditForm({ ...editForm, password: e.target.value })}
+                      className="w-full p-2 pr-10 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowNewPassword(!showNewPassword)}
+                      className="absolute right-2 top-2.5 text-gray-400 hover:text-gray-600"
+                    >
+                      {showNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </div>
                 </div>
 
                 <div className="flex justify-end space-x-3 pt-4">

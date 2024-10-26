@@ -53,7 +53,7 @@ const AppRoutes = () => {
               <Route 
                 path="/" 
                 element={
-                  <ProtectedRoute allowedRoles={['admin', 'piket', 'wakil_kepala', 'pengasuh', 'admin_asrama']}>
+                  <ProtectedRoute allowedRoles={['admin_master', 'admin', 'piket', 'wakil_kepala', 'pengasuh', 'admin_asrama']}>
                     <LandingPage />
                   </ProtectedRoute>
                 } 
@@ -61,7 +61,7 @@ const AppRoutes = () => {
               <Route 
                 path="/teachers" 
                 element={
-                  <ProtectedRoute allowedRoles={['admin']}>
+                  <ProtectedRoute allowedRoles={['admin_master', 'admin']}>
                     <TeachersPage />
                   </ProtectedRoute>
                 } 
@@ -69,7 +69,7 @@ const AppRoutes = () => {
               <Route 
                 path="/roster" 
                 element={
-                  <ProtectedRoute allowedRoles={['admin', 'piket']}>
+                  <ProtectedRoute allowedRoles={['admin_master', 'admin', 'piket']}>
                     <RosterPage />
                   </ProtectedRoute>
                 } 
@@ -77,7 +77,7 @@ const AppRoutes = () => {
               <Route 
                 path="/attendance" 
                 element={
-                  <ProtectedRoute allowedRoles={['admin', 'piket', 'wakil_kepala']}>
+                  <ProtectedRoute allowedRoles={['admin_master', 'admin', 'piket', 'wakil_kepala']}>
                     <AttendancePage />
                   </ProtectedRoute>
                 } 
@@ -85,7 +85,7 @@ const AppRoutes = () => {
               <Route 
                 path="/user-management" 
                 element={
-                  <ProtectedRoute allowedRoles={['admin', 'admin_asrama']}>
+                  <ProtectedRoute allowedRoles={['admin_master', 'admin', 'admin_asrama']}>
                     <UserManagementPage />
                   </ProtectedRoute>
                 } 
@@ -93,7 +93,7 @@ const AppRoutes = () => {
               <Route 
                 path="/students" 
                 element={
-                  <ProtectedRoute allowedRoles={['admin_asrama', 'pengasuh']}>
+                  <ProtectedRoute allowedRoles={['admin_master', 'admin_asrama', 'pengasuh']}>
                     <StudentManagementPage />
                   </ProtectedRoute>
                 } 
@@ -101,7 +101,7 @@ const AppRoutes = () => {
               <Route 
                 path="/student-leave" 
                 element={
-                  <ProtectedRoute allowedRoles={['admin_asrama', 'pengasuh']}>
+                  <ProtectedRoute allowedRoles={['admin_master', 'admin_asrama', 'pengasuh']}>
                     <StudentLeavePage />
                   </ProtectedRoute>
                 } 
@@ -109,7 +109,7 @@ const AppRoutes = () => {
               <Route 
                 path="/barak" 
                 element={
-                  <ProtectedRoute allowedRoles={['admin', 'admin_asrama']}>
+                  <ProtectedRoute allowedRoles={['admin_master', 'admin', 'admin_asrama']}>
                     <BarakPage />
                   </ProtectedRoute>
                 } 
@@ -117,7 +117,7 @@ const AppRoutes = () => {
               <Route 
                 path="/violations" 
                 element={
-                  <ProtectedRoute allowedRoles={['admin', 'admin_asrama', 'pengasuh']}>
+                  <ProtectedRoute allowedRoles={['admin_master', 'admin', 'admin_asrama', 'pengasuh']}>
                     <ViolationPage />
                   </ProtectedRoute>
                 } 
@@ -125,7 +125,7 @@ const AppRoutes = () => {
               <Route 
                 path="/guidance" 
                 element={
-                  <ProtectedRoute allowedRoles={['admin', 'admin_asrama', 'pengasuh']}>
+                  <ProtectedRoute allowedRoles={['admin_master', 'admin', 'admin_asrama', 'pengasuh']}>
                     <GuidancePage />
                   </ProtectedRoute>
                 } 

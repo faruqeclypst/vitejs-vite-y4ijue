@@ -327,15 +327,24 @@ const StudentManagement: React.FC = () => {
   const hasAccessToBarak = (barakName: string) => {
     if (!currentUser) return false;
     
-    if (currentUser.role === 'admin_asrama') {
-      return true; // Admin asrama punya akses ke semua barak
+    // Admin master punya akses ke semua barak
+    if (currentUser.role === 'admin_master') {
+      return true;
     }
     
+    // Admin asrama juga punya akses ke semua barak
+    if (currentUser.role === 'admin_asrama') {
+      return true;
+    }
+    
+    // Pengasuh hanya punya akses ke barak yang ditugaskan
     if (currentUser.role === 'pengasuh' && currentUser.barakId) {
       const userBarakIds = currentUser.barakId.split(',');
-      // Cari barak berdasarkan nama dan cek apakah pengasuh punya akses
-      const barak = baraks.find((b: { id: string; name: string }) => b.name === barakName);
-      return barak ? userBarakIds.includes(barak.id) : false;
+      const userBaraks = baraks
+        .filter(b => userBarakIds.includes(b.id))
+        .map(b => b.name);
+      
+      return userBaraks.includes(barakName);
     }
     
     return false;

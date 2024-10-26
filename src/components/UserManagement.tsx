@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useBarak } from '../contexts/BarakContext';
-import { X, Plus, Search, Edit, Trash2, Key, Users } from 'lucide-react';
+import { X, Plus, Search, Edit, Trash2, Key, Users, Eye, EyeOff } from 'lucide-react';
 import { ref, onValue } from 'firebase/database';
 import { db } from '../firebase';
 import { UserRole, Barak } from '../types'; // Hapus import User, gunakan dari AuthContext
@@ -44,6 +44,8 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
   const [selectedBaraks, setSelectedBaraks] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [openBarakDropdown, setOpenBarakDropdown] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
 
   useEffect(() => {
     fetchUsers();
@@ -51,7 +53,9 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
 
   useEffect(() => {
     // Set default role berdasarkan currentUser.role
-    if (currentUser?.role === 'admin_asrama') {
+    if (currentUser?.role === 'admin_master') {
+      setRole('admin');
+    } else if (currentUser?.role === 'admin_asrama') {
       setRole('pengasuh');
     } else if (currentUser?.role === 'admin') {
       setRole('admin');
@@ -60,13 +64,19 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
 
   const fetchUsers = async () => {
     const fetchedUsers = await getUsers();
-    if (currentUser?.role === 'admin_asrama') {
+    if (currentUser?.role === 'admin_master') {
+      setUsers(
+        fetchedUsers.filter((user) => 
+          user.id !== currentUser?.id && user.role !== 'admin_master'
+        )
+      );
+    } else if (currentUser?.role === 'admin_asrama') {
       // Admin asrama melihat pengasuh dan admin_asrama lain
       setUsers(
         fetchedUsers.filter((user) => 
           ['pengasuh', 'admin_asrama'].includes(user.role) &&
           user.id !== currentUser?.id
-        ) as User[]
+        )
       );
     } else if (currentUser?.role === 'admin') {
       // Admin biasa melihat admin, piket, dan wakil_kepala
@@ -75,16 +85,19 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
           ['admin', 'piket', 'wakil_kepala'].includes(user.role) &&
           user.id !== currentUser?.id && 
           !user.username.match(/^(admin)$/)
-        ) as User[]
+        )
       );
     }
   };
 
   // Update fungsi getAvailableRoles
   const getAvailableRoles = () => {
-    if (currentUser?.role === 'admin_asrama') {
+    if (currentUser?.role === ('admin_master' as UserRole)) {
       return [
+        { value: 'admin' as UserRole, label: 'Admin' },
         { value: 'admin_asrama' as UserRole, label: 'Admin Asrama' },
+        { value: 'piket' as UserRole, label: 'Piket' },
+        { value: 'wakil_kepala' as UserRole, label: 'Wakil Kepala' },
         { value: 'pengasuh' as UserRole, label: 'Pengasuh' }
       ];
     }
@@ -92,7 +105,13 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
       return [
         { value: 'admin' as UserRole, label: 'Admin' },
         { value: 'piket' as UserRole, label: 'Piket' },
-        // { value: 'wakil_kepala' as UserRole, label: 'Wakil Kepala' }
+        { value: 'wakil_kepala' as UserRole, label: 'Wakil Kepala' }
+      ];
+    }
+    if (currentUser?.role === 'admin_asrama') {
+      return [
+        { value: 'admin_asrama' as UserRole, label: 'Admin Asrama' },
+        { value: 'pengasuh' as UserRole, label: 'Pengasuh' }
       ];
     }
     return [];
@@ -102,7 +121,13 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
     setUsername('');
     setPassword('');
     setFullName('');
-    setRole(currentUser?.role === 'admin_barak' ? 'pengasuh' : 'admin');
+    if (currentUser?.role === 'admin_master') {
+      setRole('admin');
+    } else if (currentUser?.role === 'admin_asrama') {
+      setRole('pengasuh');
+    } else if (currentUser?.role === 'admin') {
+      setRole('admin');
+    }
     setSelectedBaraks([]);
     setEditingUser(null);
     setIsModalOpen(false);
@@ -119,7 +144,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
     try {
       // Hanya perlu barakId untuk role pengasuh
       const needsBarak = role === 'pengasuh';
-      const barakIdToUse = needsBarak ? selectedBaraks.join(',') : undefined;
+      const barakIdToUse = needsBarak ? selectedBaraks.join(',') : undefined; // Ubah null menjadi undefined
 
       if (needsBarak && selectedBaraks.length === 0) {
         showAlert({
@@ -129,27 +154,14 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
         return;
       }
 
-      // Validasi untuk admin_barak yang menambah pengasuh
-      if (currentUser?.role === 'admin_barak' && role === 'pengasuh') {
-        const adminBarakIds = currentUser.barakId?.split(',') || [];
-        const hasAccess = selectedBaraks.every(id => adminBarakIds.includes(id));
-        if (!hasAccess) {
-          showAlert({
-            type: 'error',
-            message: 'Anda hanya dapat menambahkan pengasuh untuk barak yang Anda kelola'
-          });
-          return;
-        }
-      }
-
       if (editingUser) {
         await updateUser(
           editingUser.id,
           username,
-          password || null,
+          password ? { oldPassword: '', newPassword: password, requireOldPassword: false } : null,
           fullName,
           role,
-          barakIdToUse
+          barakIdToUse // Sekarang bertipe string | undefined
         );
         showAlert({
           type: 'success',
@@ -169,7 +181,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
           password,
           fullName,
           role,
-          barakIdToUse
+          barakIdToUse // Sekarang bertipe string | undefined
         );
         showAlert({
           type: 'success',
@@ -240,9 +252,13 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
         await updateUser(
           userForPasswordChange.id,
           userForPasswordChange.username,
-          newPassword,
+          { 
+            oldPassword: '', 
+            newPassword: newPassword,
+            requireOldPassword: false // Flag untuk menandakan tidak perlu validasi password lama
+          },
           userForPasswordChange.fullName,
-          userForPasswordChange.role as UserRole,
+          userForPasswordChange.role,
           userForPasswordChange.barakId
         );
         showAlert({
@@ -257,7 +273,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
     } catch (error) {
       showAlert({
         type: 'error',
-        message: 'Gagal memperbarui password',
+        message: error instanceof Error ? error.message : 'Gagal memperbarui password',
         duration: 3000
       });
     }
@@ -300,12 +316,20 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
   const canManageUser = (user: User) => {
     if (!currentUser) return false;
     
-    if (currentUser.role === 'admin_asrama') {
-      return ['pengasuh', 'admin_asrama'].includes(user.role);
+    // Admin master dapat mengelola semua user kecuali admin master lain
+    if (currentUser.role === ('admin_master' as UserRole)) {
+      return user.role !== ('admin_master' as UserRole);
     }
     
+    // Admin dapat mengelola admin, piket, dan wakil kepala
     if (currentUser.role === 'admin') {
-      return ['admin', 'piket', 'wakil_kepala'].includes(user.role);
+      return ['admin', 'piket', 'wakil_kepala'].includes(user.role) &&
+        !user.username.match(/^(admin)$/);
+    }
+    
+    // Admin asrama dapat mengelola admin asrama dan pengasuh
+    if (currentUser.role === 'admin_asrama') {
+      return ['admin_asrama', 'pengasuh'].includes(user.role);
     }
     
     return false;
@@ -640,14 +664,23 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
                         <label className="block text-sm font-medium text-gray-700 mb-1">
                           {editingUser ? 'Password Baru (opsional)' : 'Password'}
                         </label>
-                        <input
-                          type="password"
-                          value={password}
-                          onChange={(e) => setPassword(e.target.value)}
-                          required={!editingUser}
-                          className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                          placeholder={editingUser ? 'Kosongkan jika tidak diubah' : 'Masukkan password'}
-                        />
+                        <div className="relative">
+                          <input
+                            type={showPassword ? "text" : "password"}
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            required={!editingUser}
+                            className="w-full p-2 pr-10 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                            placeholder={editingUser ? 'Kosongkan jika tidak diubah' : 'Masukkan password'}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="absolute right-2 top-2.5 text-gray-400 hover:text-gray-600"
+                          >
+                            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                          </button>
+                        </div>
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -827,13 +860,22 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Password Baru
                     </label>
-                    <input
-                      type="password"
-                      value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
-                      required
-                      className="w-full p-2.5 text-sm border rounded-md"
-                    />
+                    <div className="relative">
+                      <input
+                        type={showNewPassword ? "text" : "password"}
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        required
+                        className="w-full p-2.5 pr-10 text-sm border rounded-md"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowNewPassword(!showNewPassword)}
+                        className="absolute right-2 top-2.5 text-gray-400 hover:text-gray-600"
+                      >
+                        {showNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </div>
                   </div>
                   <div className="flex justify-end space-x-3">
                     <button

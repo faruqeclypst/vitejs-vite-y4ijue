@@ -9,10 +9,9 @@ import {
 } from 'firebase/auth';
 import { ref, get, set, remove } from 'firebase/database';
 import { db } from '../firebase';
+import { UserRole } from '../types';
 
 // Gunakan type yang sama dengan yang ada di types.ts
-type UserRole = 'admin' | 'piket' | 'wakil_kepala' | 'pengasuh' | 'admin_asrama' | 'admin_barak';
-
 export interface User {
   id: string;
   username: string;
@@ -38,7 +37,7 @@ interface AuthContextType {
   updateUser: (
     userId: string,
     username: string,
-    password: string | null,
+    password: { oldPassword: string; newPassword: string; requireOldPassword: boolean; } | null,
     fullName: string,
     role: UserRole,
     barakId?: string
@@ -49,6 +48,12 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const auth = getAuth();
+
+// Deklarasikan formatEmail di luar AuthProvider agar bisa digunakan di mana saja
+const formatEmail = (username: string): string => {
+  const sanitizedUsername = username.trim().toLowerCase();
+  return `${sanitizedUsername}@gmail.com`;
+};
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -69,14 +74,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const initialSetup = async (
+    adminMasterUsername: string,
+    adminMasterPassword: string,
     adminUsername: string,
     adminPassword: string,
     adminBarakUsername: string,
     adminBarakPassword: string
   ) => {
     try {
-      // Buat akun admin
-      const adminEmail = `${adminUsername.toLowerCase()}@piketmosa.com`;
+      // Buat admin master terlebih dahulu
+      await createAdminMaster(
+        adminMasterUsername,
+        adminMasterPassword,
+        'Administrator Master'
+      );
+
+      // Sign out setelah membuat admin master
+      await signOut(auth);
+
+      // Buat akun admin dengan email yang diformat
+      const adminEmail = formatEmail(adminUsername);
       const adminCredential = await createUserWithEmailAndPassword(auth, adminEmail, adminPassword);
       await updateProfile(adminCredential.user, {
         displayName: 'Administrator'
@@ -87,14 +104,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         fullName: 'Administrator',
         role: 'admin',
         barakId: null,
-        isDefaultAccount: true // Tambahkan penanda
+        isDefaultAccount: true
       });
 
       // Sign out setelah membuat admin
       await signOut(auth);
 
-      // Buat akun admin_asrama
-      const adminBarakEmail = `${adminBarakUsername.toLowerCase()}@piketmosa.com`;
+      // Buat akun admin_asrama dengan email yang diformat
+      const adminBarakEmail = formatEmail(adminBarakUsername);
       const adminBarakCredential = await createUserWithEmailAndPassword(auth, adminBarakEmail, adminBarakPassword);
       await updateProfile(adminBarakCredential.user, {
         displayName: 'Admin Asrama'
@@ -105,7 +122,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         fullName: 'Admin Asrama',
         role: 'admin_asrama',
         barakId: null,
-        isDefaultAccount: true // Tambahkan penanda
+        isDefaultAccount: true
       });
 
       // Sign out setelah membuat admin_asrama
@@ -149,44 +166,43 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (username: string, password: string) => {
     try {
-      const email = `${username.toLowerCase()}@piketmosa.com`;
+      const email = formatEmail(username);
+      console.log('Attempting login with email:', email);
       
-      try {
-        const userCredential = await signInWithEmailAndPassword(auth, email, password);
-        const userRef = ref(db, `users/${userCredential.user.uid}`);
-        const snapshot = await get(userRef);
-        const userData = snapshot.val();
-        
-        if (!userData) {
-          throw new Error('Data pengguna tidak ditemukan');
-        }
-
-        // Simpan password sementara untuk keperluan re-login setelah add user
-        localStorage.setItem('tempPassword', password);
-
-      } catch (error: any) {
-        if (error.code === 'auth/invalid-credential') {
-          throw new Error('Username atau password salah');
-        } else if (error.code === 'auth/invalid-email') {
-          throw new Error('Format email tidak valid');
-        } else if (error.code === 'auth/user-disabled') {
-          throw new Error('Akun telah dinonaktifkan');
-        } else if (error.code === 'auth/user-not-found') {
-          throw new Error('Pengguna tidak ditemukan');
-        } else if (error.code === 'auth/wrong-password') {
-          throw new Error('Password salah');
-        } else {
-          throw new Error('Gagal login: ' + (error.message || 'Terjadi kesalahan'));
-        }
+      // Simpan password untuk re-login nanti
+      localStorage.setItem('tempPassword', password);
+      
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const userRef = ref(db, `users/${userCredential.user.uid}`);
+      const snapshot = await get(userRef);
+      const userData = snapshot.val();
+      
+      if (!userData) {
+        localStorage.removeItem('tempPassword');
+        throw new Error('Data pengguna tidak ditemukan');
       }
-    } catch (error) {
+
+      // Tidak perlu set user manual karena sudah ditangani oleh onAuthStateChanged
+      return;
+
+    } catch (error: any) {
       console.error('Login error:', error);
-      throw error;
+      localStorage.removeItem('tempPassword');
+      
+      if (error.code === 'auth/invalid-credential' || 
+          error.code === 'auth/invalid-email' || 
+          error.code === 'auth/user-not-found' ||
+          error.code === 'auth/wrong-password') {
+        throw new Error('Username atau password salah');
+      }
+      
+      throw new Error('Gagal melakukan login. Silakan coba lagi.');
     }
   };
 
   const logout = async () => {
     try {
+      localStorage.removeItem('tempPassword');
       await signOut(auth);
     } catch (error) {
       console.error('Logout error:', error);
@@ -202,10 +218,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     barakId?: string
   ) => {
     try {
-      // Buat email dari username dengan menambahkan domain
-      const email = `${username.toLowerCase()}@piketmosa.com`;
+      const email = formatEmail(username);
 
-      // Cek apakah email sudah ada di database
+      // Cek apakah email sudah ada
       const usersRef = ref(db, 'users');
       const snapshot = await get(usersRef);
       const users = snapshot.val();
@@ -215,13 +230,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           (user: any) => user.email === email
         );
         if (emailExists) {
-          throw new Error('Username sudah digunakan, silakan pilih username lain');
+          throw new Error('Username sudah digunakan');
         }
       }
-
-      // Simpan auth state saat ini
-      const currentAuth = auth.currentUser;
-      const currentEmail = currentAuth?.email;
 
       // Buat user baru
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
@@ -232,75 +243,152 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         displayName: fullName
       });
 
-      // Simpan data tambahan di Realtime Database
-      const userRef = ref(db, `users/${uid}`);
-      await set(userRef, {
+      // Simpan data di Realtime Database
+      await set(ref(db, `users/${uid}`), {
         username,
         email,
         fullName,
         role,
-        barakId: barakId || null
+        barakId: barakId || null,
+        isDefaultAccount: false,
+        isMasterAdmin: false
       });
 
-      // Sign in kembali dengan akun sebelumnya
+      // Sign out user baru
+      await signOut(auth);
+
+      // Re-login dengan akun sebelumnya
+      const currentEmail = auth.currentUser?.email;
       if (currentEmail) {
-        const currentPassword = localStorage.getItem('tempPassword');
-        if (currentPassword) {
-          await signInWithEmailAndPassword(auth, currentEmail, currentPassword);
+        const savedPassword = localStorage.getItem('tempPassword');
+        if (savedPassword) {
+          try {
+            await signInWithEmailAndPassword(auth, currentEmail, savedPassword);
+          } catch (error) {
+            console.error('Error re-login:', error);
+            window.location.href = '/login';
+          }
         }
       }
 
     } catch (error: any) {
       if (error.code === 'auth/email-already-in-use') {
-        throw new Error('Username sudah digunakan, silakan pilih username lain');
-      } else {
-        console.error('Add user error:', error);
-        throw error;
+        throw new Error('Username sudah digunakan');
       }
+      console.error('Add user error:', error);
+      throw error;
     }
   };
 
   const updateUser = async (
     id: string,
     username: string,
-    password: string | null,
+    password: { oldPassword: string; newPassword: string; requireOldPassword: boolean; } | null,
     fullName: string,
     role: UserRole,
     barakId?: string
   ) => {
     try {
-      // Dapatkan email yang benar dengan format @piketmosa.com
-      const email = `${username.toLowerCase()}@piketmosa.com`;
-      
-      const userRef = ref(db, `users/${id}`);
-      const userData = {
-        username,
-        email, // Gunakan email yang benar
-        fullName,
-        role,
-        barakId: barakId || null
-      };
+      // Simpan kredensial user saat ini
+      const currentUser = auth.currentUser;
+      const currentEmail = currentUser?.email;
 
-      // Update data di Realtime Database
-      await set(userRef, userData);
+      // Dapatkan user yang akan diupdate
+      const userRef = ref(db, `users/${id}`);
+      const snapshot = await get(userRef);
+      const oldUserData = snapshot.val();
+      
+      if (!oldUserData) {
+        throw new Error('User tidak ditemukan');
+      }
 
       // Jika ada password baru
       if (password) {
         try {
-          // Dapatkan user dari Firebase Auth
-          const user = auth.currentUser;
-          if (user) {
-            // Update password
-            await updatePassword(user, password);
+          if (password.requireOldPassword) {
+            // Untuk user yang mengganti passwordnya sendiri
+            const email = username; // Gunakan username langsung sebagai email
+
+            // Sign out current user
+            await signOut(auth);
+
+            try {
+              // Sign in dengan akun yang akan diupdate menggunakan password lama
+              await signInWithEmailAndPassword(auth, email, password.oldPassword);
+              
+              // Update password
+              if (auth.currentUser) {
+                await updatePassword(auth.currentUser, password.newPassword);
+              }
+
+              // Sign out user yang diupdate
+              await signOut(auth);
+
+              // Re-login dengan akun sebelumnya
+              if (currentEmail) {
+                const savedPassword = localStorage.getItem('tempPassword');
+                if (savedPassword) {
+                  try {
+                    await signInWithEmailAndPassword(auth, currentEmail, savedPassword);
+                    
+                    // Update tempPassword jika yang diupdate adalah user saat ini
+                    if (id === currentUser?.uid && password) {
+                      localStorage.setItem('tempPassword', password.newPassword);
+                    }
+                  } catch (error) {
+                    console.error('Error re-login:', error);
+                    // Jika gagal re-login, redirect ke halaman login
+                    window.location.href = '/login';
+                  }
+                }
+              }
+            } catch (error) {
+              // Re-login dengan akun sebelumnya jika terjadi error
+              if (currentEmail) {
+                const savedPassword = localStorage.getItem('tempPassword');
+                if (savedPassword) {
+                  try {
+                    await signInWithEmailAndPassword(auth, currentEmail, savedPassword);
+                  } catch (error) {
+                    console.error('Error re-login:', error);
+                    // Jika gagal re-login, redirect ke halaman login
+                    window.location.href = '/login';
+                  }
+                }
+              }
+              throw new Error('Password lama tidak sesuai');
+            }
+          } else {
+            // Untuk admin yang mengganti password user lain
+            // Tidak perlu validasi password lama
+            // Implementasi update password langsung
           }
         } catch (error) {
           console.error('Error updating password:', error);
-          throw new Error('Gagal memperbarui password');
+          throw error;
         }
       }
+
+      // Update data di Realtime Database
+      const userData = {
+        username,
+        email: username, // Gunakan username langsung sebagai email
+        fullName,
+        role,
+        barakId: barakId || null,
+        isDefaultAccount: oldUserData?.isDefaultAccount || false,
+        isMasterAdmin: oldUserData?.isMasterAdmin || false
+      };
+
+      await set(userRef, userData);
+
     } catch (error) {
       console.error('Update user error:', error);
-      throw error;
+      if (error instanceof Error) {
+        throw error;
+      } else {
+        throw new Error('Gagal memperbarui data user');
+      }
     }
   };
 
@@ -369,12 +457,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 // Komponen InitialSetup
 const InitialSetup: React.FC<{
   onSetupComplete: (
+    adminMasterUsername: string,
+    adminMasterPassword: string,
     adminUsername: string,
     adminPassword: string,
     adminBarakUsername: string,
     adminBarakPassword: string
   ) => Promise<boolean>;
 }> = ({ onSetupComplete }) => {
+  const [adminMasterUsername, setAdminMasterUsername] = useState('');
+  const [adminMasterPassword, setAdminMasterPassword] = useState('');
   const [adminUsername, setAdminUsername] = useState('');
   const [adminPassword, setAdminPassword] = useState('');
   const [adminBarakUsername, setAdminBarakUsername] = useState('');
@@ -389,6 +481,8 @@ const InitialSetup: React.FC<{
 
     try {
       await onSetupComplete(
+        adminMasterUsername,
+        adminMasterPassword,
         adminUsername,
         adminPassword,
         adminBarakUsername,
@@ -407,10 +501,38 @@ const InitialSetup: React.FC<{
         <h2 className="text-2xl font-bold text-center text-gray-800 mb-6">
           Initial Setup
         </h2>
-        <p className="text-gray-600 mb-6 text-center">
-          Buat akun administrator dan admin asrama untuk memulai
-        </p>
         <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Admin Master Section */}
+          <div className="border-b pb-6">
+            <h3 className="text-lg font-semibold mb-4 text-red-600">Administrator Master</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Username Admin Master
+                </label>
+                <input
+                  type="text"
+                  value={adminMasterUsername}
+                  onChange={(e) => setAdminMasterUsername(e.target.value)}
+                  required
+                  className="w-full px-4 py-2 border rounded-md focus:ring-2 focus:ring-red-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Password Admin Master
+                </label>
+                <input
+                  type="password"
+                  value={adminMasterPassword}
+                  onChange={(e) => setAdminMasterPassword(e.target.value)}
+                  required
+                  className="w-full px-4 py-2 border rounded-md focus:ring-2 focus:ring-red-500"
+                />
+              </div>
+            </div>
+          </div>
+
           <div className="border-b pb-6">
             <h3 className="text-lg font-semibold mb-4">Administrator</h3>
             <div className="space-y-4">
@@ -498,4 +620,34 @@ export const useAuth = () => {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
+};
+
+// Update createAdminMaster untuk menggunakan formatEmail yang sudah dideklarasikan
+const createAdminMaster = async (
+  username: string,
+  password: string,
+  fullName: string
+) => {
+  try {
+    const email = formatEmail(username); // Gunakan formatEmail yang sudah dideklarasikan
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    
+    await updateProfile(userCredential.user, {
+      displayName: fullName
+    });
+
+    await set(ref(db, `users/${userCredential.user.uid}`), {
+      username,
+      email,
+      fullName,
+      role: 'admin_master',
+      isDefaultAccount: true,
+      isMasterAdmin: true
+    });
+
+    return true;
+  } catch (error) {
+    console.error('Error creating admin master:', error);
+    throw error;
+  }
 };
