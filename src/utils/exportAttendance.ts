@@ -16,6 +16,21 @@ export const exportAttendance = async ({
   roster,
   teachers
 }: ExportOptions) => {
+  // Filter hanya guru yang aktif
+  const activeTeachers = teachers.filter(teacher => !teacher.isDeleted);
+  
+  // Filter roster untuk guru yang aktif
+  const activeRoster = roster.filter(entry => {
+    const teacher = teachers.find(t => t.id === entry.teacherId);
+    return teacher && !teacher.isDeleted;
+  });
+
+  // Filter attendance records untuk guru yang aktif
+  const activeAttendanceRecords = attendanceRecords.filter(record => {
+    const rosterEntry = activeRoster.find(r => r.id === record.rosterId);
+    return !!rosterEntry;
+  });
+
   const workbook = new ExcelJS.Workbook();
   
   // Create summary sheet
@@ -55,11 +70,11 @@ export const exportAttendance = async ({
     };
   } = {};
 
-  attendanceRecords.forEach(record => {
-    const rosterEntry = roster.find(r => r.id === record.rosterId);
+  activeAttendanceRecords.forEach(record => {
+    const rosterEntry = activeRoster.find(r => r.id === record.rosterId);
     if (rosterEntry) {
       const teacherId = rosterEntry.teacherId;
-      const teacher = teachers.find(t => t.id === teacherId);
+      const teacher = activeTeachers.find(t => t.id === teacherId);
       if (!teacherAttendance[teacherId]) {
         teacherAttendance[teacherId] = { hadir: 0, tidakHadir: 0 };
       }
@@ -91,7 +106,7 @@ export const exportAttendance = async ({
   });
 
   // Sort teachers alphabetically
-  const sortedTeachers = teachers.sort((a, b) => a.name.localeCompare(b.name));
+  const sortedTeachers = activeTeachers.sort((a, b) => a.name.localeCompare(b.name));
 
   // Add data to summary sheet with hyperlinks
   sortedTeachers.forEach((teacher, index) => {
@@ -142,15 +157,25 @@ export const exportAttendance = async ({
   });
 
   // Create individual teacher sheets
-  sortedTeachers.forEach((teacher) => {
-    const teacherSheet = workbook.addWorksheet(`${teacher.name} (${teacher.code})`);
+  sortedTeachers.forEach((teacher, index) => {
+    // Tambahkan index ke nama worksheet untuk menghindari duplikat
+    const sheetName = `${teacher.name} (${teacher.code})-${index + 1}`;
+    const teacherSheet = workbook.addWorksheet(sheetName);
     
     teacherSheet.mergeCells('A1:E1');
     teacherSheet.getCell('A1').value = `Rekap Tidak Hadir: ${teacher.name} (${teacher.code})`;
     teacherSheet.getCell('A1').font = { bold: true, size: 14 };
     teacherSheet.getCell('A1').alignment = { horizontal: 'center' };
 
-    // Add link back to summary
+    // Update hyperlink di summary sheet
+    const nameCell = summarySheet.getRow(index + 4).getCell(2); // +4 karena header mulai di row 3
+    nameCell.value = {
+      text: teacher.name,
+      hyperlink: `#'${sheetName}'!A1`
+    };
+    nameCell.font = { color: { argb: 'FF0000FF' }, underline: true };
+
+    // Update link back to summary
     teacherSheet.getCell('A2').value = {
       text: 'Kembali ke Ringkasan',
       hyperlink: '#Ringkasan!A1'

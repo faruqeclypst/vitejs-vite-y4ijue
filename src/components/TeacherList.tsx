@@ -1,12 +1,16 @@
 import React, { useState, useMemo } from 'react';
 import { Teacher } from '../types';
-import { Users, Edit, Trash2, Search, UserPlus } from 'lucide-react';
+import { Users, Edit, Trash2, Search, UserPlus, History } from 'lucide-react';
 import TeacherForm from './TeacherForm'; // tambah import
+
+type TabType = 'active' | 'deleted';
 
 interface TeacherListProps {
   teachers: Teacher[];
   onEdit: (teacher: Teacher) => void;
   onDelete: (id: string) => void;
+  onRestore: (id: string) => void;
+  onDeletePermanent: (id: string) => void;
   showModal: boolean;
   onOpenModal: () => void;
   onCloseModal: () => void;
@@ -22,18 +26,23 @@ const TeacherList: React.FC<TeacherListProps> = ({
   onSubmit,
   onEdit,
   onDelete,
+  onRestore,
+  onDeletePermanent,
   selectedTeacher 
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
-
+  const [activeTab, setActiveTab] = useState<TabType>('active');
+  
   const filteredAndSortedTeachers = useMemo(() => {
     return teachers
-      .filter(teacher =>
-        teacher.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        teacher.code.toLowerCase().includes(searchTerm.toLowerCase())
-      )
+      .filter(teacher => {
+        const matchesSearch = teacher.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          teacher.code.toLowerCase().includes(searchTerm.toLowerCase());
+        const matchesTab = activeTab === 'active' ? !teacher.isDeleted : teacher.isDeleted;
+        return matchesSearch && matchesTab;
+      })
       .sort((a, b) => a.name.localeCompare(b.name));
-  }, [teachers, searchTerm]);
+  }, [teachers, searchTerm, activeTab]);
 
   return (
     <>
@@ -73,8 +82,34 @@ const TeacherList: React.FC<TeacherListProps> = ({
           </button>
         </div>
 
+        {/* Tabs */}
+        <div className="border border-gray-200 p-1 mt-4">
+          <nav className="flex space-x-1">
+            <button
+              onClick={() => setActiveTab('active')}
+              className={`flex-1 sm:flex-none px-4 py-2 rounded-lg transition-colors ${
+                activeTab === 'active'
+                  ? 'bg-blue-500 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              Guru Aktif
+            </button>
+            <button
+              onClick={() => setActiveTab('deleted')}
+              className={`flex-1 sm:flex-none px-4 py-2 rounded-lg transition-colors ${
+                activeTab === 'deleted'
+                  ? 'bg-blue-500 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              Guru Terhapus
+            </button>
+          </nav>
+        </div>
+
         {/* Table/Card View */}
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto mt-4">
           {/* Desktop View */}
           <div className="hidden sm:block">
             <table className="min-w-full divide-y divide-gray-200">
@@ -92,18 +127,37 @@ const TeacherList: React.FC<TeacherListProps> = ({
                     <td className="px-4 py-3 whitespace-nowrap">{teacher.code}</td>
                     <td className="px-4 py-3 whitespace-nowrap text-right">
                       <div className="flex justify-end space-x-2">
-                        <button
-                          onClick={() => onEdit(teacher)}
-                          className="text-blue-500 hover:text-blue-700 p-1"
-                        >
-                          <Edit size={18} />
-                        </button>
-                        <button
-                          onClick={() => onDelete(teacher.id)}
-                          className="text-red-500 hover:text-red-700 p-1"
-                        >
-                          <Trash2 size={18} />
-                        </button>
+                        {activeTab === 'active' ? (
+                          <>
+                            <button
+                              onClick={() => onEdit(teacher)}
+                              className="text-blue-500 hover:text-blue-700 p-1"
+                            >
+                              <Edit size={18} />
+                            </button>
+                            <button
+                              onClick={() => onDelete(teacher.id)}
+                              className="text-red-500 hover:text-red-700 p-1"
+                            >
+                              <Trash2 size={18} />
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <button
+                              onClick={() => onRestore(teacher.id)}
+                              className="text-green-500 hover:text-green-700 p-1"
+                            >
+                              <History size={18} />
+                            </button>
+                            <button
+                              onClick={() => onDeletePermanent(teacher.id)}
+                              className="text-red-500 hover:text-red-700 p-1"
+                            >
+                              <Trash2 size={18} />
+                            </button>
+                          </>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -122,18 +176,37 @@ const TeacherList: React.FC<TeacherListProps> = ({
                     <p className="text-sm text-gray-500 mt-1">Kode: {teacher.code}</p>
                   </div>
                   <div className="flex space-x-3">
-                    <button
-                      onClick={() => onEdit(teacher)}
-                      className="p-3 text-blue-500 hover:bg-blue-50 rounded-full"
-                    >
-                      <Edit size={22} />
-                    </button>
-                    <button
-                      onClick={() => onDelete(teacher.id)}
-                      className="p-3 text-red-500 hover:bg-red-50 rounded-full"
-                    >
-                      <Trash2 size={22} />
-                    </button>
+                    {activeTab === 'active' ? (
+                      <>
+                        <button
+                          onClick={() => onEdit(teacher)}
+                          className="p-2 text-blue-500 hover:bg-blue-50 rounded-full"
+                        >
+                          <Edit size={20} />
+                        </button>
+                        <button
+                          onClick={() => onDelete(teacher.id)}
+                          className="p-2 text-red-500 hover:bg-red-50 rounded-full"
+                        >
+                          <Trash2 size={20} />
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          onClick={() => onRestore(teacher.id)}
+                          className="p-2 text-green-500 hover:bg-green-50 rounded-full"
+                        >
+                          <History size={20} />
+                        </button>
+                        <button
+                          onClick={() => onDeletePermanent(teacher.id)}
+                          className="p-2 text-red-500 hover:bg-red-50 rounded-full"
+                        >
+                          <Trash2 size={20} />
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>

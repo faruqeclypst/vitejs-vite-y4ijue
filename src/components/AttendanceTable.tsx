@@ -87,7 +87,13 @@ const AttendanceTable: React.FC<AttendanceTableProps> = ({
     );
   }
 
-  const groupedRoster = roster.reduce((acc, entry) => {
+  // Filter roster untuk hanya menampilkan guru yang aktif
+  const activeRoster = roster.filter(entry => {
+    const teacher = teachers.find(t => t.id === entry.teacherId);
+    return teacher && !teacher.isDeleted;
+  });
+
+  const groupedRoster = activeRoster.reduce((acc, entry) => {
     const teacherId = entry.teacherId;
     if (!acc[teacherId]) {
       acc[teacherId] = [];
@@ -127,6 +133,10 @@ const AttendanceTable: React.FC<AttendanceTableProps> = ({
             {sortedTeacherIds.map((teacherId) => {
               const entries = groupedRoster[teacherId];
               const teacher = teachers.find(t => t.id === teacherId);
+              
+              // Skip jika guru telah dihapus
+              if (teacher?.isDeleted) return null;
+
               const isConfirmed = confirmedTeachers.includes(teacherId);
 
               return (

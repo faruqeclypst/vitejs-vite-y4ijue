@@ -8,7 +8,7 @@ import useAlert from '../hooks/useAlert';
 import useConfirmation from '../hooks/useConfirmation';
 
 const TeachersPage: React.FC = () => {
-  const { teachers, addTeacher, updateTeacher, deleteTeacher } = useTeachers();
+  const { allTeachers, addTeacher, updateTeacher, deleteTeacher, restoreTeacher, deleteTeacherPermanently } = useTeachers();
   const [editingTeacher, setEditingTeacher] = useState<Teacher | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const { alert, showAlert, hideAlert } = useAlert();
@@ -29,6 +29,42 @@ const TeachersPage: React.FC = () => {
   const handleEdit = (teacher: Teacher) => {
     setEditingTeacher(teacher);
     setIsFormOpen(true);
+  };
+
+  const handleRestore = async (id: string) => {
+    const shouldRestore = await confirm({
+      title: 'Konfirmasi Pemulihan',
+      message: 'Apakah Anda yakin ingin memulihkan guru ini?',
+      confirmText: 'Ya, Pulihkan',
+      cancelText: 'Batal',
+    });
+
+    if (shouldRestore) {
+      try {
+        await restoreTeacher(id);
+        showAlert({ type: 'success', message: 'Guru berhasil dipulihkan' });
+      } catch (error) {
+        showAlert({ type: 'error', message: 'Gagal memulihkan guru' });
+      }
+    }
+  };
+
+  const handleDeletePermanent = async (id: string) => {
+    const shouldDelete = await confirm({
+      title: 'Konfirmasi Hapus Permanen',
+      message: 'Apakah Anda yakin ingin menghapus guru ini secara permanen?',
+      confirmText: 'Hapus Permanen',
+      cancelText: 'Batal',
+    });
+
+    if (shouldDelete) {
+      try {
+        await deleteTeacherPermanently(id);
+        showAlert({ type: 'success', message: 'Guru berhasil dihapus secara permanen' });
+      } catch (error) {
+        showAlert({ type: 'error', message: 'Gagal menghapus guru secara permanen' });
+      }
+    }
   };
 
   const handleDelete = async (id: string) => {
@@ -57,7 +93,7 @@ const TeachersPage: React.FC = () => {
         {/* Content Section */}
         <div className="bg-white shadow-md rounded-lg p-4">
           <TeacherList
-            teachers={teachers}
+            teachers={allTeachers}
             showModal={isFormOpen}
             onOpenModal={() => {
               setEditingTeacher(null);
@@ -70,6 +106,8 @@ const TeachersPage: React.FC = () => {
             onSubmit={handleSubmit}
             onEdit={handleEdit}
             onDelete={handleDelete}
+            onRestore={handleRestore}
+            onDeletePermanent={handleDeletePermanent}
             selectedTeacher={editingTeacher}
           />
         </div>
