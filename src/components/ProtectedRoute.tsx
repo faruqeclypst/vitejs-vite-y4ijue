@@ -20,10 +20,15 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowedRoles 
   }
 
   if (!user) {
-    // Redirect ke login dengan state untuk kembali ke halaman sebelumnya
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
+  // Berikan akses penuh untuk admin_master
+  if (user.role === 'admin_master') {
+    return <>{children}</>;
+  }
+
+  // Untuk role lain, cek seperti biasa
   if (!allowedRoles.includes(user.role)) {
     return <Navigate to="/" replace />;
   }

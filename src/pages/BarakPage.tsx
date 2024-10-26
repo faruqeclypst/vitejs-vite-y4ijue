@@ -6,7 +6,7 @@ const BarakPage = () => {
   const { user } = useAuth();
 
   // Redirect jika user tidak memiliki akses
-  if (!user || !['admin', 'admin_asrama'].includes(user.role)) {
+  if (!user || !(user.role === 'admin_master' || user.role === 'admin_asrama')) {
     return <Navigate to="/" replace />;
   }
 

@@ -91,6 +91,14 @@ const AppRoutes = () => {
                 } 
               />
               <Route 
+                path="/barak" 
+                element={
+                  <ProtectedRoute allowedRoles={['admin_master', 'admin_asrama']}>
+                    <BarakPage />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
                 path="/students" 
                 element={
                   <ProtectedRoute allowedRoles={['admin_master', 'admin_asrama', 'pengasuh']}>
@@ -103,14 +111,6 @@ const AppRoutes = () => {
                 element={
                   <ProtectedRoute allowedRoles={['admin_master', 'admin_asrama', 'pengasuh']}>
                     <StudentLeavePage />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/barak" 
-                element={
-                  <ProtectedRoute allowedRoles={['admin_master', 'admin', 'admin_asrama']}>
-                    <BarakPage />
                   </ProtectedRoute>
                 } 
               />

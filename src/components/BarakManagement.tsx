@@ -6,6 +6,7 @@ import Alert from './Alert';
 import useAlert from '../hooks/useAlert';
 import ConfirmationModal from './ConfirmationModal';
 import useConfirmation from '../hooks/useConfirmation';
+import { useAuth } from '../contexts/AuthContext';
 
 const BarakManagement: React.FC = () => {
   const { baraks, addBarak, updateBarak, deleteBarak, checkBarakHasStudents } = useBarak();
@@ -17,6 +18,7 @@ const BarakManagement: React.FC = () => {
   });
   const { alert, showAlert, hideAlert } = useAlert();
   const { confirm, isOpen, options, handleConfirm, handleCancel } = useConfirmation();
+  const { user: currentUser } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -62,12 +64,48 @@ const BarakManagement: React.FC = () => {
   };
 
   const handleEdit = (barak: Barak) => {
+    // Admin master memiliki akses penuh untuk edit
+    if (currentUser?.role === 'admin_master') {
+      setEditingBarak(barak);
+      setNewBarak(barak);
+      setIsModalOpen(true);
+      return;
+    }
+
+    // Untuk role lain, gunakan logika yang sudah ada
     setEditingBarak(barak);
     setNewBarak(barak);
     setIsModalOpen(true);
   };
 
   const handleDelete = async (id: string) => {
+    // Admin master memiliki akses penuh untuk delete
+    if (currentUser?.role === 'admin_master') {
+      const confirmed = await confirm({
+        title: 'Konfirmasi Hapus',
+        message: 'Apakah Anda yakin ingin menghapus barak ini?',
+        confirmText: 'Hapus',
+        cancelText: 'Batal'
+      });
+
+      if (confirmed) {
+        try {
+          const result = await deleteBarak(id);
+          showAlert({
+            type: result.success ? 'success' : 'error',
+            message: result.message
+          });
+        } catch (error) {
+          showAlert({
+            type: 'error',
+            message: 'Gagal menghapus barak'
+          });
+        }
+      }
+      return;
+    }
+
+    // Untuk role lain, gunakan logika yang sudah ada
     const barak = baraks.find(b => b.id === id);
     if (!barak) return;
 

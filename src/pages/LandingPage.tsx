@@ -27,7 +27,54 @@ const LandingPage: React.FC = () => {
   const [stats, setStats] = useState<StatsItem[]>([]);
 
   useEffect(() => {
-    if (user?.role === 'admin' || user?.role === 'piket' || user?.role === 'wakil_kepala') {
+    // Admin master dapat melihat semua statistik
+    if (user?.role === 'admin_master') {
+      const dayOfWeek = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'][new Date().getDay() - 1] as DayOfWeek;
+      
+      // Stats akademik
+      const todayRoster = roster.filter(entry => entry.dayOfWeek === dayOfWeek);
+      const teachersWithRosterToday = new Set(todayRoster.map(entry => entry.teacherId));
+      const todayAttendance = attendanceRecords.filter(record => 
+        record.date === new Date().toISOString().split('T')[0]
+      );
+      const totalAvailableHours = todayRoster.reduce((sum, entry) => sum + entry.hours.length, 0);
+      const totalPresentHours = todayAttendance.reduce((sum, record) => sum + (record.presentHours?.length || 0), 0);
+      const totalAbsentHours = totalAvailableHours - totalPresentHours;
+
+      // Stats asrama
+      const activeStudents = students.filter(s => !s.isDeleted);
+      const maleStudents = activeStudents.filter(s => s.gender === 'Laki-laki').length;
+      const femaleStudents = activeStudents.filter(s => s.gender === 'Perempuan').length;
+      const activeLeavesToday = leaves.filter(leave => {
+        const today = new Date().toISOString().split('T')[0];
+        const student = students.find(s => s.id === leave.studentId);
+        return leave.startDate === today && student && !student.isDeleted;
+      });
+      const completedLeaves = leaves.filter(leave => {
+        const student = students.find(s => s.id === leave.studentId);
+        return leave.returnStatus === 'Sudah Kembali' && student && !student.isDeleted;
+      });
+
+      setStats([
+        // Stats Akademik
+        { title: `Semua Guru`, value: teachers.length, icon: Users, color: "bg-blue-500 text-white" },
+        { title: `Guru Mengajar (${dayOfWeek})`, value: teachersWithRosterToday.size, icon: UserCheck, color: "bg-green-500 text-white" },
+        { title: "Jumlah Kelas", value: 18, icon: ClipboardList, color: "bg-yellow-500 text-white" },
+        { title: `Jam Tersedia (${dayOfWeek})`, value: totalAvailableHours, icon: Calendar, color: "bg-indigo-500 text-white" },
+        { title: `Jam Hadir (${dayOfWeek})`, value: totalPresentHours, icon: Calendar, color: "bg-purple-500 text-white" },
+        { title: `Jam Tidak Hadir (${dayOfWeek})`, value: totalAbsentHours, icon: Calendar, color: "bg-pink-500 text-white" },
+        
+        // Stats Asrama
+        { title: 'Total Siswa', value: activeStudents.length, icon: Users, color: "bg-blue-500 text-white" },
+        { title: 'Total Barak', value: baraks.length, icon: ClipboardList, color: "bg-green-500 text-white" },
+        { title: 'Perizinan Aktif', value: activeLeavesToday.length, icon: UserCheck, color: "bg-yellow-500 text-white" },
+        { title: 'Siswa Laki-laki', value: maleStudents, icon: Users, color: "bg-indigo-500 text-white" },
+        { title: 'Siswi Perempuan', value: femaleStudents, icon: Users, color: "bg-pink-500 text-white" },
+        { title: 'Perizinan Selesai', value: completedLeaves.length, icon: UserCheck, color: "bg-purple-500 text-white" }
+      ]);
+    }
+    // Stats untuk admin dan piket
+    else if (user?.role === 'admin' || user?.role === 'piket' || user?.role === 'wakil_kepala') {
       // Stats untuk admin dan piket
       const dayOfWeek = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'][new Date().getDay() - 1] as DayOfWeek;
     
@@ -50,8 +97,10 @@ const LandingPage: React.FC = () => {
         { title: `Jam Hadir (${dayOfWeek})`, value: totalPresentHours, icon: Calendar, color: "bg-purple-500 text-white" },
         { title: `Jam Tidak Hadir (${dayOfWeek})`, value: totalAbsentHours, icon: Calendar, color: "bg-pink-500 text-white" },
       ]);
-    } else if (user?.role === 'admin_asrama' || user?.role === 'pengasuh') {
-      // Stats untuk admin asrama dan pengasuh
+    }
+    // Stats untuk admin_asrama dan pengasuh
+    else if (user?.role === 'admin_asrama' || user?.role === 'pengasuh') {
+      // Stats untuk admin_asrama dan pengasuh
       let relevantStudents = students;
       let relevantBaraks = baraks;
       let userBaraks: string[] = [];
@@ -120,19 +169,20 @@ const LandingPage: React.FC = () => {
 };
 
 const Header: React.FC<{ userRole?: string }> = ({ userRole }) => {
-  const title = userRole === 'admin_asrama' || userRole === 'pengasuh' 
-    ? "Manajemen Asrama" 
-    : "Piket MOSA";
-  
-  const subtitle = userRole === 'admin_asrama' || userRole === 'pengasuh'
-    ? "Kelola data siswa dan barak dalam satu platform."
-    : "Kelola Jam dan kehadiran Guru dengan mudah dalam satu platform.";
+  let title = "Piket MOSA";
+  let subtitle = "Kelola Jam dan kehadiran Guru dengan mudah dalam satu platform.";
+
+  if (userRole === 'admin_master') {
+    title = "Dashboard Admin Master";
+    subtitle = "Kelola seluruh data akademik dan asrama dalam satu platform.";
+  } else if (userRole === 'admin_asrama' || userRole === 'pengasuh') {
+    title = "Manajemen Asrama";
+    subtitle = "Kelola data siswa dan barak dalam satu platform.";
+  }
 
   return (
     <div className="text-center mb-6 sm:mb-12">
-      <h1 className="h1">
-        {title}
-      </h1>
+      <h1 className="h1">{title}</h1>
       <p className="mt-3 sm:mt-6 text-base sm:text-xl md:text-2xl text-gray-600 max-w-3xl mx-auto px-2">
         {subtitle}
       </p>

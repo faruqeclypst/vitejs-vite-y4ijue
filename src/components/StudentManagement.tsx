@@ -56,7 +56,8 @@ const StudentManagement: React.FC = () => {
             ? students.filter((student: Student) => !student.isDeleted)
             : allStudents.filter((student: Student) => student.isDeleted);
 
-          if (userData.role === 'admin_asrama') {
+          if (currentUser.role === 'admin_master' || currentUser.role === 'admin_asrama') {
+            // Admin master dan admin_asrama melihat semua siswa dikelompokkan per barak
             const groupedByBarak = filteredStudents.reduce((acc: Record<string, Student[]>, student: Student) => {
               if (!acc[student.barak]) {
                 acc[student.barak] = [];
@@ -65,8 +66,9 @@ const StudentManagement: React.FC = () => {
               return acc;
             }, {} as Record<string, Student[]>);
             setGroupedStudents(groupedByBarak);
-          } else if (userData.role === 'pengasuh' && userData.barakId) {
-            const barakIds = userData.barakId.split(',');
+          } else if (currentUser.role === 'pengasuh' && currentUser.barakId) {
+            // Pengasuh hanya melihat siswa di barak yang ditugaskan
+            const barakIds = currentUser.barakId.split(',');
             const groupedStudents: Record<string, Student[]> = {};
             
             barakIds.forEach((barakId: string) => {
@@ -105,13 +107,13 @@ const StudentManagement: React.FC = () => {
   const availableBaraks = useMemo(() => {
     if (!currentUser) return [];
     
+    if (currentUser.role === 'admin_master' || currentUser.role === 'admin_asrama') {
+      return baraks; // Return semua barak
+    }
+    
     if (currentUser.role === 'pengasuh' && currentUser.barakId) {
       const barakIds = currentUser.barakId.split(',');
       return baraks.filter(barak => barakIds.includes(barak.id));
-    }
-    
-    if (currentUser.role === 'admin_asrama') {
-      return baraks;
     }
     
     return [];
@@ -204,18 +206,26 @@ const StudentManagement: React.FC = () => {
     }
   };
 
-  // Update handleEditStudent
-  const handleEditStudent = (student: Student) => {
-    // Validasi akses barak saat edit
-    if (currentUser?.role === 'pengasuh') {
-      const studentBarak = baraks.find(b => b.name === student.barak);
-      if (!studentBarak || !currentUser.barakId?.includes(studentBarak.id)) {
-        showAlert({
-          type: 'error',
-          message: 'Anda tidak memiliki akses untuk mengedit siswa dari barak ini'
-        });
-        return;
-      }
+  // Update handleEdit
+  const handleEdit = (student: Student) => {
+    // Admin master memiliki akses penuh untuk edit
+    if (currentUser?.role === 'admin_master') {
+      setEditingStudent(student);
+      setNewStudent(student);
+      const grade = student.class.split('-')[0] as 'X' | 'XI' | 'XII';
+      setSelectedGrade(grade);
+      setIsModalOpen(true);
+      return;
+    }
+
+    // Validasi akses barak saat edit untuk role lain
+    const studentBarak = baraks.find(b => b.name === student.barak);
+    if (!studentBarak || !hasAccessToBarak(student.barak)) {
+      showAlert({
+        type: 'error',
+        message: 'Anda tidak memiliki akses untuk mengedit siswa dari barak ini'
+      });
+      return;
     }
 
     setEditingStudent(student);
@@ -230,16 +240,39 @@ const StudentManagement: React.FC = () => {
     const student = students.find(s => s.id === id);
     if (!student) return;
 
-    // Validasi akses barak saat hapus
-    if (currentUser?.role === 'pengasuh') {
-      const studentBarak = baraks.find(b => b.name === student.barak);
-      if (!studentBarak || !currentUser.barakId?.includes(studentBarak.id)) {
-        showAlert({
-          type: 'error',
-          message: 'Anda tidak memiliki akses untuk menghapus siswa dari barak ini'
-        });
-        return;
+    // Admin master memiliki akses penuh untuk delete
+    if (currentUser?.role === 'admin_master') {
+      const confirmed = await confirm({
+        title: 'Konfirmasi Hapus',
+        message: 'Apakah Anda yakin ingin menghapus siswa ini?',
+        confirmText: 'Hapus',
+        cancelText: 'Batal'
+      });
+
+      if (confirmed) {
+        try {
+          await deleteStudent(id);
+          showAlert({
+            type: 'success',
+            message: 'Data siswa berhasil dihapus'
+          });
+        } catch (error) {
+          showAlert({
+            type: 'error',
+            message: 'Gagal menghapus data siswa'
+          });
+        }
       }
+      return;
+    }
+
+    // Validasi akses barak saat hapus untuk role lain
+    if (!hasAccessToBarak(student.barak)) {
+      showAlert({
+        type: 'error',
+        message: 'Anda tidak memiliki akses untuk menghapus siswa dari barak ini'
+      });
+      return;
     }
 
     const confirmed = await confirm({
@@ -327,13 +360,8 @@ const StudentManagement: React.FC = () => {
   const hasAccessToBarak = (barakName: string) => {
     if (!currentUser) return false;
     
-    // Admin master punya akses ke semua barak
-    if (currentUser.role === 'admin_master') {
-      return true;
-    }
-    
-    // Admin asrama juga punya akses ke semua barak
-    if (currentUser.role === 'admin_asrama') {
+    // Admin master dan admin_asrama punya akses ke semua barak
+    if (currentUser.role === 'admin_master' || currentUser.role === 'admin_asrama') {
       return true;
     }
     
@@ -476,7 +504,7 @@ const StudentManagement: React.FC = () => {
                     {activeTab === 'active' && canEditBarak ? (
                       <>
                         <button
-                          onClick={() => handleEditStudent(student)}
+                          onClick={() => handleEdit(student)}
                           className="text-blue-600 hover:text-blue-900 p-1"
                           title="Edit"
                         >

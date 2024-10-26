@@ -1,7 +1,16 @@
 import React from 'react';
 import StudentManagement from '../components/StudentManagement';
+import { useAuth } from '../contexts/AuthContext';
+import { Navigate } from 'react-router-dom';
 
 const StudentManagementPage: React.FC = () => {
+  const { user } = useAuth();
+
+  // Redirect jika user tidak memiliki akses
+  if (!user || !(user.role === 'admin_master' || user.role === 'admin_asrama' || user.role === 'pengasuh')) {
+    return <Navigate to="/" replace />;
+  }
+
   return (
     <div className="main-container mt-6">
       <div className="flex flex-col space-y-4">

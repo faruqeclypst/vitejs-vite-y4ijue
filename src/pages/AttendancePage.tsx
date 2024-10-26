@@ -30,7 +30,7 @@ const AttendancePage: React.FC = () => {
   const [exportYear, setExportYear] = useState(new Date().getFullYear());
   const [confirmedTeachers, setConfirmedTeachers] = useState<string[]>([]);
 
-  const isAdmin = user?.role === 'admin'; 
+  const isAdmin = user?.role === 'admin' || user?.role === 'admin_master'; // Update isAdmin check
 
   useEffect(() => {
     updateDayFromDate(new Date(currentDate));
@@ -177,12 +177,12 @@ const AttendancePage: React.FC = () => {
               confirmedTeachers={confirmedTeachers}
               currentDate={currentDate}
               onDateChange={handleDateChange}
-              isAdmin={isAdmin}
+              isAdmin={isAdmin} // Pass isAdmin yang sudah diupdate
             />
           </div>
         </div>
 
-        {/* Export Section - Hanya untuk Admin */}
+        {/* Export Section - Untuk Admin dan Admin Master */}
         {isAdmin && (
           <div className="bg-white p-4 rounded-lg shadow-sm">
             <h3 className="text-lg font-medium text-gray-900 mb-4">Ekspor Data Kehadiran</h3>

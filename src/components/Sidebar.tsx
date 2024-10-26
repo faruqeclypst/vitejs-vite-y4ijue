@@ -31,10 +31,10 @@ const Sidebar: React.FC<SidebarProps> = ({ isExpanded, setIsExpanded }) => {
       path: '/', 
       icon: Home, 
       label: 'Dashboard', 
-      roles: ['admin_master', 'admin', 'piket', 'admin_asrama', 'pengasuh'] 
+      roles: ['admin_master', 'admin', 'piket', 'admin_asrama', 'pengasuh', 'wakil_kepala'] 
     },
 
-    // Menu Akademik - Admin master dan admin
+    // Menu Akademik
     { 
       path: '/teachers', 
       icon: Users, 
@@ -51,10 +51,10 @@ const Sidebar: React.FC<SidebarProps> = ({ isExpanded, setIsExpanded }) => {
       path: '/attendance', 
       icon: Calendar, 
       label: 'Absensi Guru', 
-      roles: ['admin_master', 'admin', 'piket'] 
+      roles: ['admin_master', 'admin', 'piket', 'wakil_kepala'] 
     },
 
-    // Menu Asrama - Admin master dan admin asrama
+    // Menu Asrama
     { 
       path: '/barak', 
       icon: Building, 
@@ -74,7 +74,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isExpanded, setIsExpanded }) => {
       roles: ['admin_master', 'admin_asrama', 'pengasuh'] 
     },
 
-    // Menu Pengaturan - Admin master dan admin
+    // Menu Pengaturan
     { 
       path: '/user-management', 
       icon: UserCog, 
@@ -97,7 +97,13 @@ const Sidebar: React.FC<SidebarProps> = ({ isExpanded, setIsExpanded }) => {
     },
   ];
 
-  const filteredNavItems = navItems.filter(item => item.roles.includes(user?.role || ''));
+  // Update fungsi filter menu untuk admin_master
+  const filteredNavItems = navItems.filter(item => {
+    if (user?.role === 'admin_master') {
+      return true; // Tampilkan semua menu untuk admin_master
+    }
+    return item.roles.includes(user?.role || '');
+  });
 
   const NavItem: React.FC<{ 
     item: NavItem, 
