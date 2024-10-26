@@ -1,25 +1,26 @@
 import React, { useState, useEffect } from 'react';
-import { AlertCircle, CheckCircle, XCircle, Info, X } from 'lucide-react';
+import { AlertCircle, CheckCircle, XCircle, Info } from 'lucide-react';
 
 type AlertType = 'success' | 'error' | 'info' | 'warning';
 
 interface AlertProps {
   type: AlertType;
   message: string;
+  duration?: number;
   onClose?: () => void;
 }
 
-const Alert: React.FC<AlertProps> = ({ type, message, onClose }) => {
+const Alert: React.FC<AlertProps> = ({ type, message, duration = 3000, onClose }) => {
   const [isVisible, setIsVisible] = useState(true);
 
   useEffect(() => {
     const timer = setTimeout(() => {
       setIsVisible(false);
-      onClose?.();
-    }, 3000);
+      onClose && onClose();
+    }, duration);
 
     return () => clearTimeout(timer);
-  }, [onClose]);
+  }, [duration, onClose]);
 
   if (!isVisible) return null;
 
@@ -31,29 +32,16 @@ const Alert: React.FC<AlertProps> = ({ type, message, onClose }) => {
   };
 
   const icons = {
-    success: <CheckCircle className="w-5 h-5" />,
-    error: <XCircle className="w-5 h-5" />,
-    info: <Info className="w-5 h-5" />,
-    warning: <AlertCircle className="w-5 h-5" />,
+    success: <CheckCircle className="w-5 h-5 mr-2" />,
+    error: <XCircle className="w-5 h-5 mr-2" />,
+    info: <Info className="w-5 h-5 mr-2" />,
+    warning: <AlertCircle className="w-5 h-5 mr-2" />,
   };
 
   return (
-    <div 
-      className={`p-4 rounded-md border-l-4 ${alertClasses[type]} flex items-center justify-between shadow-lg min-w-[300px] animate-fade-in`}
-    >
-      <div className="flex items-center space-x-3">
-        {icons[type]}
-        <span className="text-sm font-medium">{message}</span>
-      </div>
-      <button 
-        onClick={() => {
-          setIsVisible(false);
-          onClose?.();
-        }}
-        className="text-gray-500 hover:text-gray-700"
-      >
-        <X size={16} />
-      </button>
+    <div className={`fixed top-20 right-4 z-50 p-4 rounded-md border-l-4 ${alertClasses[type]} flex items-center shadow-lg`}>
+      {icons[type]}
+      <span>{message}</span>
     </div>
   );
 };

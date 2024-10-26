@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Users, ClipboardList, Calendar, Home, Menu, X, GraduationCap, FileText, Building, UserCog, LucideIcon } from 'lucide-react';
+import { Users, ClipboardList, Calendar, Home, Menu, X, GraduationCap, FileText, Building, UserCog, LucideIcon, AlertTriangle, Megaphone } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import ConfirmationModal from './ConfirmationModal';
 import useConfirmation from '../hooks/useConfirmation';
@@ -80,7 +80,21 @@ const Sidebar: React.FC<SidebarProps> = ({ isExpanded, setIsExpanded }) => {
       icon: UserCog, 
       label: 'Manajemen User', 
       roles: ['admin', 'admin_asrama'] 
-    }
+    },
+
+    // Tambahkan menu baru untuk Pelanggaran dan Pembinaan
+    { 
+      path: '/violations', 
+      icon: AlertTriangle, 
+      label: 'Pelanggaran', 
+      roles: ['admin', 'admin_asrama', 'pengasuh'] 
+    },
+    { 
+      path: '/guidance', 
+      icon: Megaphone, 
+      label: 'Pembinaan', 
+      roles: ['admin', 'admin_asrama', 'pengasuh'] 
+    },
   ];
 
   const filteredNavItems = navItems.filter(item => item.roles.includes(user?.role || ''));

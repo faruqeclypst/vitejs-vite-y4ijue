@@ -19,6 +19,10 @@ import { useState } from 'react';
 import BarakPage from './pages/BarakPage';
 import StudentLeavePage from './pages/StudentLeavePage';
 import { BarakProvider } from './contexts/BarakContext';
+import ViolationPage from './pages/ViolationPage';
+import GuidancePage from './pages/GuidancePage';
+import { ViolationProvider } from './contexts/ViolationContext';
+import { GuidanceProvider } from './contexts/GuidanceContext';
 
 const AppRoutes = () => {
   const { user, isLoading } = useAuth();
@@ -41,7 +45,6 @@ const AppRoutes = () => {
         }`}>
           {user && <Header />}
           <main>
-          {/* <main className="flex-1 p-3 sm:p-4">  biang keror scroll gajelas di landing page */}
             <Routes>
               <Route 
                 path="/login" 
@@ -111,6 +114,22 @@ const AppRoutes = () => {
                   </ProtectedRoute>
                 } 
               />
+              <Route 
+                path="/violations" 
+                element={
+                  <ProtectedRoute allowedRoles={['admin', 'admin_asrama', 'pengasuh']}>
+                    <ViolationPage />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/guidance" 
+                element={
+                  <ProtectedRoute allowedRoles={['admin', 'admin_asrama', 'pengasuh']}>
+                    <GuidancePage />
+                  </ProtectedRoute>
+                } 
+              />
               <Route path="*" element={<Navigate to="/" />} />
             </Routes>
           </main>
@@ -129,7 +148,11 @@ const App = () => (
           <StudentProvider>
             <BarakProvider>
               <StudentLeaveProvider>
-                <AppRoutes />
+                <ViolationProvider>
+                  <GuidanceProvider>
+                    <AppRoutes />
+                  </GuidanceProvider>
+                </ViolationProvider>
               </StudentLeaveProvider>
             </BarakProvider>
           </StudentProvider>

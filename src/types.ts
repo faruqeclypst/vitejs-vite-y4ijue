@@ -72,30 +72,100 @@ export interface StudentLeave {
   returnStatus?: ReturnStatus;
 }
 
-export type UserRole = 
-  | 'admin' 
-  | 'admin_asrama' 
-  | 'pengasuh'
-  | 'piket'
-  | 'guru'
-  | 'wakil_kepala'
-  | 'kepala_sekolah'
-  | 'pkd'
-  | 'bimbingan_konseling';
+export type UserRole = 'admin' | 'admin_barak' | 'admin_asrama' | 'pengasuh' | 'piket' | 'wakil_kepala';
 
 export interface User {
   id: string;
   username: string;
   fullName: string;
   role: UserRole;
+  asramaId?: string;
   barakId?: string;
   email: string;
   isDefaultAccount?: boolean;
-  profileImage?: string; // Add this line
 }
 
 export interface Barak {
   id: string;
   name: string;
   gender: 'Laki-laki' | 'Perempuan';
+}
+
+// Tambahkan tipe untuk pelanggaran dan pembinaan
+export type ViolationType = 'Ringan' | 'Sedang' | 'Berat';
+
+export type ViolationDetail = {
+  Ringan: string[];
+  Sedang: string[];
+  Berat: string[];
+};
+
+export const violationDetails: ViolationDetail = {
+  Ringan: [
+    'Terlambat masuk kelas',
+    'Tidak mengerjakan tugas',
+    'Tidak berpakaian rapi',
+    'Lainnya'
+  ],
+  Sedang: [
+    'Meninggalkan kelas tanpa izin',
+    'Berkelahi',
+    'Merokok',
+    'Lainnya'  
+  ],
+  Berat: [
+    'Mencuri',
+    'Membawa senjata tajam',
+    'Narkoba',
+    'Lainnya'
+  ]
+};
+
+export interface Violation {
+  id: string;
+  studentId: string;
+  violationType: ViolationType;
+  violationDetail: string;
+  description: string;
+  recordedBy: string;
+  recordedAt: string;
+  isResolved?: boolean;
+}
+
+export type GuidanceStage = 'Tahap 1' | 'Tahap 2' | 'Tahap 3';
+
+export type GuidanceDetail = {
+  'Tahap 1': string[];
+  'Tahap 2': string[];
+  'Tahap 3': string[];
+};
+
+export const guidanceDetails: GuidanceDetail = {
+  'Tahap 1': [
+    'Peringatan Lisan',
+    'Konseling Individual',
+    'Lainnya'
+  ],
+  'Tahap 2': [
+    'Peringatan Tertulis',
+    'Konseling dengan Orang Tua',
+    'Lainnya'
+  ],
+  'Tahap 3': [
+    'Skorsing',
+    'Pembinaan Khusus',
+    'Lainnya'
+  ]
+};
+
+export interface Guidance {
+  id: string;
+  violationId: string;
+  studentId: string;
+  guidanceStage: GuidanceStage;
+  guidanceDetail: string;
+  description: string;
+  notes: string;
+  conductedBy: string;
+  conductedAt: string;
 }

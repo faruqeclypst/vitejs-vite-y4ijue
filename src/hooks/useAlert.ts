@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 
 type AlertType = 'success' | 'error' | 'info' | 'warning';
 
@@ -11,20 +11,13 @@ interface AlertOptions {
 const useAlert = () => {
   const [alert, setAlert] = useState<AlertOptions | null>(null);
 
-  const showAlert = useCallback((options: AlertOptions) => {
+  const showAlert = (options: AlertOptions) => {
     setAlert(options);
-    // Set timer to automatically hide alert
-    const timer = setTimeout(() => {
-      setAlert(null);
-    }, options.duration || 3000);
+  };
 
-    // Clean up timer if alert changes
-    return () => clearTimeout(timer);
-  }, []);
-
-  const hideAlert = useCallback(() => {
+  const hideAlert = () => {
     setAlert(null);
-  }, []);
+  };
 
   return { alert, showAlert, hideAlert };
 };
