@@ -18,9 +18,9 @@ interface UserManagementProps {
 const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
   const { baraks } = useBarak();
   const { user: currentUser } = useAuth();
-  const [username, setUsername] = useState('');
-  const [fullName, setFullName] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [fullName, setFullName] = useState('');
   const [role, setRole] = useState<UserRole>('admin');
   const [users, setUsers] = useState<User[]>([]);
   const [editingUser, setEditingUser] = useState<User | null>(null);
@@ -37,6 +37,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [username, setUsername] = useState(''); // Tambah state untuk username
 
   useEffect(() => {
     fetchUsers();
@@ -107,6 +108,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
   };
 
   const resetForm = () => {
+    setEmail('');
     setUsername('');
     setPassword('');
     setFullName('');
@@ -131,11 +133,52 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      // Validasi password untuk user baru
+      // Validasi form
+      if (!email || !email.includes('@')) {
+        showAlert({
+          type: 'error',
+          message: 'Format email tidak valid'
+        });
+        return;
+      }
+
+      if (!username || username.length < 3) {
+        showAlert({
+          type: 'error',
+          message: 'Username minimal 3 karakter'
+        });
+        return;
+      }
+
+      if (username.includes('@')) {
+        showAlert({
+          type: 'error',
+          message: 'Username tidak boleh mengandung karakter @'
+        });
+        return;
+      }
+
       if (!editingUser && (!password || password.length < 6)) {
         showAlert({
           type: 'error',
           message: 'Password minimal 6 karakter'
+        });
+        return;
+      }
+
+      if (!fullName.trim()) {
+        showAlert({
+          type: 'error',
+          message: 'Nama lengkap harus diisi'
+        });
+        return;
+      }
+
+      // Validasi role
+      if (!role) {
+        showAlert({
+          type: 'error',
+          message: 'Hak akses harus dipilih'
         });
         return;
       }
@@ -157,8 +200,8 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
       if (editingUser) {
         await updateUser(
           editingUser.id,
-          username,
-          password || null, // Ubah ini
+          email,
+          password || null,
           fullName,
           role,
           barakIdToUse
@@ -168,7 +211,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
           message: 'User berhasil diperbarui'
         });
       } else {
-        await addUser(username, password, fullName, role, barakIdToUse);
+        await addUser(email, username, password, fullName, role, barakIdToUse);
         showAlert({
           type: 'success',
           message: 'User baru berhasil ditambahkan'
@@ -194,6 +237,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
   // Update fungsi handleEdit
   const handleEdit = (user: User) => {
     setEditingUser(user);
+    setEmail(user.email);
     setUsername(user.username);
     setFullName(user.fullName);
     setRole(user.role);
@@ -627,20 +671,19 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
 
               <div className="flex-1 overflow-y-auto p-4">
                 <form onSubmit={handleSubmit} className="space-y-4">
-                  {/* Informasi Dasar - 2 Kolom */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Nama Lengkap
+                          Email
                         </label>
                         <input
-                          type="text"
-                          value={fullName}
-                          onChange={(e) => setFullName(e.target.value)}
+                          type="email"
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
                           required
                           className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                          placeholder="Masukkan nama lengkap"
+                          placeholder="Masukkan email"
                         />
                       </div>
                       <div>
@@ -650,15 +693,14 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
                         <input
                           type="text"
                           value={username}
-                          onChange={(e) => setUsername(e.target.value)}
+                          onChange={(e) => setUsername(e.target.value.toLowerCase())}
                           required
+                          minLength={3}
                           className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                          placeholder="Masukkan username"
+                          placeholder="Minimal 3 karakter"
+                          disabled={editingUser !== null} // Username tidak bisa diubah saat edit
                         />
                       </div>
-                    </div>
-
-                    <div className="space-y-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
                           {editingUser ? 'Password Baru (opsional)' : 'Password'}
@@ -680,6 +722,22 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
                             {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                           </button>
                         </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Nama Lengkap
+                        </label>
+                        <input
+                          type="text"
+                          value={fullName}
+                          onChange={(e) => setFullName(e.target.value)}
+                          required
+                          className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                          placeholder="Masukkan nama lengkap"
+                        />
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">

@@ -1,7 +1,16 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { ref, get, set, remove } from 'firebase/database';
-import { db } from '../firebase';
+import { auth, db } from '../firebase';
 import { UserRole } from '../types';
+import { 
+  signInWithEmailAndPassword, 
+  signOut,
+  createUserWithEmailAndPassword,
+  updateProfile,
+  updatePassword,
+  User as FirebaseUser 
+} from 'firebase/auth';
+import useAlert from '../hooks/useAlert';
 
 // Interface User
 export interface User {
@@ -10,25 +19,16 @@ export interface User {
   fullName: string;
   role: UserRole;
   barakId?: string;
-  password: string; // Tambah field password
   isDefaultAccount: boolean;
-}
-
-// Tambahkan interface untuk userData
-interface UserData {
-  username: string;
-  fullName: string;
-  role: UserRole;
-  barakId?: string;
-  password: string;
-  isDefaultAccount: boolean;
+  email: string; // Tambah field email
 }
 
 interface AuthContextType {
   user: User | null;
-  login: (username: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   addUser: (
+    email: string,
     username: string,
     password: string,
     fullName: string,
@@ -38,7 +38,7 @@ interface AuthContextType {
   getUsers: () => Promise<User[]>;
   updateUser: (
     userId: string,
-    username: string,
+    email: string,
     password: string | null,
     fullName: string,
     role: UserRole,
@@ -50,52 +50,162 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Tambahkan interface InitialSetupProps
+interface InitialSetupProps {
+  onSetupComplete: (email: string, username: string, password: string) => Promise<void>;
+}
+
+// Tambahkan komponen InitialSetup
+const InitialSetup: React.FC<InitialSetupProps> = ({ onSetupComplete }) => {
+  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const { showAlert } = useAlert();
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+
+    try {
+      if (username.length < 3) {
+        throw new Error('Username minimal 3 karakter');
+      }
+      if (username.includes('@')) {
+        throw new Error('Username tidak boleh mengandung karakter @');
+      }
+      await onSetupComplete(email, username, password);
+    } catch (error) {
+      showAlert({
+        type: 'error',
+        message: error instanceof Error ? error.message : 'Terjadi kesalahan'
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-100 p-4">
+      <div className="max-w-md w-full bg-white rounded-lg shadow-md p-6">
+        <h2 className="text-2xl font-bold text-center mb-6">Initial Setup</h2>
+        <p className="text-gray-600 mb-6 text-center">
+          Buat akun Admin Master untuk memulai
+        </p>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Email Admin Master
+            </label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              className="w-full p-2 border rounded-lg"
+              placeholder="Masukkan email"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Username
+            </label>
+            <input
+              type="text"
+              value={username}
+              onChange={(e) => setUsername(e.target.value.toLowerCase())}
+              required
+              minLength={3}
+              className="w-full p-2 border rounded-lg"
+              placeholder="Minimal 3 karakter"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Password
+            </label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              minLength={6}
+              className="w-full p-2 border rounded-lg"
+              placeholder="Minimal 6 karakter"
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={isLoading}
+            className={`w-full py-2 px-4 rounded-lg text-white font-medium
+              ${isLoading ? 'bg-blue-400' : 'bg-blue-600 hover:bg-blue-700'}`}
+          >
+            {isLoading ? 'Setting up...' : 'Complete Setup'}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+};
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isInitialSetup, setIsInitialSetup] = useState(false);
 
-  // Check initial setup
-  useEffect(() => {
-    const checkInitialSetup = async () => {
-      const usersRef = ref(db, 'users');
-      const snapshot = await get(usersRef);
-      if (!snapshot.exists()) {
-        setIsInitialSetup(true);
-      }
-      setIsLoading(false);
-    };
-    checkInitialSetup();
-  }, []);
-
-  // Login function
-  const login = async (username: string, password: string) => {
+  // Login function dengan Firebase Auth
+  const login = async (emailOrUsername: string, password: string) => {
     try {
-      const usersRef = ref(db, 'users');
-      const snapshot = await get(usersRef);
-      const users = snapshot.val();
+      // Cek apakah input adalah email atau username
+      const isEmail = emailOrUsername.includes('@');
+      let email = emailOrUsername;
 
-      if (!users) throw new Error('Tidak ada data pengguna');
+      // Jika login menggunakan username, cari email yang sesuai
+      if (!isEmail) {
+        const usersRef = ref(db, 'users');
+        const snapshot = await get(usersRef);
+        const users = snapshot.val();
 
-      const userFound = Object.entries(users).find(([_, data]) => {
-        const userData = data as UserData;
-        return userData.username === username && userData.password === password;
-      });
+        if (!users) throw new Error('Data pengguna tidak ditemukan');
 
-      if (!userFound) {
-        throw new Error('Username atau password salah');
+        // Cari user berdasarkan username
+        const userFound = Object.values(users).find(
+          (user) => (user as { username: string; email: string }).username === emailOrUsername
+        ) as { username: string; email: string } | undefined;
+
+        if (!userFound) {
+          throw new Error('Username atau password salah');
+        }
+
+        if (!userFound.email) {
+          throw new Error('Email pengguna tidak ditemukan');
+        }
+
+        email = userFound.email;
       }
 
-      const [userId, data] = userFound;
-      const userData = data as UserData;
-      
+      // Login ke Firebase Auth menggunakan email
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const firebaseUser = userCredential.user;
+
+      // Ambil data user dari Realtime Database
+      const userRef = ref(db, `users/${firebaseUser.uid}`);
+      const snapshot = await get(userRef);
+      const userData = snapshot.val();
+
+      if (!userData) throw new Error('Data pengguna tidak ditemukan');
+
       const loggedInUser: User = {
-        id: userId,
+        id: firebaseUser.uid,
+        email: userData.email,
         username: userData.username,
         fullName: userData.fullName,
         role: userData.role,
         barakId: userData.barakId,
-        password: userData.password,
         isDefaultAccount: userData.isDefaultAccount
       };
 
@@ -104,18 +214,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     } catch (error) {
       console.error('Login error:', error);
+      if (error instanceof Error) {
+        switch (error.message) {
+          case 'Firebase: Error (auth/invalid-email)':
+            throw new Error('Format email tidak valid');
+          case 'Firebase: Error (auth/user-not-found)':
+          case 'Firebase: Error (auth/wrong-password)':
+            throw new Error('Email/Username atau password salah');
+          default:
+            throw error;
+        }
+      }
       throw error;
     }
   };
 
-  // Logout function
+  // Logout function dengan Firebase Auth
   const logout = async () => {
-    setUser(null);
-    localStorage.removeItem('currentUser');
+    try {
+      await signOut(auth);
+      setUser(null);
+      localStorage.removeItem('currentUser');
+    } catch (error) {
+      console.error('Logout error:', error);
+      throw error;
+    }
   };
 
-  // Add user function
+  // Add user function dengan Firebase Auth
   const addUser = async (
+    email: string,
     username: string,
     password: string,
     fullName: string,
@@ -123,38 +251,78 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     barakId?: string
   ) => {
     try {
-      // Check if username exists
+      // Validasi email
+      if (!email || !email.includes('@')) {
+        throw new Error('Email tidak valid');
+      }
+
+      // Validasi username
+      if (username.length < 3) {
+        throw new Error('Username minimal 3 karakter');
+      }
+      if (username.includes('@')) {
+        throw new Error('Username tidak boleh mengandung karakter @');
+      }
+
+      // Validasi password
+      if (password.length < 6) {
+        throw new Error('Password minimal 6 karakter');
+      }
+
+      // Validasi fullName
+      if (!fullName.trim()) {
+        throw new Error('Nama lengkap harus diisi');
+      }
+
+      // Cek apakah username sudah digunakan
       const usersRef = ref(db, 'users');
       const snapshot = await get(usersRef);
       const users = snapshot.val();
       
       if (users) {
-        const usernameExists = Object.values(users).some(
+        const isUsernameTaken = Object.values(users).some(
           (user: any) => user.username === username
         );
-        if (usernameExists) {
+        if (isUsernameTaken) {
           throw new Error('Username sudah digunakan');
         }
       }
 
-      // Generate new user ID
-      const newUserId = Date.now().toString();
-      
-      // Create new user data
+      // Buat user di Firebase Auth
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const firebaseUser = userCredential.user;
+
+      // Update display name
+      await updateProfile(firebaseUser, {
+        displayName: fullName
+      });
+
+      // Simpan data tambahan di Realtime Database
       const userData = {
+        email,
         username,
-        password,
         fullName,
         role,
         barakId: barakId || null,
         isDefaultAccount: false
       };
 
-      // Save to database
-      await set(ref(db, `users/${newUserId}`), userData);
+      await set(ref(db, `users/${firebaseUser.uid}`), userData);
 
     } catch (error) {
       console.error('Add user error:', error);
+      if (error instanceof Error) {
+        switch (error.message) {
+          case 'Firebase: Error (auth/email-already-in-use)':
+            throw new Error('Email sudah digunakan');
+          case 'Firebase: Error (auth/invalid-email)':
+            throw new Error('Format email tidak valid');
+          case 'Firebase: Password should be at least 6 characters (auth/weak-password)':
+            throw new Error('Password minimal 6 karakter');
+          default:
+            throw new Error(error.message);
+        }
+      }
       throw error;
     }
   };
@@ -162,13 +330,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Update user function
   const updateUser = async (
     userId: string,
-    username: string,
+    email: string,
     password: string | null,
     fullName: string,
     role: UserRole,
     barakId?: string
   ) => {
     try {
+      // Validasi email
+      if (!email || !email.includes('@')) {
+        throw new Error('Email tidak valid');
+      }
+
+      // Validasi fullName
+      if (!fullName.trim()) {
+        throw new Error('Nama lengkap harus diisi');
+      }
+
       const userRef = ref(db, `users/${userId}`);
       const snapshot = await get(userRef);
       const existingData = snapshot.val();
@@ -177,33 +355,61 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw new Error('User tidak ditemukan');
       }
 
-      // Update user data
+      // Update data di Realtime Database
       const updatedData = {
         ...existingData,
-        username,
+        email,
+        username: email.split('@')[0],
         fullName,
         role,
-        barakId: barakId || null,
-        ...(password && { password }) // Update password hanya jika ada
+        barakId: barakId || null
       };
+
+      // Jika ada password baru, update password di Firebase Auth
+      if (password) {
+        try {
+          // Dapatkan user dari Firebase Auth
+          const userRecord = await auth.currentUser;
+          if (userRecord) {
+            // Update password
+            await updatePassword(userRecord, password);
+          }
+        } catch (error) {
+          console.error('Error updating password:', error);
+          throw new Error('Gagal memperbarui password');
+        }
+      }
 
       await set(userRef, updatedData);
 
-      // Update current user if it's the same user
+      // Update current user jika yang diupdate adalah user yang sedang login
       if (user && user.id === userId) {
-        setUser({
+        const updatedUser = {
           ...user,
-          username,
+          email,
+          username: email.split('@')[0],
           fullName,
           role,
-          barakId,
-          ...(password && { password })
-        });
-        localStorage.setItem('currentUser', JSON.stringify(user));
+          barakId
+        };
+        setUser(updatedUser);
+        localStorage.setItem('currentUser', JSON.stringify(updatedUser));
       }
 
     } catch (error) {
       console.error('Update user error:', error);
+      if (error instanceof Error) {
+        switch (error.message) {
+          case 'Firebase: Error (auth/email-already-in-use)':
+            throw new Error('Email sudah digunakan');
+          case 'Firebase: Error (auth/invalid-email)':
+            throw new Error('Format email tidak valid');
+          case 'Firebase: Error (auth/requires-recent-login)':
+            throw new Error('Silakan login ulang untuk mengubah password');
+          default:
+            throw new Error(error.message);
+        }
+      }
       throw error;
     }
   };
@@ -212,6 +418,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const deleteUser = async (id: string) => {
     try {
       await remove(ref(db, `users/${id}`));
+      // Note: Untuk menghapus user dari Firebase Auth, diperlukan re-authentication
+      // Implementasi lebih lanjut dapat ditambahkan sesuai kebutuhan
     } catch (error) {
       console.error('Delete user error:', error);
       throw error;
@@ -226,55 +434,98 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     if (!users) return [];
 
-    return Object.entries(users).map(([id, data]) => {
-      const userData = data as UserData;
-      return {
-        id,
-        username: userData.username,
-        fullName: userData.fullName,
-        role: userData.role,
-        barakId: userData.barakId,
-        password: userData.password,
-        isDefaultAccount: userData.isDefaultAccount
-      };
-    });
+    return Object.entries(users).map(([id, data]: [string, any]) => ({
+      id,
+      email: data.email,
+      username: data.username,
+      fullName: data.fullName,
+      role: data.role,
+      barakId: data.barakId,
+      isDefaultAccount: data.isDefaultAccount
+    }));
   };
 
-  // Check for stored user on mount
+  // Listen to auth state changes
   useEffect(() => {
-    const storedUser = localStorage.getItem('currentUser');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
-    setIsLoading(false);
+    const unsubscribe = auth.onAuthStateChanged(async (firebaseUser: FirebaseUser | null) => {
+      if (firebaseUser) {
+        // User is signed in, get additional data from Realtime Database
+        const userRef = ref(db, `users/${firebaseUser.uid}`);
+        const snapshot = await get(userRef);
+        const userData = snapshot.val();
+
+        if (userData) {
+          const fullUser: User = {
+            id: firebaseUser.uid,
+            email: userData.email,
+            username: userData.username,
+            fullName: userData.fullName,
+            role: userData.role,
+            barakId: userData.barakId,
+            isDefaultAccount: userData.isDefaultAccount
+          };
+          setUser(fullUser);
+          localStorage.setItem('currentUser', JSON.stringify(fullUser));
+        }
+      } else {
+        // User is signed out
+        setUser(null);
+        localStorage.removeItem('currentUser');
+      }
+      setIsLoading(false);
+    });
+
+    return () => unsubscribe();
   }, []);
 
-  // Tambahkan fungsi initialSetup di dalam AuthProvider
-  const handleInitialSetup = async (
-    adminMasterUsername: string,
-    adminMasterPassword: string
-  ) => {
+  // Tambahkan fungsi untuk initial setup
+  const handleInitialSetup = async (email: string, username: string, password: string) => {
     try {
-      // Create admin master only
-      const adminMasterId = Date.now().toString();
-      await set(ref(db, `users/${adminMasterId}`), {
-        username: adminMasterUsername,
-        password: adminMasterPassword,
-        fullName: 'Administrator Master',
-        role: 'admin_master',
-        isDefaultAccount: true
-      });
+      // Buat user admin master di Firebase Auth
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const firebaseUser = userCredential.user;
 
-      // Set isInitialSetup ke false setelah setup berhasil
+      // Simpan data admin master di Realtime Database
+      const userData = {
+        email,
+        username,
+        fullName: 'Administrator Master',
+        role: 'admin_master' as UserRole,
+        isDefaultAccount: true
+      };
+
+      await set(ref(db, `users/${firebaseUser.uid}`), userData);
       setIsInitialSetup(false);
-      return true;
+
     } catch (error) {
-      console.error('Error in initial setup:', error);
+      console.error('Initial setup error:', error);
+      if (error instanceof Error) {
+        switch (error.message) {
+          case 'Firebase: Error (auth/email-already-in-use)':
+            throw new Error('Email sudah digunakan');
+          case 'Firebase: Error (auth/invalid-email)':
+            throw new Error('Format email tidak valid');
+          default:
+            throw error;
+        }
+      }
       throw error;
     }
   };
 
-  // Loading state
+  // Check initial setup
+  useEffect(() => {
+    const checkInitialSetup = async () => {
+      const usersRef = ref(db, 'users');
+      const snapshot = await get(usersRef);
+      if (!snapshot.exists()) {
+        setIsInitialSetup(true);
+      }
+      setIsLoading(false);
+    };
+    checkInitialSetup();
+  }, []);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -283,7 +534,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     );
   }
 
-  // Initial setup state - Update bagian ini
   if (isInitialSetup) {
     return <InitialSetup onSetupComplete={handleInitialSetup} />;
   }
@@ -311,93 +561,4 @@ export const useAuth = () => {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
-};
-
-// Tambahkan interface untuk InitialSetupProps
-interface InitialSetupProps {
-  onSetupComplete: (
-    adminMasterUsername: string,
-    adminMasterPassword: string
-  ) => Promise<boolean>;
-}
-
-// Tambahkan komponen InitialSetup
-const InitialSetup: React.FC<InitialSetupProps> = ({ onSetupComplete }) => {
-  const [adminMasterUsername, setAdminMasterUsername] = useState('');
-  const [adminMasterPassword, setAdminMasterPassword] = useState('');
-  const [error, setError] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setIsLoading(true);
-
-    try {
-      await onSetupComplete(
-        adminMasterUsername,
-        adminMasterPassword
-      );
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Terjadi kesalahan saat setup');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-100">
-      <div className="w-full max-w-md p-8 bg-white rounded-lg shadow-md">
-        <h2 className="text-2xl font-bold text-center text-gray-800 mb-6">
-          Initial Setup
-        </h2>
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Admin Master Section */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-red-600">Administrator Master</h3>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Username Admin Master
-              </label>
-              <input
-                type="text"
-                value={adminMasterUsername}
-                onChange={(e) => setAdminMasterUsername(e.target.value)}
-                required
-                className="w-full px-4 py-2 border rounded-md focus:ring-2 focus:ring-red-500"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Password Admin Master
-              </label>
-              <input
-                type="password"
-                value={adminMasterPassword}
-                onChange={(e) => setAdminMasterPassword(e.target.value)}
-                required
-                className="w-full px-4 py-2 border rounded-md focus:ring-2 focus:ring-red-500"
-              />
-            </div>
-          </div>
-
-          {error && (
-            <div className="text-sm text-red-600 bg-red-50 p-3 rounded-md">
-              {error}
-            </div>
-          )}
-
-          <button
-            type="submit"
-            disabled={isLoading}
-            className={`w-full py-3 px-4 rounded-md text-white font-medium ${
-              isLoading ? 'bg-blue-400' : 'bg-blue-600 hover:bg-blue-700'
-            }`}
-          >
-            {isLoading ? 'Setting up...' : 'Complete Setup'}
-          </button>
-        </form>
-      </div>
-    </div>
-  );
 };
