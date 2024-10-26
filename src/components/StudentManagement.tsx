@@ -101,20 +101,20 @@ const StudentManagement: React.FC = () => {
     };
   }, [currentUser?.id, students, allStudents, baraks, activeTab]);
 
-  // Filter asrama yang bisa dipilih saat menambah/edit siswa
+  // Update fungsi untuk filter barak yang tersedia
   const availableBaraks = useMemo(() => {
-    if (currentUser?.role === 'pengasuh') {
-      // Ambil data user terbaru dari database setiap kali memo dijalankan
-      const userRef = ref(db, `users/${currentUser.id}`);
-      onValue(userRef, (snapshot) => {
-        const userData = snapshot.val();
-        if (userData && userData.barakId) {
-          const barakIds = userData.barakId.split(',');
-          return baraks.filter(barak => barakIds.includes(barak.id));
-        }
-      });
+    if (!currentUser) return [];
+    
+    if (currentUser.role === 'pengasuh' && currentUser.barakId) {
+      const barakIds = currentUser.barakId.split(',');
+      return baraks.filter(barak => barakIds.includes(barak.id));
     }
-    return baraks;
+    
+    if (currentUser.role === 'admin_asrama') {
+      return baraks;
+    }
+    
+    return [];
   }, [baraks, currentUser]);
 
   // Tambah fungsi untuk mendapatkan gender dari barak
@@ -133,9 +133,22 @@ const StudentManagement: React.FC = () => {
     });
   };
 
+  // Update handleAddOrUpdateStudent
   const handleAddOrUpdateStudent = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      // Validasi akses barak
+      if (currentUser?.role === 'pengasuh') {
+        const selectedBarak = baraks.find(b => b.name === newStudent.barak);
+        if (!selectedBarak || !currentUser.barakId?.includes(selectedBarak.id)) {
+          showAlert({
+            type: 'error',
+            message: 'Anda tidak memiliki akses untuk menambahkan siswa ke barak ini'
+          });
+          return;
+        }
+      }
+
       const studentData = {
         ...newStudent,
         barak: newStudent.barak
@@ -169,16 +182,44 @@ const StudentManagement: React.FC = () => {
     }
   };
 
+  // Update handleEditStudent
   const handleEditStudent = (student: Student) => {
+    // Validasi akses barak saat edit
+    if (currentUser?.role === 'pengasuh') {
+      const studentBarak = baraks.find(b => b.name === student.barak);
+      if (!studentBarak || !currentUser.barakId?.includes(studentBarak.id)) {
+        showAlert({
+          type: 'error',
+          message: 'Anda tidak memiliki akses untuk mengedit siswa dari barak ini'
+        });
+        return;
+      }
+    }
+
     setEditingStudent(student);
     setNewStudent(student);
-    // Set selectedGrade berdasarkan kelas siswa
     const grade = student.class.split('-')[0] as 'X' | 'XI' | 'XII';
     setSelectedGrade(grade);
     setIsModalOpen(true);
   };
 
+  // Update handleDelete
   const handleDelete = async (id: string) => {
+    const student = students.find(s => s.id === id);
+    if (!student) return;
+
+    // Validasi akses barak saat hapus
+    if (currentUser?.role === 'pengasuh') {
+      const studentBarak = baraks.find(b => b.name === student.barak);
+      if (!studentBarak || !currentUser.barakId?.includes(studentBarak.id)) {
+        showAlert({
+          type: 'error',
+          message: 'Anda tidak memiliki akses untuk menghapus siswa dari barak ini'
+        });
+        return;
+      }
+    }
+
     const confirmed = await confirm({
       title: 'Konfirmasi Hapus',
       message: 'Apakah Anda yakin ingin menghapus siswa ini?',
