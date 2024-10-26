@@ -8,7 +8,7 @@ import ConfirmationModal from './ConfirmationModal';
 import useConfirmation from '../hooks/useConfirmation';
 
 const BarakManagement: React.FC = () => {
-  const { baraks, addBarak, updateBarak, deleteBarak } = useBarak();
+  const { baraks, addBarak, updateBarak, deleteBarak, checkBarakHasStudents } = useBarak();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingBarak, setEditingBarak] = useState<Barak | null>(null);
   const [newBarak, setNewBarak] = useState<Omit<Barak, 'id'>>({
@@ -22,20 +22,37 @@ const BarakManagement: React.FC = () => {
     e.preventDefault();
     try {
       if (editingBarak) {
-        await updateBarak(editingBarak.id, newBarak);
-        showAlert({
-          type: 'success',
-          message: 'Data barak berhasil diperbarui'
+        // Tutup modal form terlebih dahulu
+        setIsModalOpen(false);
+        
+        const confirmed = await confirm({
+          title: 'Konfirmasi Update',
+          message: 'Mengubah data barak akan mengubah data siswa yang terkait. Lanjutkan?',
+          confirmText: 'Ya, Update',
+          cancelText: 'Batal'
         });
+
+        if (confirmed) {
+          await updateBarak(editingBarak.id, newBarak);
+          showAlert({
+            type: 'success',
+            message: 'Data barak dan siswa terkait berhasil diperbarui'
+          });
+          setNewBarak({ name: '', gender: 'Laki-laki' });
+        } else {
+          // Jika user membatalkan, buka kembali modal form
+          setIsModalOpen(true);
+          return;
+        }
       } else {
         await addBarak(newBarak);
         showAlert({
           type: 'success',
           message: 'Data barak berhasil ditambahkan'
         });
+        setNewBarak({ name: '', gender: 'Laki-laki' });
+        setIsModalOpen(false);
       }
-      setNewBarak({ name: '', gender: 'Laki-laki' });
-      setIsModalOpen(false);
     } catch (error) {
       showAlert({
         type: 'error',
@@ -51,6 +68,18 @@ const BarakManagement: React.FC = () => {
   };
 
   const handleDelete = async (id: string) => {
+    const barak = baraks.find(b => b.id === id);
+    if (!barak) return;
+
+    const hasStudents = await checkBarakHasStudents(barak.name);
+    if (hasStudents) {
+      showAlert({
+        type: 'error',
+        message: 'Tidak dapat menghapus barak karena masih ada siswa yang terdaftar'
+      });
+      return;
+    }
+
     const confirmed = await confirm({
       title: 'Konfirmasi Hapus',
       message: 'Apakah Anda yakin ingin menghapus barak ini?',
@@ -60,10 +89,10 @@ const BarakManagement: React.FC = () => {
 
     if (confirmed) {
       try {
-        await deleteBarak(id);
+        const result = await deleteBarak(id);
         showAlert({
-          type: 'success',
-          message: 'Barak berhasil dihapus'
+          type: result.success ? 'success' : 'error',
+          message: result.message
         });
       } catch (error) {
         showAlert({

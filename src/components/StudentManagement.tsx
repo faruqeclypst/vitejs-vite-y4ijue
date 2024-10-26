@@ -41,7 +41,10 @@ const StudentManagement: React.FC = () => {
   // Tambahkan useEffect untuk memantau perubahan user dan barakId
   useEffect(() => {
     const usersRef = ref(db, 'users');
-    const unsubscribe = onValue(usersRef, async () => {
+    const studentsRef = ref(db, 'students');
+    const baraksRef = ref(db, 'baraks');
+
+    const unsubscribeUsers = onValue(usersRef, async () => {
       if (currentUser) {
         const userRef = ref(db, `users/${currentUser.id}`);
         const snapshot = await get(userRef);
@@ -54,7 +57,6 @@ const StudentManagement: React.FC = () => {
             : allStudents.filter((student: Student) => student.isDeleted);
 
           if (userData.role === 'admin_asrama') {
-            // Admin asrama melihat semua barak
             const groupedByBarak = filteredStudents.reduce((acc: Record<string, Student[]>, student: Student) => {
               if (!acc[student.barak]) {
                 acc[student.barak] = [];
@@ -64,17 +66,12 @@ const StudentManagement: React.FC = () => {
             }, {} as Record<string, Student[]>);
             setGroupedStudents(groupedByBarak);
           } else if (userData.role === 'pengasuh' && userData.barakId) {
-            // Pengasuh melihat barak yang dia kelola
             const barakIds = userData.barakId.split(',');
-            
-            // Buat object untuk menyimpan siswa per barak
             const groupedStudents: Record<string, Student[]> = {};
             
-            // Untuk setiap barak yang dikelola pengasuh
             barakIds.forEach((barakId: string) => {
               const barak = baraks.find(b => b.id === barakId);
               if (barak) {
-                // Filter siswa untuk barak ini
                 const barakStudents = filteredStudents.filter((student: Student) => student.barak === barak.name);
                 if (barakStudents.length > 0) {
                   groupedStudents[barak.name] = barakStudents;
@@ -88,7 +85,20 @@ const StudentManagement: React.FC = () => {
       }
     });
 
-    return () => unsubscribe();
+    // Tambahkan listener untuk perubahan pada students dan baraks
+    const unsubscribeStudents = onValue(studentsRef, () => {
+      // Trigger useEffect untuk memperbarui groupedStudents
+    });
+
+    const unsubscribeBaraks = onValue(baraksRef, () => {
+      // Trigger useEffect untuk memperbarui groupedStudents
+    });
+
+    return () => {
+      unsubscribeUsers();
+      unsubscribeStudents();
+      unsubscribeBaraks();
+    };
   }, [currentUser?.id, students, allStudents, baraks, activeTab]);
 
   // Filter asrama yang bisa dipilih saat menambah/edit siswa
