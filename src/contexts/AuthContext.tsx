@@ -234,41 +234,41 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       }
 
-      // Buat user baru
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      const { uid } = userCredential.user;
+      // Simpan auth state saat ini
+      const currentAuth = auth.currentUser;
 
-      // Update display name
-      await updateProfile(userCredential.user, {
-        displayName: fullName
-      });
+      try {
+        // Buat user baru
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        const { uid } = userCredential.user;
 
-      // Simpan data di Realtime Database
-      await set(ref(db, `users/${uid}`), {
-        username,
-        email,
-        fullName,
-        role,
-        barakId: barakId || null,
-        isDefaultAccount: false,
-        isMasterAdmin: false
-      });
+        // Update display name
+        await updateProfile(userCredential.user, {
+          displayName: fullName
+        });
 
-      // Sign out user baru
-      await signOut(auth);
+        // Simpan data di Realtime Database
+        await set(ref(db, `users/${uid}`), {
+          username,
+          email,
+          fullName,
+          role,
+          barakId: barakId || null,
+          isDefaultAccount: false,
+          isMasterAdmin: false
+        });
 
-      // Re-login dengan akun sebelumnya
-      const currentEmail = auth.currentUser?.email;
-      if (currentEmail) {
-        const savedPassword = localStorage.getItem('tempPassword');
-        if (savedPassword) {
-          try {
-            await signInWithEmailAndPassword(auth, currentEmail, savedPassword);
-          } catch (error) {
-            console.error('Error re-login:', error);
-            window.location.href = '/login';
-          }
+        // Kembalikan ke auth state sebelumnya tanpa sign out/sign in
+        if (currentAuth) {
+          auth.updateCurrentUser(currentAuth);
         }
+
+      } catch (error) {
+        // Kembalikan ke auth state sebelumnya jika terjadi error
+        if (currentAuth) {
+          auth.updateCurrentUser(currentAuth);
+        }
+        throw error;
       }
 
     } catch (error: any) {
@@ -292,76 +292,66 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Simpan kredensial user saat ini
       const currentUser = auth.currentUser;
       const currentEmail = currentUser?.email;
-
-      // Dapatkan user yang akan diupdate
-      const userRef = ref(db, `users/${id}`);
-      const snapshot = await get(userRef);
-      const oldUserData = snapshot.val();
-      
-      if (!oldUserData) {
-        throw new Error('User tidak ditemukan');
-      }
+      const email = formatEmail(username);
 
       // Jika ada password baru
       if (password) {
         try {
+          // Jika perubahan password memerlukan password lama (dari Header/profil)
           if (password.requireOldPassword) {
-            // Untuk user yang mengganti passwordnya sendiri
-            const email = username; // Gunakan username langsung sebagai email
-
-            // Sign out current user
-            await signOut(auth);
-
             try {
-              // Sign in dengan akun yang akan diupdate menggunakan password lama
-              await signInWithEmailAndPassword(auth, email, password.oldPassword);
+              // Coba sign in dengan password lama tanpa sign out dulu
+              const tempCredential = await signInWithEmailAndPassword(auth, email, password.oldPassword);
               
               // Update password
-              if (auth.currentUser) {
-                await updatePassword(auth.currentUser, password.newPassword);
-              }
-
-              // Sign out user yang diupdate
-              await signOut(auth);
-
-              // Re-login dengan akun sebelumnya
-              if (currentEmail) {
-                const savedPassword = localStorage.getItem('tempPassword');
-                if (savedPassword) {
-                  try {
-                    await signInWithEmailAndPassword(auth, currentEmail, savedPassword);
-                    
-                    // Update tempPassword jika yang diupdate adalah user saat ini
-                    if (id === currentUser?.uid && password) {
-                      localStorage.setItem('tempPassword', password.newPassword);
-                    }
-                  } catch (error) {
-                    console.error('Error re-login:', error);
-                    // Jika gagal re-login, redirect ke halaman login
-                    window.location.href = '/login';
-                  }
-                }
+              await updatePassword(tempCredential.user, password.newPassword);
+              
+              // Update tempPassword jika yang diupdate adalah user saat ini
+              if (id === currentUser?.uid) {
+                localStorage.setItem('tempPassword', password.newPassword);
               }
             } catch (error) {
-              // Re-login dengan akun sebelumnya jika terjadi error
-              if (currentEmail) {
-                const savedPassword = localStorage.getItem('tempPassword');
-                if (savedPassword) {
-                  try {
-                    await signInWithEmailAndPassword(auth, currentEmail, savedPassword);
-                  } catch (error) {
-                    console.error('Error re-login:', error);
-                    // Jika gagal re-login, redirect ke halaman login
-                    window.location.href = '/login';
-                  }
-                }
-              }
               throw new Error('Password lama tidak sesuai');
             }
-          } else {
-            // Untuk admin yang mengganti password user lain
-            // Tidak perlu validasi password lama
-            // Implementasi update password langsung
+          } 
+          // Jika perubahan password dari UserManagement (tidak perlu password lama)
+          else {
+            try {
+              // Simpan state login saat ini
+              const savedEmail = currentEmail;
+              const savedPassword = localStorage.getItem('tempPassword');
+
+              // Sign out sementara
+              await signOut(auth);
+
+              try {
+                // Sign in dengan akun yang akan diupdate
+                await signInWithEmailAndPassword(auth, email, password.oldPassword);
+                
+                // Update password
+                if (auth.currentUser) {
+                  await updatePassword(auth.currentUser, password.newPassword);
+                }
+
+                // Sign out user yang diupdate
+                await signOut(auth);
+
+                // Re-login dengan akun admin
+                if (savedEmail && savedPassword) {
+                  await signInWithEmailAndPassword(auth, savedEmail, savedPassword);
+                }
+              } catch (error) {
+                // Re-login dengan akun admin jika terjadi error
+                if (savedEmail && savedPassword) {
+                  await signInWithEmailAndPassword(auth, savedEmail, savedPassword);
+                }
+                console.error('Error in password update:', error);
+                throw new Error('Gagal mengubah password');
+              }
+            } catch (error) {
+              console.error('Error updating password:', error);
+              throw error;
+            }
           }
         } catch (error) {
           console.error('Error updating password:', error);
@@ -372,14 +362,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Update data di Realtime Database
       const userData = {
         username,
-        email: username, // Gunakan username langsung sebagai email
+        email: formatEmail(username),
         fullName,
         role,
         barakId: barakId || null,
-        isDefaultAccount: oldUserData?.isDefaultAccount || false,
-        isMasterAdmin: oldUserData?.isMasterAdmin || false
+        isDefaultAccount: false
       };
 
+      const userRef = ref(db, `users/${id}`);
       await set(userRef, userData);
 
     } catch (error) {
@@ -651,3 +641,4 @@ const createAdminMaster = async (
     throw error;
   }
 };
+

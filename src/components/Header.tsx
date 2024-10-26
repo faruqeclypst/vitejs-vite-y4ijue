@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useConfirmation from '../hooks/useConfirmation';
 import ConfirmationModal from './ConfirmationModal';
-import { signInWithEmailAndPassword, getAuth } from 'firebase/auth';
+import useAlert from '../hooks/useAlert';
+import Alert from './Alert'; // Tambahkan import Alert
 
 const Header = () => {
   const { user, logout, updateUser } = useAuth();
@@ -13,13 +14,13 @@ const Header = () => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
   const { confirm, isOpen, options, handleConfirm, handleCancel } = useConfirmation();
-  const auth = getAuth();
+  const { alert, showAlert, hideAlert } = useAlert();
 
   // State untuk form edit profile
   const [editForm, setEditForm] = useState({
     fullName: user?.fullName || '',
     username: user?.username || '',
-    oldPassword: '', // Tambah field password lama
+    oldPassword: '',
     password: ''
   });
 
@@ -64,26 +65,26 @@ const Header = () => {
       // Validasi password jika diisi
       if (editForm.password) {
         if (editForm.password.length < 6) {
-          alert('Password baru minimal 6 karakter');
+          showAlert({
+            type: 'error',
+            message: 'Password baru minimal 6 karakter'
+          });
           return;
         }
 
         if (!editForm.oldPassword) {
-          alert('Password lama harus diisi untuk mengubah password');
+          showAlert({
+            type: 'error',
+            message: 'Password lama harus diisi untuk mengubah password'
+          });
           return;
         }
 
         if (editForm.oldPassword === editForm.password) {
-          alert('Password baru tidak boleh sama dengan password lama');
-          return;
-        }
-
-        // Coba login dengan password lama terlebih dahulu
-        try {
-          const email = `${user.username.toLowerCase()}@piketmosa.com`;
-          await signInWithEmailAndPassword(auth, email, editForm.oldPassword);
-        } catch (error) {
-          alert('Password lama tidak sesuai');
+          showAlert({
+            type: 'error',
+            message: 'Password baru tidak boleh sama dengan password lama'
+          });
           return;
         }
       }
@@ -102,7 +103,7 @@ const Header = () => {
         user.barakId
       );
 
-      // Reset form
+      // Reset form password fields
       setEditForm(prev => ({
         ...prev,
         oldPassword: '',
@@ -117,14 +118,23 @@ const Header = () => {
         localStorage.setItem('tempPassword', editForm.password);
       }
 
-      alert('Profil berhasil diperbarui');
+      showAlert({
+        type: 'success',
+        message: 'Profil berhasil diperbarui'
+      });
 
     } catch (error) {
       console.error('Gagal memperbarui profil:', error);
       if (error instanceof Error) {
-        alert(error.message);
+        showAlert({
+          type: 'error',
+          message: error.message
+        });
       } else {
-        alert('Gagal memperbarui profil. Silakan coba lagi.');
+        showAlert({
+          type: 'error',
+          message: 'Gagal memperbarui profil. Silakan coba lagi.'
+        });
       }
     }
   };
@@ -357,6 +367,15 @@ const Header = () => {
         confirmText={options?.confirmText}
         cancelText={options?.cancelText}
       />
+
+      {/* Alert */}
+      {alert && (
+        <Alert
+          type={alert.type}
+          message={alert.message}
+          onClose={hideAlert}
+        />
+      )}
     </header>
   );
 };
