@@ -1,5 +1,5 @@
-import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Users, ClipboardList, Calendar, Home, Menu, X, GraduationCap, FileText, Building, UserCog, LucideIcon, AlertTriangle, Megaphone } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import ConfirmationModal from './ConfirmationModal';
@@ -21,6 +21,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isExpanded, setIsExpanded }) => {
   const location = useLocation();
   const { user } = useAuth();
   const { isOpen, options, handleConfirm, handleCancel } = useConfirmation();
+  const navigate = useNavigate();
 
   if (!user) return null;
 
@@ -146,17 +147,95 @@ const Sidebar: React.FC<SidebarProps> = ({ isExpanded, setIsExpanded }) => {
     </nav>
   );
 
-  const MobileSidebar = () => (
-    <nav className="fixed bottom-0 left-0 right-0 bg-blue-700 text-white md:hidden z-50">
-      <div className="overflow-x-auto">
-        <ul className="flex items-center justify-around py-2 px-4">
-          {filteredNavItems.map((item) => (
-            <NavItem key={item.path} item={item} isMobile />
+  const MobileSidebar = () => {
+    const [touchStart, setTouchStart] = useState<number | null>(null);
+    const [touchEnd, setTouchEnd] = useState<number | null>(null);
+    const [currentIndex, setCurrentIndex] = useState(0);
+
+    // Update currentIndex ketika location berubah
+    useEffect(() => {
+      const pathIndex = filteredNavItems.findIndex(item => item.path === location.pathname);
+      if (pathIndex !== -1) {
+        setCurrentIndex(pathIndex);
+      }
+    }, [location.pathname, filteredNavItems]); // tambahkan filteredNavItems ke dependency
+
+    const minSwipeDistance = 50;
+
+    const onTouchStart = (e: React.TouchEvent) => {
+      setTouchEnd(null); // reset touchEnd
+      setTouchStart(e.targetTouches[0].clientX);
+    };
+
+    const onTouchMove = (e: React.TouchEvent) => {
+      setTouchEnd(e.targetTouches[0].clientX);
+    };
+
+    const onTouchEnd = () => {
+      if (!touchStart || !touchEnd) return;
+      
+      const distance = touchStart - touchEnd;
+      const isLeftSwipe = distance > minSwipeDistance;
+      const isRightSwipe = distance < -minSwipeDistance;
+      
+      const accessiblePaths = filteredNavItems.map(item => item.path);
+      const currentPathIndex = accessiblePaths.indexOf(location.pathname);
+      
+      if (isLeftSwipe && currentPathIndex < accessiblePaths.length - 1) {
+        // Swipe kiri (next)
+        navigate(accessiblePaths[currentPathIndex + 1]);
+        if (window.navigator && window.navigator.vibrate) {
+          window.navigator.vibrate(50);
+        }
+      } else if (isRightSwipe && currentPathIndex > 0) {
+        // Swipe kanan (previous)
+        navigate(accessiblePaths[currentPathIndex - 1]);
+        if (window.navigator && window.navigator.vibrate) {
+          window.navigator.vibrate(50);
+        }
+      }
+
+      // Reset touch states
+      setTouchStart(null);
+      setTouchEnd(null);
+    };
+
+    return (
+      <nav 
+        className="fixed bottom-0 left-0 right-0 bg-blue-700 text-white md:hidden z-50 touch-pan-x"
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
+      >
+        {/* Swipe Indicator di atas */}
+        <div className="absolute -top-1 left-0 right-0 flex justify-center space-x-1 py-1">
+          {filteredNavItems.map((_, index) => (
+            <div
+              key={index}
+              className={`h-1 rounded-full transition-all duration-300 ${
+                index === currentIndex 
+                  ? 'w-4 bg-white' 
+                  : 'w-1 bg-blue-300'
+              }`}
+            />
           ))}
-        </ul>
-      </div>
-    </nav>
-  );
+        </div>
+
+        {/* Menu Items */}
+        <div className="overflow-x-auto">
+          <ul className="flex items-center justify-around py-2 px-4">
+            {filteredNavItems.map((item) => (
+              <NavItem 
+                key={item.path} 
+                item={item} 
+                isMobile 
+              />
+            ))}
+          </ul>
+        </div>
+      </nav>
+    );
+  };
 
   return (
     <>
