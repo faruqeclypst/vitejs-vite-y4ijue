@@ -301,9 +301,10 @@ const StatCard: React.FC<StatsItem> = ({ title, value, icon: Icon, color }) => {
       rounded-xl shadow-sm 
       hover:shadow-md 
       transition-all duration-300
-      border-b-4 border-gray-100
+      border-b-[3px] 
+      border-transparent
+      ${borderClass} 
       backdrop-blur-sm
-      ${borderClass}
     `}>
       <div className="flex flex-col sm:flex-row items-center sm:space-x-4">
         <div className={`
