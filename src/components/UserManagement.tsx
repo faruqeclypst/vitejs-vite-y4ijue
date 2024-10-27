@@ -670,22 +670,32 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
               </div>
 
               <div className="flex-1 overflow-y-auto p-4">
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <form onSubmit={handleSubmit} className="space-y-6">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Kolom Kiri */}
                     <div className="space-y-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Email
-                        </label>
+                        <div className="flex items-center gap-2 mb-1">
+                          <label className="block text-sm font-medium text-gray-700">
+                            Email
+                          </label>
+                          {!editingUser && (
+                            <span className="text-xs text-gray-500 italic">
+                              * Pastikan email benar-benar ada / tersedia
+                            </span>
+                          )}
+                        </div>
                         <input
                           type="email"
                           value={email}
                           onChange={(e) => setEmail(e.target.value)}
                           required
-                          className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                          className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500"
                           placeholder="Masukkan email"
+                          disabled={editingUser !== null}
                         />
                       </div>
+
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
                           Username
@@ -696,11 +706,12 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
                           onChange={(e) => setUsername(e.target.value.toLowerCase())}
                           required
                           minLength={3}
-                          className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                          className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500"
                           placeholder="Minimal 3 karakter"
-                          disabled={editingUser !== null} // Username tidak bisa diubah saat edit
+                          disabled={editingUser !== null}
                         />
                       </div>
+
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
                           {editingUser ? 'Password Baru (opsional)' : 'Password'}
@@ -711,7 +722,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                             required={!editingUser}
-                            className="w-full p-2 pr-10 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                            className="w-full p-2.5 pr-10 border rounded-lg focus:ring-2 focus:ring-blue-500"
                             placeholder={editingUser ? 'Kosongkan jika tidak diubah' : 'Masukkan password'}
                           />
                           <button
@@ -725,6 +736,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
                       </div>
                     </div>
 
+                    {/* Kolom Kanan */}
                     <div className="space-y-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -735,10 +747,11 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
                           value={fullName}
                           onChange={(e) => setFullName(e.target.value)}
                           required
-                          className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                          className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500"
                           placeholder="Masukkan nama lengkap"
                         />
                       </div>
+
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
                           Hak Akses
@@ -749,7 +762,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
                               key={value}
                               type="button"
                               onClick={() => setRole(value)}
-                              className={`p-2 rounded-lg transition-colors ${
+                              className={`p-2.5 rounded-lg transition-colors ${
                                 role === value
                                   ? 'bg-blue-500 text-white'
                                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -763,9 +776,9 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
                     </div>
                   </div>
 
-                  {/* Barak Selection - Tampil jika role sesuai */}
+                  {/* Barak Selection - Full Width */}
                   {showBarakField(role) && (
-                    <div>
+                    <div className="pt-2">
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         {role === 'pengasuh' ? 'Barak yang Diawasi' : 'Hak Akses Barak'}
                       </label>
@@ -866,13 +879,13 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
                     <button
                       type="button"
                       onClick={() => setIsModalOpen(false)}
-                      className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300"
+                      className="px-4 py-2.5 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300"
                     >
                       Batal
                     </button>
                     <button
                       type="submit"
-                      className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+                      className="px-4 py-2.5 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
                     >
                       {editingUser ? 'Update' : 'Simpan'}
                     </button>

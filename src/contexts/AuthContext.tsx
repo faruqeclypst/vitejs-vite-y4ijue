@@ -8,7 +8,9 @@ import {
   createUserWithEmailAndPassword,
   updateProfile,
   updatePassword,
-  User as FirebaseUser 
+  User as FirebaseUser,
+  updateEmail,
+  sendEmailVerification // Tambah import ini
 } from 'firebase/auth';
 import useAlert from '../hooks/useAlert';
 
@@ -355,23 +357,56 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw new Error('User tidak ditemukan');
       }
 
-      // Update data di Realtime Database
+      // Jika email berubah
+      if (existingData.email !== email) {
+        const currentUser = auth.currentUser;
+        if (currentUser) {
+          try {
+            // Update email di Firebase Auth
+            await updateEmail(currentUser, email);
+            // Kirim email verifikasi
+            await sendEmailVerification(currentUser);
+            
+            // Update data di Realtime Database
+            const updatedData = {
+              ...existingData,
+              email,
+              fullName,
+              role,
+              barakId: barakId || null
+            };
+            await set(userRef, updatedData);
+
+            throw new Error(
+              'Email berhasil diubah. Link verifikasi telah dikirim ke email baru Anda. ' +
+              'Silakan verifikasi email baru Anda.'
+            );
+          } catch (error) {
+            if (error instanceof Error) {
+              if (error.message.includes('requires-recent-login')) {
+                throw new Error('Silakan login ulang untuk mengubah email');
+              }
+              throw error;
+            }
+            throw error;
+          }
+        }
+      }
+
+      // Update data lainnya jika email tidak berubah
       const updatedData = {
         ...existingData,
         email,
-        username: email.split('@')[0],
         fullName,
         role,
         barakId: barakId || null
       };
 
-      // Jika ada password baru, update password di Firebase Auth
+      // Update password jika ada
       if (password) {
         try {
-          // Dapatkan user dari Firebase Auth
           const userRecord = await auth.currentUser;
           if (userRecord) {
-            // Update password
             await updatePassword(userRecord, password);
           }
         } catch (error) {
@@ -387,7 +422,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const updatedUser = {
           ...user,
           email,
-          username: email.split('@')[0],
           fullName,
           role,
           barakId
@@ -405,7 +439,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           case 'Firebase: Error (auth/invalid-email)':
             throw new Error('Format email tidak valid');
           case 'Firebase: Error (auth/requires-recent-login)':
-            throw new Error('Silakan login ulang untuk mengubah password');
+            throw new Error('Silakan login ulang untuk mengubah email');
+          case 'Firebase: Error (auth/operation-not-allowed)':
+            throw new Error('Silakan verifikasi email baru Anda terlebih dahulu');
           default:
             throw new Error(error.message);
         }

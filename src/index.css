@@ -158,3 +158,22 @@
 .animate-fadeIn {
   animation: fadeIn 0.3s ease-out forwards;
 }
+
+/* Tambahkan di bagian bawah file */
+.stat-card {
+  border-bottom-width: 4px;
+  border-bottom-color: #e5e7eb;
+  transition: all 0.3s ease;
+}
+
+.stat-card.border-blue-600:hover { border-bottom-color: rgb(37, 99, 235); }
+.stat-card.border-green-600:hover { border-bottom-color: rgb(22, 163, 74); }
+.stat-card.border-emerald-600:hover { border-bottom-color: rgb(5, 150, 105); }
+.stat-card.border-yellow-600:hover { border-bottom-color: rgb(202, 138, 4); }
+.stat-card.border-indigo-600:hover { border-bottom-color: rgb(79, 70, 229); }
+.stat-card.border-rose-600:hover { border-bottom-color: rgb(225, 29, 72); }
+.stat-card.border-cyan-600:hover { border-bottom-color: rgb(8, 145, 178); }
+.stat-card.border-red-600:hover { border-bottom-color: rgb(220, 38, 38); }
+.stat-card.border-violet-600:hover { border-bottom-color: rgb(124, 58, 237); }
+.stat-card.border-amber-600:hover { border-bottom-color: rgb(217, 119, 6); }
+.stat-card.border-pink-600:hover { border-bottom-color: rgb(219, 39, 119); }
