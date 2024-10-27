@@ -133,7 +133,7 @@ const AppRoutes = () => {
               <Route path="*" element={<Navigate to="/" />} />
             </Routes>
           </main>
-          <div className="h-16 md:hidden" />
+          <div className="h-20 md:hidden" />
         </div>
       </div>
     </Router>
