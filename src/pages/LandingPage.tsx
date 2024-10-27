@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Users, ClipboardList, Calendar, UserCheck } from 'lucide-react';
 import { useTeachers } from '../contexts/TeachersContext';
 import { useAttendance } from '../contexts/AttendanceContext';
@@ -9,6 +9,7 @@ import { useBarak } from '../contexts/BarakContext';
 import { useStudentLeave } from '../contexts/StudentLeaveContext';
 import { DayOfWeek, StudentLeave, Barak } from '../types';
 
+// Tambahkan interface StatsItem
 interface StatsItem {
   title: string;
   value: number;
@@ -159,12 +160,14 @@ const LandingPage: React.FC = () => {
   }, [user, teachers, attendanceRecords, roster, students, baraks, leaves]);
 
   return (
-    <div className="flex items-center justify-center min-h-[calc(100vh-4rem)] py-6">
-      <div className="w-full max-w-[1920px] mx-auto px-3 sm:px-4">
-        <Header userRole={user?.role} />
-        <StatsGrid stats={stats} />
+    <>
+      <div className="flex items-center justify-center min-h-[calc(100vh-4rem)] py-6">
+        <div className="w-full max-w-[1920px] mx-auto px-3 sm:px-4">
+          <Header userRole={user?.role} />
+          <StatsGrid stats={stats} />
+        </div>
       </div>
-    </div>
+    </>
   );
 };
 
@@ -190,35 +193,108 @@ const Header: React.FC<{ userRole?: string }> = ({ userRole }) => {
   );
 };
 
-const StatsGrid: React.FC<{ stats: StatsItem[] }> = ({ stats }) => (
-  <div className="mt-6 sm:mt-12">
-    <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6 lg:gap-8">
-      {stats.map((item, index) => (
-        <div
-          key={item.title}
-          className={`relative overflow-hidden rounded-xl ${item.color} shadow-lg transition-all duration-300 hover:shadow-xl hover:-translate-y-1`}
-          style={{animation: `fadeInUp 0.5s ease-out ${index * 0.1}s both`}}
-        >
-          <div className="px-4 sm:px-6 py-4 sm:py-8">
-            <div className="flex items-center">
-              <div className="flex-shrink-0 rounded-lg bg-opacity-20 bg-white p-2 sm:p-4">
-                <item.icon className="h-6 w-6 sm:h-8 sm:w-8 text-white" />
-              </div>
-              <div className="ml-3 sm:ml-6 w-0 flex-1">
-                <dt className="truncate text-sm sm:text-base lg:text-lg font-bold text-gray-100">
-                  {item.title}
-                </dt>
-                <dd className="mt-1 sm:mt-2 text-2xl sm:text-3xl lg:text-4xl font-semibold text-white">
-                  {item.value}
-                </dd>
-              </div>
-            </div>
-          </div>
-          <div className="absolute bottom-0 left-0 right-0 h-1 bg-white bg-opacity-20"></div>
+const StatsGrid: React.FC<{ stats: StatsItem[] }> = ({ stats }) => {
+  const [activeIndex, setActiveIndex] = useState<number | null>(null);
+  const [startX, setStartX] = useState(0);
+  const [scrollLeft, setScrollLeft] = useState(0);
+  const [activeTab, setActiveTab] = useState(0); // 0: Akademik, 1: Asrama
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Pisahkan stats berdasarkan kategori
+  const academicStats = stats.filter(stat => 
+    ['Guru', 'Kelas', 'Jam'].some(keyword => stat.title.includes(keyword))
+  );
+  
+  const dormitoryStats = stats.filter(stat => 
+    ['Siswa', 'Barak', 'Perizinan'].some(keyword => stat.title.includes(keyword))
+  );
+
+  const currentStats = activeTab === 0 ? academicStats : dormitoryStats;
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setStartX(e.touches[0].pageX - (scrollRef.current?.offsetLeft || 0));
+    setScrollLeft(scrollRef.current?.scrollLeft || 0);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!scrollRef.current) return;
+    const x = e.touches[0].pageX - (scrollRef.current.offsetLeft || 0);
+    const walk = (x - startX) * 2;
+    scrollRef.current.scrollLeft = scrollLeft - walk;
+  };
+
+  return (
+    <div className="relative">
+      {/* Tab Navigation */}
+      {stats.length > 6 && (
+        <div className="flex justify-center gap-2 mb-6">
+          <button
+            onClick={() => setActiveTab(0)}
+            className={`px-6 py-2 rounded-full transition-all duration-300 
+              ${activeTab === 0 
+                ? 'bg-blue-500 text-white shadow-lg scale-105' 
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+          >
+            Akademik
+          </button>
+          <button
+            onClick={() => setActiveTab(1)}
+            className={`px-6 py-2 rounded-full transition-all duration-300
+              ${activeTab === 1 
+                ? 'bg-blue-500 text-white shadow-lg scale-105' 
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+          >
+            Asrama
+          </button>
         </div>
-      ))}
+      )}
+
+      {/* Stats Grid */}
+      <div 
+        ref={scrollRef}
+        className="mt-4 sm:mt-12 overflow-x-auto pb-4 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+      >
+        <div className="grid grid-cols-2 xs:grid-cols-2 lg:grid-cols-3 auto-rows-max gap-2 sm:gap-6 lg:gap-8 min-w-[300px]">
+          {currentStats.map((item, index) => (
+            <div
+              key={item.title}
+              className={`relative overflow-hidden rounded-lg ${item.color} shadow-sm 
+                transition-all duration-300 cursor-pointer group
+                hover:shadow-xl hover:-translate-y-1`}
+              style={{animation: `fadeInUp 0.5s ease-out ${index * 0.1}s both`}}
+              onClick={() => setActiveIndex(activeIndex === index ? null : index)}
+            >
+              <div className="px-3 py-3 sm:px-6 sm:py-8">
+                <div className="flex items-center">
+                  <div className="flex-shrink-0 rounded-lg bg-opacity-20 bg-white p-1.5 sm:p-4
+                    transition-transform duration-300 group-hover:scale-110 group-hover:rotate-12">
+                    <item.icon className="h-4 w-4 sm:h-8 sm:w-8 text-white" />
+                  </div>
+                  <div className="ml-2 sm:ml-6 w-0 flex-1">
+                    <dt className="truncate text-xs sm:text-base lg:text-lg font-bold text-gray-100">
+                      {item.title}
+                    </dt>
+                    <dd className="mt-0.5 sm:mt-2 text-lg sm:text-3xl lg:text-4xl font-semibold text-white
+                      transition-all duration-300 group-hover:scale-110">
+                      {item.value}
+                    </dd>
+                  </div>
+                </div>
+              </div>
+              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-white bg-opacity-20
+                transition-transform duration-300 group-hover:scale-x-110"></div>
+              
+              {/* Shine effect on hover */}
+              <div className="absolute top-0 -inset-full h-full w-1/2 z-5 block transform 
+                -skew-x-12 bg-gradient-to-r from-transparent to-white opacity-20 group-hover:animate-shine" />
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 export default LandingPage;

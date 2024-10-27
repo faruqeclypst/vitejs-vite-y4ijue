@@ -94,9 +94,7 @@ const AttendanceTable: React.FC<AttendanceTableProps> = ({
       <div className="space-y-6">
         {/* Date Selection */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Tanggal
-          </label>
+      
           <input
             type="date"
             value={currentDate}

@@ -491,7 +491,7 @@ const StudentLeaveManagement: React.FC = () => {
       {/* Header dan Filter */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div className="flex items-center gap-2 w-full sm:w-auto">
-          <Calendar className="h-5 w-5 text-gray-500" />
+          {/* <Calendar className="h-5 w-5 text-gray-500" /> */}
           <input
             type="date"
             value={selectedDate}

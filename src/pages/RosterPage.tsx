@@ -55,8 +55,14 @@ const RosterPage: React.FC = () => {
       <div className="flex flex-col space-y-4">
         {/* Header Section */}
         <div className="bg-white p-6 rounded-lg shadow-sm">
-          <h2 className="h2">Kelola Jadwal</h2>
-          <p className="mt-2 text-gray-600">Atur jadwal mengajar guru dan mata pelajaran</p>
+          <h2 className="h2 cursor-pointer" onClick={(e) => {
+            const target = e.currentTarget.nextElementSibling as HTMLElement;
+            if (target) {
+              target.classList.toggle('hidden');
+              target.classList.toggle('sm:block');
+            }
+          }}>Kelola Jadwal</h2>
+          <p className="mt-2 text-gray-600 hidden sm:block">Atur jadwal mengajar guru dan mata pelajaran</p>
         </div>
 
         {/* Content Section */}

@@ -7,8 +7,14 @@ const ViolationPage: React.FC = () => {
       <div className="flex flex-col space-y-4">
         {/* Header Section */}
         <div className="bg-white p-6 rounded-lg shadow-sm">
-          <h2 className="h2">Pelanggaran Siswa</h2>
-          <p className="mt-2 text-gray-600">Kelola data pelanggaran dan tindak lanjut siswa</p>
+          <h2 className="h2 cursor-pointer" onClick={(e) => {
+            const target = e.currentTarget.nextElementSibling as HTMLElement;
+            if (target) {
+              target.classList.toggle('hidden');
+              target.classList.toggle('sm:block');
+            }
+          }}>Pelanggaran Siswa</h2>
+          <p className="mt-2 text-gray-600 hidden sm:block">Kelola data pelanggaran dan tindak lanjut siswa</p>
         </div>
 
         {/* Content Section */}
