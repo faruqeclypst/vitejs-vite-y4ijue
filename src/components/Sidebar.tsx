@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Users, ClipboardList, Calendar, Home, Menu, X, GraduationCap, FileText, Building, UserCog, LucideIcon, AlertTriangle, Megaphone } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
@@ -148,22 +148,15 @@ const Sidebar: React.FC<SidebarProps> = ({ isExpanded, setIsExpanded }) => {
   );
 
   const MobileSidebar = () => {
+    const [showAllMenu, setShowAllMenu] = useState(false);
     const [touchStart, setTouchStart] = useState<number | null>(null);
     const [touchEnd, setTouchEnd] = useState<number | null>(null);
-    const [currentIndex, setCurrentIndex] = useState(0);
-
-    // Update currentIndex ketika location berubah
-    useEffect(() => {
-      const pathIndex = filteredNavItems.findIndex(item => item.path === location.pathname);
-      if (pathIndex !== -1) {
-        setCurrentIndex(pathIndex);
-      }
-    }, [location.pathname, filteredNavItems]); // tambahkan filteredNavItems ke dependency
+    const menuRef = useRef<HTMLDivElement>(null);
 
     const minSwipeDistance = 50;
 
     const onTouchStart = (e: React.TouchEvent) => {
-      setTouchEnd(null); // reset touchEnd
+      setTouchEnd(null);
       setTouchStart(e.targetTouches[0].clientX);
     };
 
@@ -182,58 +175,89 @@ const Sidebar: React.FC<SidebarProps> = ({ isExpanded, setIsExpanded }) => {
       const currentPathIndex = accessiblePaths.indexOf(location.pathname);
       
       if (isLeftSwipe && currentPathIndex < accessiblePaths.length - 1) {
-        // Swipe kiri (next)
         navigate(accessiblePaths[currentPathIndex + 1]);
         if (window.navigator && window.navigator.vibrate) {
           window.navigator.vibrate(50);
         }
       } else if (isRightSwipe && currentPathIndex > 0) {
-        // Swipe kanan (previous)
         navigate(accessiblePaths[currentPathIndex - 1]);
         if (window.navigator && window.navigator.vibrate) {
           window.navigator.vibrate(50);
         }
       }
 
-      // Reset touch states
       setTouchStart(null);
       setTouchEnd(null);
     };
 
     return (
-      <nav 
-        className="fixed bottom-0 left-0 right-0 bg-blue-700 text-white md:hidden z-50 touch-pan-x"
-        onTouchStart={onTouchStart}
-        onTouchMove={onTouchMove}
-        onTouchEnd={onTouchEnd}
-      >
-        {/* Swipe Indicator di atas */}
-        <div className="absolute -top-1 left-0 right-0 flex justify-center space-x-1 py-1">
-          {filteredNavItems.map((_, index) => (
-            <div
-              key={index}
-              className={`h-1 rounded-full transition-all duration-300 ${
-                index === currentIndex 
-                  ? 'w-4 bg-white' 
-                  : 'w-1 bg-blue-300'
-              }`}
-            />
-          ))}
-        </div>
+      <>
+        <nav 
+          className="fixed bottom-0 left-0 right-0 bg-blue-700 text-white md:hidden z-50 touch-pan-x"
+          onTouchStart={onTouchStart}
+          onTouchMove={onTouchMove}
+          onTouchEnd={onTouchEnd}
+        >
+          {/* Menu Items */}
+          <div 
+            ref={menuRef}
+            className="overflow-x-hidden relative"
+          >
+            <ul className="flex items-center justify-between py-2 px-4">
+              {filteredNavItems.slice(0, 4).map((item) => (
+                <NavItem 
+                  key={item.path} 
+                  item={item} 
+                  isMobile 
+                />
+              ))}
+              <li>
+                <button
+                  onClick={() => setShowAllMenu(true)}
+                  className="p-3 text-white hover:bg-blue-600 rounded-lg"
+                >
+                  <Menu size={20} />
+                </button>
+              </li>
+            </ul>
+          </div>
+        </nav>
 
-        {/* Menu Items */}
-        <div className="overflow-x-auto">
-          <ul className="flex items-center justify-around py-2 px-4">
-            {filteredNavItems.map((item) => (
-              <NavItem 
-                key={item.path} 
-                item={item} 
-                isMobile 
-              />
-            ))}
-          </ul>
-        </div>
-      </nav>
+        {/* Modal menu */}
+        {showAllMenu && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 z-50 md:hidden">
+            <div className="bg-blue-700 p-4 absolute bottom-0 left-0 right-0">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-white font-bold">Menu Lainnya</h3>
+                <button 
+                  onClick={() => setShowAllMenu(false)}
+                  className="text-white"
+                >
+                  <X size={24} />
+                </button>
+              </div>
+              <ul className="grid grid-cols-4 gap-4">
+                {filteredNavItems.map((item) => (
+                  <li key={item.path} className="flex flex-col items-center">
+                    <Link
+                      to={item.path}
+                      className={`flex flex-col items-center p-2 rounded-lg transition-colors duration-200 w-full ${
+                        location.pathname === item.path
+                          ? 'bg-blue-600 text-white'
+                          : 'text-blue-100 hover:bg-blue-600 hover:text-white'
+                      }`}
+                      onClick={() => setShowAllMenu(false)}
+                    >
+                      <item.icon size={16} />
+                      <span className="text-[10px] mt-0.5 text-center whitespace-nowrap">{item.label}</span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        )}
+      </>
     );
   };
 
