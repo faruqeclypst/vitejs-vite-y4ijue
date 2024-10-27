@@ -10,7 +10,7 @@
   }
 
   body {
-    @apply text-base bg-gray-50;
+    @apply text-base bg-gradient-to-br from-gray-50 via-blue-50/10 to-gray-100;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
@@ -162,8 +162,33 @@
 /* Tambahkan di bagian bawah file */
 .stat-card {
   border-bottom-width: 4px;
-  border-bottom-color: #e5e7eb;
   transition: all 0.3s ease;
+  border-top: none;
+  border-left: none;
+  border-right: none;
+  background: rgba(255, 255, 255, 0.9);
+  position: relative;
+  overflow: hidden;
+}
+
+.stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    to right bottom,
+    rgba(255, 255, 255, 0.2),
+    rgba(255, 255, 255, 0.05)
+  );
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.stat-card:hover::before {
+  opacity: 1;
 }
 
 .stat-card.border-blue-600:hover { border-bottom-color: rgb(37, 99, 235); }

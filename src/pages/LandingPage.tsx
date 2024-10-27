@@ -45,6 +45,7 @@ const LandingPage: React.FC = () => {
   const { violations } = useViolation();
   const [academicStats, setAcademicStats] = useState<StatsItem[]>([]);
   const [dormitoryStats, setDormitoryStats] = useState<StatsItem[]>([]);
+  const [activeTab, setActiveTab] = useState<'academic' | 'dormitory'>('academic');
 
   useEffect(() => {
     const dayOfWeek = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'][new Date().getDay() - 1] as DayOfWeek;
@@ -178,14 +179,20 @@ const LandingPage: React.FC = () => {
   }, [user, teachers, attendanceRecords, roster, students, baraks, leaves, violations]);
 
   return (
-    <div className="min-h-screen bg-gray-50/90">
-      <div className="p-6 mx-auto max-w-7xl">
-        <Header userRole={user?.role} />
+    <div className="main-container mt-6">
+      <div className="flex flex-col space-y-4">
+        <Header 
+          userRole={user?.role} 
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          showAcademic={academicStats.length > 0}
+          showDormitory={dormitoryStats.length > 0}
+        />
         <div className="grid gap-8">
-          {academicStats.length > 0 && (
+          {academicStats.length > 0 && activeTab === 'academic' && (
             <StatsSection title="Statistik Akademik" stats={academicStats} />
           )}
-          {dormitoryStats.length > 0 && (
+          {dormitoryStats.length > 0 && activeTab === 'dormitory' && (
             <StatsSection title="Statistik Asrama" stats={dormitoryStats} />
           )}
         </div>
@@ -194,7 +201,21 @@ const LandingPage: React.FC = () => {
   );
 };
 
-const Header: React.FC<{ userRole?: string }> = ({ userRole }) => {
+interface HeaderProps {
+  userRole?: string;
+  activeTab: 'academic' | 'dormitory';
+  setActiveTab: (tab: 'academic' | 'dormitory') => void;
+  showAcademic: boolean;
+  showDormitory: boolean;
+}
+
+const Header: React.FC<HeaderProps> = ({ 
+  userRole, 
+  activeTab, 
+  setActiveTab,
+  showAcademic,
+  showDormitory 
+}) => {
   let title = "Dashboard Admin";
   let subtitle = "Ringkasan statistik dan aktivitas terkini";
 
@@ -207,17 +228,46 @@ const Header: React.FC<{ userRole?: string }> = ({ userRole }) => {
   }
 
   return (
-    <div className="mb-8">
-      <h1 className="text-2xl font-bold text-gray-800">{title}</h1>
-      <p className="mt-2 text-gray-600">{subtitle}</p>
+    <div className="bg-white/80 backdrop-blur-md rounded-xl shadow-sm border border-white/20">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between p-6">
+        <div className="mb-4 md:mb-0">
+          <h1 className="text-xl font-bold text-gray-800 tracking-tight">{title}</h1>
+          <p className="mt-1 text-sm text-gray-500/90">{subtitle}</p>
+        </div>
+        
+        {(showAcademic && showDormitory) && (
+          <div className="flex space-x-2 bg-gray-100/80 backdrop-blur-sm p-1 rounded-lg">
+            <button
+              onClick={() => setActiveTab('academic')}
+              className={`px-4 py-2 text-sm rounded-lg transition-all duration-300 ${
+                activeTab === 'academic'
+                ? 'bg-white text-blue-600 shadow-sm font-medium ring-1 ring-black/5'
+                : 'text-gray-600 hover:text-gray-900 hover:bg-white/50'
+              }`}
+            >
+              Akademik
+            </button>
+            <button
+              onClick={() => setActiveTab('dormitory')}
+              className={`px-4 py-2 text-sm rounded-lg transition-all duration-300 ${
+                activeTab === 'dormitory'
+                ? 'bg-white text-blue-600 shadow-sm font-medium ring-1 ring-black/5'
+                : 'text-gray-600 hover:text-gray-900 hover:bg-white/50'
+              }`}
+            >
+              Asrama
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
 
 const StatsSection: React.FC<StatsSectionProps> = ({ title, stats }) => (
-  <div className="space-y-4">
-    <h2 className="text-lg font-semibold text-gray-700">{title}</h2>
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+  <div className="bg-white/80 backdrop-blur-md rounded-xl shadow-sm border border-white/20 p-6">
+    <h2 className="text-lg font-semibold text-gray-800 tracking-tight mb-4">{title}</h2>
+    <div className="grid grid-cols-2 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
       {stats.map((stat, index) => (
         <StatCard key={index} {...stat} />
       ))}
@@ -245,19 +295,29 @@ const StatCard: React.FC<StatsItem> = ({ title, value, icon: Icon, color }) => {
   
   return (
     <div className={`
-      stat-card
-      p-3 sm:p-6 bg-white rounded-lg shadow-sm 
-      border border-gray-100
-      hover:shadow-md transition-all duration-300
+      stat-card group
+      p-3 sm:p-6 
+      bg-white/90 hover:bg-white 
+      rounded-xl shadow-sm 
+      hover:shadow-md 
+      transition-all duration-300
+      border-b-4 border-gray-100
+      backdrop-blur-sm
       ${borderClass}
     `}>
       <div className="flex flex-col sm:flex-row items-center sm:space-x-4">
-        <div className={`p-2 sm:p-3 rounded-lg ${color} bg-opacity-10 mb-2 sm:mb-0`}>
+        <div className={`
+          p-2 sm:p-3 rounded-lg 
+          ${color} bg-opacity-10 
+          mb-2 sm:mb-0
+          transition-transform duration-300
+          group-hover:scale-110
+        `}>
           <Icon className={`w-5 h-5 sm:w-6 sm:h-6 ${textColorClass}`} />
         </div>
         <div className="text-center sm:text-left">
-          <p className="text-xs sm:text-sm text-gray-500 font-medium">{title}</p>
-          <h3 className={`text-lg sm:text-2xl font-bold ${textColorClass} mt-0.5 sm:mt-1`}>
+          <p className="text-xs sm:text-sm text-gray-500/90 font-medium tracking-tight">{title}</p>
+          <h3 className={`text-lg sm:text-2xl font-bold ${textColorClass} mt-0.5 sm:mt-1 tracking-tight`}>
             {value}
             {title.includes('Kehadiran') && '%'}
           </h3>
