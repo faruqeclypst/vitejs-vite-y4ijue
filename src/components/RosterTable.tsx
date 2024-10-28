@@ -209,7 +209,7 @@ const RosterTable: React.FC<RosterTableProps> = ({ roster, teachers, onDelete, o
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-        <div className="relative w-full sm:w-64">
+      <div className="relative w-full sm:w-64">
           <input
             type="text"
             placeholder="Cari guru..."

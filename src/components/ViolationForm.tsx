@@ -9,6 +9,7 @@ interface ViolationFormProps {
   isOpen: boolean;
   onClose: () => void;
   students: Student[];
+  mode?: 'add' | 'edit';
 }
 
 const ViolationForm: React.FC<ViolationFormProps> = ({ 
@@ -16,7 +17,8 @@ const ViolationForm: React.FC<ViolationFormProps> = ({
   initialViolation, 
   isOpen,
   onClose,
-  students 
+  students,
+  mode = 'add'
 }) => {
   const [selectedStudents, setSelectedStudents] = useState<Student[]>([]);
   const [violationType, setViolationType] = useState<ViolationType>('Ringan');
@@ -96,138 +98,142 @@ const ViolationForm: React.FC<ViolationFormProps> = ({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={initialViolation ? 'Edit Pelanggaran' : 'Tambah Pelanggaran'}
+      title={mode === 'edit' ? 'Edit Pelanggaran' : 'Tambah Pelanggaran'}
       maxWidth="max-w-2xl"
     >
-      <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Student Selection */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            {initialViolation ? 'Siswa' : 'Pilih Siswa'} {selectedStudents.length > 0 && `(${selectedStudents.length} dipilih)`}
-          </label>
-          <div className="relative" ref={dropdownRef}>
-            <input
-              type="text"
-              placeholder="Cari siswa..."
-              value={searchTerm}
-              onChange={(e) => {
-                setSearchTerm(e.target.value);
-                setIsDropdownOpen(true);
-              }}
-              onClick={() => {
-                if (!initialViolation) {
-                  setIsDropdownOpen(true);
-                }
-              }}
-              onFocus={() => {
-                if (!initialViolation) {
-                  setIsDropdownOpen(true);
-                }
-              }}
-              className={`w-full p-3 pl-10 border rounded-lg ${
-                initialViolation ? 'bg-gray-100' : ''
-              }`}
-              readOnly={!!initialViolation}
-            />
-            <Search className="absolute left-3 top-3.5 h-5 w-5 text-gray-400" />
-            
-            {/* Tampilkan siswa yang sudah dipilih */}
-            {selectedStudents.length > 0 && (
-              <div className="mt-2">
-                <div className="text-sm text-gray-500 mb-2">
-                  {selectedStudents.length} siswa terpilih
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[240px] overflow-y-auto p-1">
-                  {selectedStudents.map((student) => (
-                    <div
-                      key={student.id}
-                      className={`flex items-center justify-between p-2 rounded-lg ${
-                        student.gender === 'Laki-laki'
-                          ? 'bg-blue-50 border border-blue-200'
-                          : 'bg-pink-50 border border-pink-200'
-                      }`}
-                    >
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center space-x-1">
-                          <span className={`text-sm font-medium truncate ${
-                            student.gender === 'Laki-laki' ? 'text-blue-700' : 'text-pink-700'
-                          }`}>
-                            {student.fullName}
-                          </span>
-                          <span className={`text-xs px-1.5 py-0.5 rounded-full ${
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Student Selection - hide in edit mode */}
+        {mode === 'add' && (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                {initialViolation ? 'Siswa' : 'Pilih Siswa'} {selectedStudents.length > 0 && `(${selectedStudents.length} dipilih)`}
+              </label>
+              <div className="relative" ref={dropdownRef}>
+                <input
+                  type="text"
+                  placeholder="Cari siswa..."
+                  value={searchTerm}
+                  onChange={(e) => {
+                    setSearchTerm(e.target.value);
+                    setIsDropdownOpen(true);
+                  }}
+                  onClick={() => {
+                    if (!initialViolation) {
+                      setIsDropdownOpen(true);
+                    }
+                  }}
+                  onFocus={() => {
+                    if (!initialViolation) {
+                      setIsDropdownOpen(true);
+                    }
+                  }}
+                  className={`w-full p-3 pl-10 border rounded-lg ${
+                    initialViolation ? 'bg-gray-100' : ''
+                  }`}
+                  readOnly={!!initialViolation}
+                />
+                <Search className="absolute left-3 top-3.5 h-5 w-5 text-gray-400" />
+                
+                {/* Tampilkan siswa yang sudah dipilih */}
+                {selectedStudents.length > 0 && (
+                  <div className="mt-2">
+                    <div className="text-sm text-gray-500 mb-2">
+                      {selectedStudents.length} siswa terpilih
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[240px] overflow-y-auto p-1">
+                      {selectedStudents.map((student) => (
+                        <div
+                          key={student.id}
+                          className={`flex items-center justify-between p-2 rounded-lg ${
                             student.gender === 'Laki-laki'
-                              ? 'bg-blue-100 text-blue-600'
-                              : 'bg-pink-100 text-pink-600'
-                          }`}>
-                            {student.class}
-                          </span>
-                        </div>
-                        <div className="text-xs text-gray-500 truncate">
-                          {student.barak}
-                        </div>
-                      </div>
-                      {!initialViolation && (
-                        <button
-                          type="button"
-                          onClick={() => setSelectedStudents(prev => prev.filter(s => s.id !== student.id))}
-                          className={`ml-2 p-1 rounded-full hover:bg-opacity-80 ${
-                            student.gender === 'Laki-laki'
-                              ? 'hover:bg-blue-100 text-blue-600'
-                              : 'hover:bg-pink-100 text-pink-600'
+                              ? 'bg-blue-50 border border-blue-200'
+                              : 'bg-pink-50 border border-pink-200'
                           }`}
                         >
-                          <X className="h-4 w-4" />
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Dropdown pencarian */}
-            {!initialViolation && isDropdownOpen && (
-              <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg max-h-80 overflow-auto">
-                {filteredStudents
-                  .filter(student => !selectedStudents.some(s => s.id === student.id))
-                  .map((student) => (
-                    <div
-                      key={student.id}
-                      onClick={() => {
-                        setSelectedStudents(prev => [...prev, student]);
-                        setSearchTerm('');
-                      }}
-                      className="p-3 hover:bg-gray-100 cursor-pointer border-b last:border-b-0"
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="font-medium">{student.fullName}</div>
-                        <div className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                          student.gender === 'Laki-laki'
-                            ? 'bg-blue-100 text-blue-800'
-                            : 'bg-pink-100 text-pink-800'
-                        }`}>
-                          {student.gender}
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center space-x-1">
+                              <span className={`text-sm font-medium truncate ${
+                                student.gender === 'Laki-laki' ? 'text-blue-700' : 'text-pink-700'
+                              }`}>
+                                {student.fullName}
+                              </span>
+                              <span className={`text-xs px-1.5 py-0.5 rounded-full ${
+                                student.gender === 'Laki-laki'
+                                  ? 'bg-blue-100 text-blue-600'
+                                  : 'bg-pink-100 text-pink-600'
+                              }`}>
+                                {student.class}
+                              </span>
+                            </div>
+                            <div className="text-xs text-gray-500 truncate">
+                              {student.barak}
+                            </div>
+                          </div>
+                          {!initialViolation && (
+                            <button
+                              type="button"
+                              onClick={() => setSelectedStudents(prev => prev.filter(s => s.id !== student.id))}
+                              className={`ml-2 p-1 rounded-full hover:bg-opacity-80 ${
+                                student.gender === 'Laki-laki'
+                                  ? 'hover:bg-blue-100 text-blue-600'
+                                  : 'hover:bg-pink-100 text-pink-600'
+                              }`}
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
+                          )}
                         </div>
-                      </div>
-                      <div className="text-sm text-gray-500 flex items-center gap-2 mt-1">
-                        <span className="px-2 py-0.5 rounded bg-gray-100">{student.class}</span>
-                        <span className="text-gray-400">•</span>
-                        <span className="px-2 py-0.5 rounded bg-gray-100">{student.barak}</span>
-                      </div>
+                      ))}
                     </div>
-                  ))}
-                {/* Tampilkan pesan jika tidak ada hasil */}
-                {filteredStudents.length === 0 && (
-                  <div className="p-3 text-center text-gray-500">
-                    {searchTerm ? 'Tidak ada siswa yang ditemukan' : 'Ketik untuk mencari siswa'}
+                  </div>
+                )}
+
+                {/* Dropdown pencarian */}
+                {!initialViolation && isDropdownOpen && (
+                  <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg max-h-80 overflow-auto">
+                    {filteredStudents
+                      .filter(student => !selectedStudents.some(s => s.id === student.id))
+                      .map((student) => (
+                        <div
+                          key={student.id}
+                          onClick={() => {
+                            setSelectedStudents(prev => [...prev, student]);
+                            setSearchTerm('');
+                          }}
+                          className="p-3 hover:bg-gray-100 cursor-pointer border-b last:border-b-0"
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="font-medium">{student.fullName}</div>
+                            <div className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                              student.gender === 'Laki-laki'
+                                ? 'bg-blue-100 text-blue-800'
+                                : 'bg-pink-100 text-pink-800'
+                            }`}>
+                              {student.gender}
+                            </div>
+                          </div>
+                          <div className="text-sm text-gray-500 flex items-center gap-2 mt-1">
+                            <span className="px-2 py-0.5 rounded bg-gray-100">{student.class}</span>
+                            <span className="text-gray-400">•</span>
+                            <span className="px-2 py-0.5 rounded bg-gray-100">{student.barak}</span>
+                          </div>
+                        </div>
+                      ))}
+                    {/* Tampilkan pesan jika tidak ada hasil */}
+                    {filteredStudents.length === 0 && (
+                      <div className="p-3 text-center text-gray-500">
+                        {searchTerm ? 'Tidak ada siswa yang ditemukan' : 'Ketik untuk mencari siswa'}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
-            )}
+            </div>
           </div>
-        </div>
+        )}
 
-        {/* Violation Type */}
+        {/* Violation Type - always editable */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Jenis Pelanggaran
@@ -253,7 +259,7 @@ const ViolationForm: React.FC<ViolationFormProps> = ({
           </div>
         </div>
 
-        {/* Violation Detail */}
+        {/* Violation Detail - always editable */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Rincian Pelanggaran
@@ -276,7 +282,7 @@ const ViolationForm: React.FC<ViolationFormProps> = ({
           </div>
         </div>
 
-        {/* Description */}
+        {/* Description - always editable */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Detail Pelanggaran
@@ -290,8 +296,24 @@ const ViolationForm: React.FC<ViolationFormProps> = ({
           />
         </div>
 
-        {/* Submit Button */}
-        <div className="flex justify-end space-x-2">
+        {/* Date and Time - hide in edit mode */}
+        {mode === 'add' && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Dibuat oleh
+            </label>
+            <input
+              type="text"
+              placeholder="Dibuat oleh..."
+              value=""
+              className="w-full p-3 border rounded-lg"
+              readOnly
+            />
+          </div>
+        )}
+
+        {/* Action Buttons */}
+        <div className="flex justify-end space-x-3">
           <button
             type="button"
             onClick={onClose}
@@ -303,7 +325,7 @@ const ViolationForm: React.FC<ViolationFormProps> = ({
             type="submit"
             className="px-4 py-2 text-white bg-blue-500 rounded-lg hover:bg-blue-600"
           >
-            {initialViolation ? 'Update' : 'Simpan'}
+            {mode === 'edit' ? 'Update' : 'Simpan'}
           </button>
         </div>
       </form>

@@ -139,8 +139,8 @@ const AttendanceTable: React.FC<AttendanceTableProps> = ({
   return (
     <div className="space-y-6">
       {/* Header section */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-6">
-        <div className="w-full sm:w-64">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+      <div className="relative w-full sm:w-64">
           <input
             type="date"
             value={currentDate}

@@ -171,4 +171,5 @@ export interface Guidance {
   notes: string;
   conductedBy: string;
   conductedAt: string;
+  resolveViolation?: boolean; // Tambah field ini
 }

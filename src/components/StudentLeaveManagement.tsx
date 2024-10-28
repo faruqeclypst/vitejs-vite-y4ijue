@@ -4,7 +4,7 @@ import { useStudents } from '../contexts/StudentContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useBarak } from '../contexts/BarakContext';
 import { Student, StudentLeave, LeaveType, ReturnStatus, Barak } from '../types';
-import { X, Calendar, Share, Plus, Edit, Trash2 } from 'lucide-react';
+import { X, Calendar, Share, Plus } from 'lucide-react';
 import "react-datepicker/dist/react-datepicker.css";
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { storage } from '../firebase';
@@ -44,6 +44,7 @@ const StudentLeaveManagement: React.FC = () => {
   const [showAsramaAlert, setShowAsramaAlert] = useState(false);
   const { alert, showAlert, hideAlert } = useAlert();
   const [filteredLeavesByDate, setFilteredLeavesByDate] = useState<StudentLeave[]>([]);
+  const [previewPhoto, setPreviewPhoto] = useState<string | null>(null);
 
   const leaveTypes: LeaveType[] = ['Sakit', 'Izin', 'Pulang', 'Tanpa Keterangan', 'Lomba'];
 
@@ -488,238 +489,189 @@ const StudentLeaveManagement: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {/* Photo Preview Modal */}
+      {previewPhoto && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4"
+          onClick={() => setPreviewPhoto(null)}
+        >
+          <div 
+            className="relative bg-white rounded-lg overflow-hidden"
+            onClick={e => e.stopPropagation()}
+          >
+            <img
+              src={previewPhoto}
+              alt="Student"
+              className="w-[400px] h-[400px] object-cover"
+            />
+            <button
+              onClick={() => setPreviewPhoto(null)}
+              className="absolute top-2 right-2 p-1 bg-white rounded-full shadow-lg hover:bg-gray-100"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Header dan Filter */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div className="flex items-center gap-2 w-full sm:w-auto">
-          {/* <Calendar className="h-5 w-5 text-gray-500" /> */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+        <div className="relative w-full sm:w-64">
           <input
             type="date"
             value={selectedDate}
             onChange={(e) => setSelectedDate(e.target.value)}
-            className="w-full sm:w-auto p-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+            className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
           />
         </div>
-        <div className="flex items-center gap-2 w-full sm:w-auto">
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
           {filteredLeavesByDate.length > 0 && (
             <button
               onClick={shareToWhatsApp}
-              className="w-full sm:w-auto bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg flex items-center justify-center text-base"
+              className="w-full sm:w-auto bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg flex items-center justify-center gap-2"
             >
-              <Share className="h-5 w-5 mr-2" />
-              Share WhatsApp
+              <Share className="h-5 w-5" />
+              <span>Share WhatsApp</span>
             </button>
           )}
           <button
             onClick={openModal}
-            className="w-full sm:w-auto bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center justify-center text-base"
+            className="w-full sm:w-auto bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center justify-center gap-2"
           >
-            <Plus className="h-5 w-5 mr-2" />
-            Tambah Perizinan
+            <Plus className="h-5 w-5" />
+            <span>Tambah Perizinan</span>
           </button>
         </div>
       </div>
 
-      {/* Table/Card View */}
-      <div className="overflow-x-auto">
-        {/* Desktop View */}
-        <div className="hidden sm:block">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No</th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Siswa</th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kelas</th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Barak</th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Jenis Izin</th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Waktu</th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Keterangan</th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dokumen</th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {filteredLeavesByDate.map((leave, index) => {
-                const student = students.find(s => s.id === leave.studentId);
-                return (
-                  <tr key={leave.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-2 whitespace-nowrap">{index + 1}</td>
-                    <td className="px-4 py-2 whitespace-nowrap">{student?.fullName}</td>
-                    <td className="px-4 py-2 whitespace-nowrap">{student?.class}</td>
-                    <td className="px-4 py-2 whitespace-nowrap">{student?.barak}</td>
-                    <td className="px-4 py-2 whitespace-nowrap">
-                      <span className="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800">
-                        {leave.leaveType}
-                      </span>
-                    </td>
-                    <td className="px-4 py-2 whitespace-nowrap text-sm">
-                      <div>{leave.startDate} {leave.startTime}</div>
-                      <div className="text-gray-500">s/d</div>
-                      <div>{leave.endDate} {leave.endTime}</div>
-                    </td>
-                    <td className="px-4 py-2 whitespace-nowrap">
-                      <div className="max-w-xs truncate text-sm" title={leave.keterangan}>
-                        {leave.keterangan || '-'}
-                      </div>
-                    </td>
-                    <td className="px-4 py-2 whitespace-nowrap">
-                      {leave.documentUrl ? (
-                        <button
-                          onClick={() => handleViewDocument(leave)}
-                          className="inline-flex items-center px-3 py-1.5 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200"
-                        >
-                          <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                          </svg>
-                          Lihat
-                        </button>
+      {/* Daftar Perizinan */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {filteredLeavesByDate.map((leave) => {
+          const student = students.find(s => s.id === leave.studentId);
+          if (!student) return null;
+
+          return (
+            <div key={leave.id} className="flex bg-white rounded-xl overflow-hidden">
+              {/* Left Color Bar */}
+              <div className={`w-2 flex-shrink-0 ${
+                leave.returnStatus === 'Sudah Kembali' ? 'bg-green-400' : 'bg-yellow-400'
+              }`} />
+              
+              {/* Content */}
+              <div className="flex-1 p-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
+                  <div className="flex items-start sm:items-center gap-3">
+                    <div 
+                      className="h-10 w-10 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0 overflow-hidden cursor-pointer"
+                      onClick={() => student.photoUrl && setPreviewPhoto(student.photoUrl)}
+                    >
+                      {student.photoUrl ? (
+                        <img
+                          src={student.photoUrl}
+                          alt={student.fullName}
+                          className="w-full h-full object-cover hover:opacity-90 transition-opacity"
+                        />
                       ) : (
-                        <span className="text-gray-400">-</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-2 whitespace-nowrap">
-                      {(currentUser?.role === 'admin_master' || currentUser?.role === 'admin_asrama' || currentUser?.role === 'pengasuh') ? (
-                        <select
-                          value={leave.returnStatus || 'Belum Kembali'}
-                          onChange={(e) => handleStatusChange(leave, e.target.value as ReturnStatus)}
-                          className={`px-2 py-1 rounded-lg text-xs ${
-                            leave.returnStatus === 'Sudah Kembali'
-                              ? 'bg-green-100 text-green-700'
-                              : 'bg-yellow-100 text-yellow-700'
-                          }`}
-                        >
-                          <option value="Belum Kembali">Belum Kembali</option>
-                          <option value="Sudah Kembali">Sudah Kembali</option>
-                        </select>
-                      ) : (
-                        <span className={`inline-flex items-center px-2 py-1 rounded-lg text-xs ${
-                          leave.returnStatus === 'Sudah Kembali'
-                            ? 'bg-green-100 text-green-700'
-                            : 'bg-yellow-100 text-yellow-700'
-                        }`}>
-                          {leave.returnStatus || 'Belum Kembali'}
+                        <span className="text-sm font-medium text-gray-600">
+                          {student.fullName.split(' ').map(name => name[0]).join('').substring(0, 2)}
                         </span>
                       )}
-                    </td>
-                    <td className="px-4 py-2 whitespace-nowrap text-right space-x-1">
+                    </div>
+                    <div className="min-w-0">
+                      <h3 className="font-medium text-gray-900 truncate">{student.fullName}</h3>
+                      <div className="flex flex-wrap gap-2 mt-1">
+                        <span className="inline-flex items-center px-2 py-1 bg-gray-100 text-xs text-gray-600 rounded">
+                          {student.class}
+                        </span>
+                        <span className="inline-flex items-center px-2 py-1 bg-gray-100 text-xs text-gray-600 rounded">
+                          {student.barak}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium self-start sm:self-center ${
+                    leave.leaveType === 'Sakit' ? 'bg-red-50 text-red-700' :
+                    leave.leaveType === 'Izin' ? 'bg-blue-50 text-blue-700' :
+                    leave.leaveType === 'Pulang' ? 'bg-green-50 text-green-700' :
+                    leave.leaveType === 'Lomba' ? 'bg-purple-50 text-purple-700' :
+                    'bg-gray-50 text-gray-700'
+                  }`}>
+                    {leave.leaveType}
+                  </span>
+                </div>
+
+                <div className="space-y-3">
+                  {/* Leave Details */}
+                  <div className="space-y-2">
+                    <div>
+                      <select
+                        value={leave.returnStatus || 'Belum Kembali'}
+                        onChange={(e) => handleStatusChange(leave, e.target.value as ReturnStatus)}
+                        className={`text-xs px-2.5 py-1 rounded-lg font-poppins ${
+                          leave.returnStatus === 'Sudah Kembali'
+                            ? 'bg-green-50 text-green-700'
+                            : 'bg-yellow-50 text-yellow-700'
+                        }`}
+                      >
+                        <option value="Belum Kembali" className="font-poppins">Belum Kembali</option>
+                        <option value="Sudah Kembali" className="font-poppins">Sudah Kembali</option>
+                      </select>
+                      {leave.keterangan && (
+                        <p className="text-sm text-gray-500 mt-2">{leave.keterangan}</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Status & Actions */}
+                  <div className="flex items-center justify-between pt-3 border-t">
+                    <div className="flex items-center text-xs text-gray-500">
+                      <svg className="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" 
+                          d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                      {leave.startDate} {leave.startTime} s/d {leave.endDate} {leave.endTime}
+                    </div>
+
+                    <div className="flex items-center gap-1">
+                      {leave.documentUrl && (
+                        <button
+                          onClick={() => handleViewDocument(leave)}
+                          className="p-1.5 hover:bg-blue-50 rounded-lg transition-colors"
+                          title="Lihat Dokumen"
+                        >
+                          <svg className="w-4 h-4 text-blue-500" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                          </svg>
+                        </button>
+                      )}
                       <button
                         onClick={() => handleEdit(leave)}
-                        className="text-blue-500 hover:text-blue-700 p-1"
+                        className="p-1.5 hover:bg-blue-50 rounded-lg transition-colors"
+                        title="Edit"
                       >
-                        <Edit className="h-4 w-4" />
+                        <svg className="w-4 h-4 text-blue-500" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                        </svg>
                       </button>
                       <button
                         onClick={() => handleDelete(leave.id)}
-                        className="text-red-500 hover:text-red-700 p-1"
+                        className="p-1.5 hover:bg-red-50 rounded-lg transition-colors"
+                        title="Hapus"
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <svg className="w-4 h-4 text-red-500" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
                       </button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Mobile View */}
-        <div className="sm:hidden space-y-4">
-          {filteredLeavesByDate.map((leave) => {
-            const student = students.find(s => s.id === leave.studentId);
-            return (
-              <div key={leave.id} className="bg-white shadow rounded-lg p-4">
-                <div className="space-y-3">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <div className="font-medium text-gray-900">{student?.fullName}</div>
-                      <div className="text-sm text-gray-500">{student?.class} - {student?.barak}</div>
                     </div>
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                      {leave.leaveType}
-                    </span>
-                  </div>
-
-                  <div className="text-sm space-y-1">
-                    <div className="grid grid-cols-2 gap-2">
-                      <div className="text-gray-500">Waktu Keluar:</div>
-                      <div>{leave.startDate} {leave.startTime}</div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div className="text-gray-500">Waktu Kembali:</div>
-                      <div>{leave.endDate} {leave.endTime}</div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div className="text-gray-500">Keterangan:</div>
-                      <div className="break-words">{leave.keterangan || '-'}</div>
-                    </div>
-                    {leave.documentUrl && (
-                      <div className="grid grid-cols-2 gap-2">
-                        <div className="text-gray-500">Dokumen:</div>
-                        <div>
-                          <button
-                            onClick={() => handleViewDocument(leave)}
-                            className="inline-flex items-center px-3 py-1.5 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200"
-                          >
-                            <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                            </svg>
-                            Lihat Dokumen
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                    <div className="grid grid-cols-2 gap-2">
-                      <div className="text-gray-500">Status:</div>
-                      <div>
-                        {(currentUser?.role === 'admin_master' || currentUser?.role === 'admin_asrama' || currentUser?.role === 'pengasuh') ? (
-                          <select
-                            value={leave.returnStatus || 'Belum Kembali'}
-                            onChange={(e) => handleStatusChange(leave, e.target.value as ReturnStatus)}
-                            className={`px-2 py-1 rounded-lg text-sm ${
-                              leave.returnStatus === 'Sudah Kembali'
-                                ? 'bg-green-100 text-green-700'
-                                : 'bg-yellow-100 text-yellow-700'
-                            }`}
-                          >
-                            <option value="Belum Kembali">Belum Kembali</option>
-                            <option value="Sudah Kembali">Sudah Kembali</option>
-                          </select>
-                        ) : (
-                          <span className={`inline-flex items-center px-2 py-1 rounded-lg text-sm ${
-                            leave.returnStatus === 'Sudah Kembali'
-                              ? 'bg-green-100 text-green-700'
-                              : 'bg-yellow-100 text-yellow-700'
-                          }`}>
-                            {leave.returnStatus || 'Belum Kembali'}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex justify-end space-x-2 mt-4">
-                    <button
-                      onClick={() => handleEdit(leave)}
-                      className="bg-blue-100 text-blue-600 hover:bg-blue-200 px-4 py-2 rounded-lg text-sm font-medium flex items-center"
-                    >
-                      <Edit className="h-4 w-4 mr-2" />
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => handleDelete(leave.id)}
-                      className="bg-red-100 text-red-600 hover:bg-red-200 px-4 py-2 rounded-lg text-sm font-medium flex items-center"
-                    >
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      Hapus
-                    </button>
                   </div>
                 </div>
               </div>
-            );
-          })}
-        </div>
+            </div>
+          );
+        })}
       </div>
 
       {/* Empty State */}

@@ -1,106 +1,96 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useGuidance } from '../contexts/GuidanceContext';
 import { useViolation } from '../contexts/ViolationContext';
 import { useStudents } from '../contexts/StudentContext';
-import { useAuth } from '../contexts/AuthContext';
-import { Plus, Search } from 'lucide-react';
+import { AlertCircle, User as UserIcon, CheckCircle, Search } from 'lucide-react';
+import GuidanceForm from './GuidanceForm';
 import Alert from './Alert';
 import useAlert from '../hooks/useAlert';
 import ConfirmationModal from './ConfirmationModal';
 import useConfirmation from '../hooks/useConfirmation';
-import GuidanceForm from './GuidanceForm';
 
 const GuidanceManagement: React.FC = () => {
-  const { guidances, addGuidance, updateGuidance, deleteGuidance } = useGuidance();
-  const { getActiveViolations } = useViolation();
+  const { addGuidance, getViolationGuidances } = useGuidance();
+  const { violations, markViolationAsResolved } = useViolation();
   const { students } = useStudents();
-  const { user: currentUser } = useAuth();
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [editingGuidance, setEditingGuidance] = useState<any>(null);
+  const [selectedViolation, setSelectedViolation] = useState<string | null>(null);
+  const [selectedStudent, setSelectedStudent] = useState<string | null>(null);
   const { alert, showAlert, hideAlert } = useAlert();
-  const { isOpen, options, confirm, handleConfirm, handleCancel } = useConfirmation();
+  const { confirm, isOpen, options, handleConfirm, handleCancel } = useConfirmation();
+  const [searchTerm, setSearchTerm] = useState('');
 
-  // Ambil pelanggaran yang belum dibina
-  const unhandledViolations = getActiveViolations().filter(violation => {
-    const existingGuidance = guidances.find(g => g.violationId === violation.id);
-    return !existingGuidance;
-  });
+  // Group violations by student
+  const groupedViolations = useMemo(() => {
+    const unhandledViolations = violations.filter(v => !v.isResolved);
+    return unhandledViolations.reduce((acc, violation) => {
+      const student = students.find(s => s.id === violation.studentId);
+      if (!student || student.isDeleted) return acc;
 
-  const handleEdit = async (guidance: any) => {
-    setEditingGuidance(guidance);
-    setIsModalOpen(true);
+      // Filter berdasarkan pencarian
+      const matchesSearch = 
+        student.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        student.class.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        student.barak.toLowerCase().includes(searchTerm.toLowerCase());
+
+      if (!matchesSearch) return acc;
+
+      if (!acc[student.id]) {
+        acc[student.id] = {
+          student,
+          violations: []
+        };
+      }
+      acc[student.id].violations.push(violation);
+      return acc;
+    }, {} as Record<string, { student: typeof students[0]; violations: typeof violations }>) ;
+  }, [violations, students, searchTerm]);
+
+  const handleSubmit = async (guidanceData: any) => {
+    try {
+      await addGuidance(guidanceData);
+      showAlert({
+        type: 'success',
+        message: 'Pembinaan berhasil disimpan'
+      });
+      setIsModalOpen(false);
+      setSelectedViolation(null);
+      setSelectedStudent(null);
+    } catch (error) {
+      showAlert({
+        type: 'error',
+        message: 'Gagal menyimpan pembinaan'
+      });
+    }
   };
 
-  const handleDelete = async (id: string) => {
+  const handleResolveViolation = async (violationId: string) => {
     const confirmed = await confirm({
-      title: 'Konfirmasi Hapus',
-      message: 'Apakah Anda yakin ingin menghapus data pembinaan ini?',
-      confirmText: 'Hapus',
+      title: 'Konfirmasi Selesai',
+      message: 'Apakah Anda yakin ingin menyelesaikan pelanggaran ini? Pelanggaran yang sudah diselesaikan tidak akan muncul di daftar pembinaan.',
+      confirmText: 'Selesaikan',
       cancelText: 'Batal'
     });
 
     if (confirmed) {
       try {
-        await deleteGuidance(id);
+        await markViolationAsResolved(violationId);
         showAlert({
           type: 'success',
-          message: 'Data pembinaan berhasil dihapus'
+          message: 'Pelanggaran berhasil diselesaikan'
         });
       } catch (error) {
         showAlert({
           type: 'error',
-          message: 'Gagal menghapus data pembinaan'
+          message: 'Gagal menyelesaikan pelanggaran'
         });
       }
     }
   };
-
-  const handleSubmit = async (guidanceData: any) => {
-    try {
-      if (editingGuidance) {
-        await updateGuidance(editingGuidance.id, {
-          ...guidanceData,
-          conductedBy: currentUser?.id || ''
-        });
-        showAlert({
-          type: 'success',
-          message: 'Data pembinaan berhasil diperbarui'
-        });
-      } else {
-        await addGuidance({
-          ...guidanceData,
-          conductedBy: currentUser?.id || ''
-        });
-        showAlert({
-          type: 'success',
-          message: 'Data pembinaan berhasil ditambahkan'
-        });
-      }
-      setIsModalOpen(false);
-      setEditingGuidance(null);
-    } catch (error) {
-      showAlert({
-        type: 'error',
-        message: 'Gagal menyimpan data pembinaan'
-      });
-    }
-  };
-
-  // Filter dan tampilkan data
-  const filteredGuidances = guidances.filter(guidance => {
-    const student = students.find(s => s.id === guidance.studentId);
-    if (!student) return false;
-
-    return (
-      student.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      student.class.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  });
 
   return (
     <div className="space-y-6">
-      {/* Alert dan ConfirmationModal */}
+      {/* Alert */}
       {alert && (
         <Alert
           type={alert.type}
@@ -109,18 +99,19 @@ const GuidanceManagement: React.FC = () => {
         />
       )}
 
+      {/* Confirmation Modal */}
       <ConfirmationModal
         isOpen={isOpen}
         onClose={handleCancel}
         onConfirm={handleConfirm}
-        title={options?.title ?? ''}
-        message={options?.message ?? ''}
+        title={options?.title || ''}
+        message={options?.message || ''}
         confirmText={options?.confirmText}
         cancelText={options?.cancelText}
       />
 
-      {/* Header dan Filter */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      {/* Tambah Search Bar */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
         <div className="relative w-full sm:w-64">
           <input
             type="text"
@@ -131,82 +122,170 @@ const GuidanceManagement: React.FC = () => {
           />
           <Search className="absolute left-2 top-2.5 text-gray-400" size={18} />
         </div>
-        <button
-          onClick={() => {
-            setEditingGuidance(null);
-            setIsModalOpen(true);
-          }}
-          className="w-full sm:w-auto bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 flex items-center justify-center gap-2"
-        >
-          <Plus size={18} />
-          <span>Tambah Pembinaan</span>
-        </button>
       </div>
 
-      {/* GuidanceForm Modal */}
-      <GuidanceForm
-        isOpen={isModalOpen}
-        onClose={() => {
-          setIsModalOpen(false);
-          setEditingGuidance(null);
-        }}
-        onSubmit={handleSubmit}
-        initialGuidance={editingGuidance}
-        students={students}
-        unhandledViolations={unhandledViolations}
-      />
-
-      {/* Daftar Pembinaan */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredGuidances.map((guidance) => {
-          const student = students.find(s => s.id === guidance.studentId);
-          if (!student) return null;
+      {/* Grid Siswa yang Perlu Dibina */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {Object.entries(groupedViolations).map(([studentId, { student, violations }]) => {
+          const unresolved = violations.filter(v => !v.isResolved).length;
 
           return (
-            <div key={guidance.id} className="bg-white rounded-lg shadow-sm border p-4">
-              <div className="space-y-3">
-                <div className="flex justify-between items-start">
-                  <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
-                    {guidance.guidanceStage}
-                  </span>
-                  <span className="text-sm text-gray-500">
-                    {new Date(guidance.conductedAt).toLocaleDateString()}
-                  </span>
+            <div key={studentId} className="flex bg-white rounded-xl overflow-hidden">
+              {/* Left Color Bar - gradient berdasarkan jenis pelanggaran */}
+              <div className="w-2 flex-shrink-0" style={{
+                background: violations.length > 1 
+                  ? `linear-gradient(to bottom, ${
+                      violations.map(v => 
+                        v.violationType === 'Ringan' ? '#FACC15' :  // yellow-400
+                        v.violationType === 'Sedang' ? '#F97316' :  // orange-500
+                        '#EF4444'                                   // red-500
+                      ).join(', ')
+                    })`
+                  : violations[0].violationType === 'Ringan' ? '#FACC15' :
+                    violations[0].violationType === 'Sedang' ? '#F97316' :
+                    '#EF4444'
+              }} />
+              
+              {/* Content */}
+              <div className="flex-1 p-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
+                  <div className="flex items-start sm:items-center gap-3">
+                    <div className="h-10 w-10 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                      {student.photoUrl ? (
+                        <img
+                          src={student.photoUrl}
+                          alt={student.fullName}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <UserIcon className="h-6 w-6 text-gray-400" />
+                      )}
+                    </div>
+                    <div className="min-w-0">
+                      <h3 className="font-medium text-gray-900 truncate">{student.fullName}</h3>
+                      <div className="flex flex-wrap gap-2 mt-1">
+                        <span className="inline-flex items-center px-2 py-1 bg-gray-100 text-xs text-gray-600 rounded">
+                          {student.class}
+                        </span>
+                        <span className="inline-flex items-center px-2 py-1 bg-gray-100 text-xs text-gray-600 rounded">
+                          {student.barak}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex flex-col items-end gap-1">
+                    <span className="text-sm font-medium text-gray-900">
+                      {violations.length} Pelanggaran
+                    </span>
+                    {unresolved > 0 && (
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-50 text-red-700">
+                        {unresolved} Belum Selesai
+                      </span>
+                    )}
+                  </div>
                 </div>
 
-                <div>
-                  <h3 className="font-medium">{student.fullName}</h3>
-                  <p className="text-sm text-gray-600">{student.class}</p>
-                </div>
+                {/* Violations List */}
+                <div className="space-y-3">
+                  {violations.map((violation) => {
+                    const hasGuidance = getViolationGuidances(violation.id).length > 0;
+                    
+                    return (
+                      <div key={violation.id} className="space-y-2">
+                        <div>
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <span className={`inline-block px-2 py-1 text-xs rounded-full ${
+                                violation.violationType === 'Ringan' ? 'bg-yellow-100 text-yellow-700' :
+                                violation.violationType === 'Sedang' ? 'bg-orange-100 text-orange-700' :
+                                'bg-red-100 text-red-700'
+                              }`}>
+                                {violation.violationType}
+                              </span>
+                              <p className="mt-1 text-sm font-medium">{violation.violationDetail}</p>
+                              <p className="text-sm text-gray-600">{violation.description}</p>
+                            </div>
+                            <span className="text-xs text-gray-500">
+                              {new Date(violation.recordedAt).toLocaleDateString('id-ID', {
+                                day: 'numeric',
+                                month: 'short',
+                                year: 'numeric'
+                              })}
+                            </span>
+                          </div>
 
-                <div>
-                  <p className="text-sm font-medium">Pembinaan:</p>
-                  <p className="text-sm text-gray-600">{guidance.guidanceDetail}</p>
-                  <p className="text-sm text-gray-500 mt-1">{guidance.description}</p>
-                  {guidance.notes && (
-                    <p className="text-sm text-gray-500 mt-1">Catatan: {guidance.notes}</p>
-                  )}
-                </div>
-
-                <div className="flex justify-end space-x-2">
-                  <button
-                    onClick={() => handleEdit(guidance)}
-                    className="px-3 py-1 text-blue-600 hover:bg-blue-50 rounded-lg"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => handleDelete(guidance.id)}
-                    className="px-3 py-1 text-red-600 hover:bg-red-50 rounded-lg"
-                  >
-                    Hapus
-                  </button>
+                          {/* Action Buttons */}
+                          <div className="flex justify-end gap-2 mt-3">
+                            <button
+                              onClick={() => {
+                                setSelectedViolation(violation.id);
+                                setSelectedStudent(student.id);
+                                setIsModalOpen(true);
+                              }}
+                              className="px-3 py-1.5 text-sm bg-blue-500 text-white rounded hover:bg-blue-600"
+                            >
+                              {hasGuidance ? 'Lanjut Pembinaan' : 'Beri Pembinaan'}
+                            </button>
+                            <button
+                              onClick={() => handleResolveViolation(violation.id)}
+                              disabled={!hasGuidance}
+                              className={`px-3 py-1.5 text-sm flex items-center gap-1 rounded ${
+                                hasGuidance 
+                                  ? 'bg-green-500 text-white hover:bg-green-600'
+                                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                              }`}
+                              title={!hasGuidance ? 'Berikan pembinaan terlebih dahulu' : ''}
+                            >
+                              <CheckCircle className="w-4 h-4" />
+                              Selesaikan
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             </div>
           );
         })}
       </div>
+
+      {/* Empty State */}
+      {Object.keys(groupedViolations).length === 0 && (
+        <div className="text-center py-12">
+          <AlertCircle className="mx-auto h-12 w-12 text-gray-400" />
+          <h3 className="mt-2 text-sm font-medium text-gray-900">
+            {searchTerm 
+              ? 'Tidak ada hasil pencarian'
+              : 'Tidak ada siswa yang perlu dibina'
+            }
+          </h3>
+          <p className="mt-1 text-sm text-gray-500">
+            {searchTerm 
+              ? 'Coba kata kunci lain'
+              : 'Semua pelanggaran sudah ditangani'
+            }
+          </p>
+        </div>
+      )}
+
+      {/* Guidance Form Modal */}
+      {isModalOpen && selectedViolation && selectedStudent && (
+        <GuidanceForm
+          isOpen={isModalOpen}
+          onClose={() => {
+            setIsModalOpen(false);
+            setSelectedViolation(null);
+            setSelectedStudent(null);
+          }}
+          onSubmit={handleSubmit}
+          students={students}
+          unhandledViolations={violations.filter(v => !v.isResolved)}
+          selectedViolationId={selectedViolation}
+          selectedStudentId={selectedStudent}
+        />
+      )}
     </div>
   );
 };

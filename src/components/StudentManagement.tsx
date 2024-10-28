@@ -632,69 +632,115 @@ const StudentManagement: React.FC = () => {
         cancelText={confirmOptions?.cancelText ?? 'Batal'}
       />
 
-      {/* Header dengan Search dan Actions */}
-      <div className="flex flex-col sm:flex-row justify-between items-center gap-3">
-        <div className="relative w-full sm:w-64">
-          <input
-            type="text"
-            placeholder="Cari siswa..."
-            className="w-full p-2 pl-8 border rounded-lg"
-          />
-          <Search className="absolute left-2 top-2.5 text-gray-400" size={18} />
-        </div>
-        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+      {/* Header dengan Search, Tabs, dan Actions */}
+      <div className="flex flex-col gap-3 mb-4">
+        {/* Mobile View */}
+        <div className="sm:hidden flex flex-col gap-3 w-full">
+          <div className="relative w-full">
+            <input
+              type="text"
+              placeholder="Cari siswa..."
+              className="w-full p-2 pl-8 border rounded-lg"
+            />
+            <Search className="absolute left-2 top-2.5 text-gray-400" size={18} />
+          </div>
+
           <button
             onClick={openModal}
-            className="w-full sm:w-auto bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 flex items-center justify-center gap-2"
+            className="w-full bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 flex items-center justify-center gap-2"
           >
             <Plus size={18} />
             <span>Tambah Siswa</span>
           </button>
-          <label className="w-full sm:w-auto bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 flex items-center justify-center gap-2 cursor-pointer">
-            <Plus size={18} />
-            <span>Import CSV</span>
-            <input type="file" accept=".csv" onChange={handleImportCSV} className="hidden" />
-          </label>
-          <button 
-            onClick={handleExportCSV}
-            className="w-full sm:w-auto bg-yellow-500 text-white px-4 py-2 rounded-lg hover:bg-yellow-600 flex items-center justify-center gap-2"
-          >
-            <Plus size={18} />
-            <span>Export CSV</span>
-          </button>
-        </div>
-      </div>
 
-      {/* Tabs */}
-      <div className="border border-gray-200 p-1 mt-4">
-        <nav className="flex space-x-1">
-          <button
-            onClick={() => setActiveTab('active')}
-            className={`flex-1 sm:flex-none px-4 py-2 rounded-lg transition-colors ${
-              activeTab === 'active'
-                ? 'bg-blue-500 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
-          >
-            Siswa Aktif
-          </button>
-          <button
-            onClick={() => setActiveTab('deleted')}
-            className={`flex-1 sm:flex-none px-4 py-2 rounded-lg transition-colors ${
-              activeTab === 'deleted'
-                ? 'bg-blue-500 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
-          >
-            Siswa Terhapus
-          </button>
-        </nav>
+          <nav className="flex space-x-1">
+            <button
+              onClick={() => setActiveTab('active')}
+              className={`flex-1 px-4 py-2 rounded-lg transition-colors ${
+                activeTab === 'active'
+                  ? 'bg-blue-500 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              Aktif
+            </button>
+            <button
+              onClick={() => setActiveTab('deleted')}
+              className={`flex-1 px-4 py-2 rounded-lg transition-colors ${
+                activeTab === 'deleted'
+                  ? 'bg-blue-500 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              Terhapus
+            </button>
+          </nav>
+        </div>
+
+        {/* Desktop View */}
+        <div className="hidden sm:flex justify-between items-center w-full">
+          <div className="flex gap-3 items-center">
+            <div className="relative w-64">
+              <input
+                type="text"
+                placeholder="Cari siswa..."
+                className="w-full p-2 pl-8 border rounded-lg"
+              />
+              <Search className="absolute left-2 top-2.5 text-gray-400" size={18} />
+            </div>
+            
+            <div className="flex space-x-1">
+              <button
+                onClick={() => setActiveTab('active')}
+                className={`px-4 py-2 rounded-lg transition-colors ${
+                  activeTab === 'active'
+                    ? 'bg-blue-500 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                Aktif
+              </button>
+              <button
+                onClick={() => setActiveTab('deleted')}
+                className={`px-4 py-2 rounded-lg transition-colors ${
+                  activeTab === 'deleted'
+                    ? 'bg-blue-500 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                Terhapus
+              </button>
+            </div>
+          </div>
+
+          <div className="flex gap-2">
+            <button
+              onClick={openModal}
+              className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 flex items-center justify-center gap-2"
+            >
+              <Plus size={18} />
+              <span>Tambah Siswa</span>
+            </button>
+            <label className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 flex items-center justify-center gap-2 cursor-pointer">
+              <Plus size={18} />
+              <span>Import CSV</span>
+              <input type="file" accept=".csv" onChange={handleImportCSV} className="hidden" />
+            </label>
+            <button 
+              onClick={handleExportCSV}
+              className="bg-yellow-500 text-white px-4 py-2 rounded-lg hover:bg-yellow-600 flex items-center justify-center gap-2"
+            >
+              <Plus size={18} />
+              <span>Export CSV</span>
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Main Content Panel */}
       <div className={`grid grid-cols-1 ${
         Object.keys(groupedStudents).length > 1 ? 'lg:grid-cols-2' : ''
-      } gap-4 mt-4`}>
+      } gap-4`}>
         {Object.entries(groupedStudents).map(([barakName, students]) => (
           <div key={barakName} className={`rounded-lg shadow-sm border border-gray-200 overflow-hidden ${
             Object.keys(groupedStudents).length === 1 ? 'col-span-full' : ''
