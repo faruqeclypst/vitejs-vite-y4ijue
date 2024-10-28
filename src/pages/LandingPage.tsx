@@ -45,7 +45,6 @@ const LandingPage: React.FC = () => {
   const { violations } = useViolation();
   const [academicStats, setAcademicStats] = useState<StatsItem[]>([]);
   const [dormitoryStats, setDormitoryStats] = useState<StatsItem[]>([]);
-  const [activeTab, setActiveTab] = useState<'academic' | 'dormitory'>('academic');
 
   useEffect(() => {
     const dayOfWeek = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'][new Date().getDay() - 1] as DayOfWeek;
@@ -179,20 +178,14 @@ const LandingPage: React.FC = () => {
   }, [user, teachers, attendanceRecords, roster, students, baraks, leaves, violations]);
 
   return (
-    <div className="main-container mt-6">
-      <div className="flex flex-col space-y-4">
-        <Header 
-          userRole={user?.role} 
-          activeTab={activeTab}
-          setActiveTab={setActiveTab}
-          showAcademic={academicStats.length > 0}
-          showDormitory={dormitoryStats.length > 0}
-        />
-        <div className="grid gap-8">
-          {academicStats.length > 0 && activeTab === 'academic' && (
+    <div className="p-6">
+      <div className="flex flex-col gap-4">
+        <Header userRole={user?.role} />
+        <div className="grid gap-4">
+          {academicStats.length > 0 && (
             <StatsSection title="Statistik Akademik" stats={academicStats} />
           )}
-          {dormitoryStats.length > 0 && activeTab === 'dormitory' && (
+          {dormitoryStats.length > 0 && (
             <StatsSection title="Statistik Asrama" stats={dormitoryStats} />
           )}
         </div>
@@ -203,63 +196,28 @@ const LandingPage: React.FC = () => {
 
 interface HeaderProps {
   userRole?: string;
-  activeTab: 'academic' | 'dormitory';
-  setActiveTab: (tab: 'academic' | 'dormitory') => void;
-  showAcademic: boolean;
-  showDormitory: boolean;
 }
 
-const Header: React.FC<HeaderProps> = ({ 
-  userRole, 
-  activeTab, 
-  setActiveTab,
-  showAcademic,
-  showDormitory 
-}) => {
-  let title = "Dashboard Admin";
-  let subtitle = "Ringkasan statistik dan aktivitas terkini";
-
-  if (userRole === 'admin_master') {
-    title = "Dashboard Admin Master";
-    subtitle = "Ringkasan statistik akademik dan asrama";
+const Header: React.FC<HeaderProps> = ({ userRole }) => {
+  let description = 'Ringkasan statistik dan aktivitas terkini';
+  
+  // Customize description based on userRole
+  if (userRole === 'admin' || userRole === 'piket') {
+    description = 'Ringkasan statistik akademik dan aktivitas terkini';
   } else if (userRole === 'admin_asrama' || userRole === 'pengasuh') {
-    title = "Dashboard Asrama";
-    subtitle = "Ringkasan statistik asrama";
+    description = 'Ringkasan statistik asrama dan aktivitas terkini';
   }
 
   return (
-    <div className="bg-white/80 backdrop-blur-md rounded-xl shadow-sm border border-white/20">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between p-6">
-        <div className="mb-4 md:mb-0">
-          <h1 className="text-xl font-bold text-gray-800 tracking-tight">{title}</h1>
-          <p className="mt-1 text-sm text-gray-500/90">{subtitle}</p>
-        </div>
-        
-        {(showAcademic && showDormitory) && (
-          <div className="flex space-x-2 bg-gray-100/80 backdrop-blur-sm p-1 rounded-lg">
-            <button
-              onClick={() => setActiveTab('academic')}
-              className={`px-4 py-2 text-sm rounded-lg transition-all duration-300 ${
-                activeTab === 'academic'
-                ? 'bg-white text-blue-600 shadow-sm font-medium ring-1 ring-black/5'
-                : 'text-gray-600 hover:text-gray-900 hover:bg-white/50'
-              }`}
-            >
-              Akademik
-            </button>
-            <button
-              onClick={() => setActiveTab('dormitory')}
-              className={`px-4 py-2 text-sm rounded-lg transition-all duration-300 ${
-                activeTab === 'dormitory'
-                ? 'bg-white text-blue-600 shadow-sm font-medium ring-1 ring-black/5'
-                : 'text-gray-600 hover:text-gray-900 hover:bg-white/50'
-              }`}
-            >
-              Asrama
-            </button>
-          </div>
-        )}
-      </div>
+    <div className="bg-white p-4 sm:p-6 rounded-lg shadow">
+      <h2 className="text-xl sm:text-2xl font-bold text-gray-800 cursor-pointer" onClick={(e) => {
+        const target = e.currentTarget.nextElementSibling as HTMLElement;
+        if (target) {
+          target.classList.toggle('hidden');
+          target.classList.toggle('sm:block');
+        }
+      }}>Dashboard</h2>
+      <p className="mt-2 text-sm sm:text-base text-gray-600 hidden sm:block">{description}</p>
     </div>
   );
 };

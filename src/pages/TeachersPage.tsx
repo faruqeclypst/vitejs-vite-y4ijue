@@ -98,15 +98,15 @@ const TeachersPage: React.FC = () => {
     <div className="p-6">
       <div className="flex flex-col gap-4">
         {/* Header */}
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h2 className="text-2xl font-bold text-gray-800 cursor-pointer" onClick={(e) => {
+        <div className="bg-white p-4 sm:p-6 rounded-lg shadow">
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-800 cursor-pointer" onClick={(e) => {
             const target = e.currentTarget.nextElementSibling as HTMLElement;
             if (target) {
               target.classList.toggle('hidden');
               target.classList.toggle('sm:block');
             }
           }}>Kelola Guru</h2>
-          <p className="mt-2 text-gray-600 hidden sm:block">Kelola data dan informasi guru pengajar</p>
+          <p className="mt-2 text-sm sm:text-base text-gray-600 hidden sm:block">Kelola data dan informasi guru pengajar</p>
         </div>
 
         {/* Content */}
