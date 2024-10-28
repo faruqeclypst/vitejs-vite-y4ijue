@@ -1,4 +1,4 @@
-import { User, ChevronDown, LogOut, UserCog, X } from 'lucide-react';
+import { User, ChevronDown, LogOut, UserCog, X, Camera } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -6,6 +6,7 @@ import useConfirmation from '../hooks/useConfirmation';
 import ConfirmationModal from './ConfirmationModal';
 import useAlert from '../hooks/useAlert';
 import Alert from './Alert';
+import { compressImage, formatFileSize } from '../utils/imageCompression';
 
 const Header = () => {
   const { user, logout, updateUser } = useAuth();
@@ -15,6 +16,8 @@ const Header = () => {
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
   const { confirm, isOpen, options, handleConfirm, handleCancel } = useConfirmation();
   const { alert, showAlert, hideAlert } = useAlert();
+  const [selectedPhoto, setSelectedPhoto] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
 
   // State untuk form edit profile
   const [editForm, setEditForm] = useState({
@@ -57,13 +60,37 @@ const Header = () => {
     if (!user) return;
 
     try {
-      await updateUser(user.id, editForm.username, null, editForm.fullName, user.role, user.barakId);
-      setIsEditProfileOpen(false);
-      showAlert({ type: 'success', message: 'Profil berhasil diperbarui' });
-    } catch (error) {
-      if (error instanceof Error) {
-        showAlert({ type: 'error', message: error.message });
+      // Jika ada foto yang dipilih, kompres dulu
+      let compressedPhoto: File | undefined = undefined;
+      if (selectedPhoto) {
+        compressedPhoto = await compressImage(selectedPhoto);
       }
+
+      await updateUser(
+        user.id, 
+        editForm.username, 
+        null, 
+        editForm.fullName, 
+        user.role, 
+        user.barakId,
+        compressedPhoto
+      );
+      
+      setIsEditProfileOpen(false);
+      setSelectedPhoto(null);
+      setPhotoPreview(null);
+      
+      showAlert({ 
+        type: 'success', 
+        message: 'Profil berhasil diperbarui',
+        duration: 3000
+      });
+    } catch (error) {
+      showAlert({ 
+        type: 'error', 
+        message: error instanceof Error ? error.message : 'Gagal memperbarui profil',
+        duration: 3000
+      });
     }
   };
 
@@ -108,6 +135,40 @@ const Header = () => {
       fullName: user?.fullName || '',
       username: user?.username || '',
     });
+    setSelectedPhoto(null);
+    setPhotoPreview(null);
+  };
+
+  const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      try {
+        const originalSize = formatFileSize(file.size);
+        const compressedFile = await compressImage(file);
+        const compressedSize = formatFileSize(compressedFile.size);
+        
+        setSelectedPhoto(compressedFile);
+        
+        // Create preview
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setPhotoPreview(reader.result as string);
+        };
+        reader.readAsDataURL(compressedFile);
+
+        showAlert({
+          type: 'success',
+          message: `Foto berhasil dikompres dari ${originalSize} menjadi ${compressedSize}`,
+          duration: 3000
+        });
+      } catch (error) {
+        showAlert({
+          type: 'error',
+          message: 'Gagal mengkompress foto',
+          duration: 3000
+        });
+      }
+    }
   };
 
   return (
@@ -128,8 +189,16 @@ const Header = () => {
               onClick={toggleDropdown}
               className="flex items-center space-x-2 sm:space-x-3 py-2 px-2 sm:px-3 rounded-lg hover:bg-gray-100 transition-colors"
             >
-              <div className="h-7 w-7 sm:h-8 sm:w-8 bg-blue-500 rounded-full flex items-center justify-center">
-                <User className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
+              <div className="h-8 w-8 rounded-full overflow-hidden bg-blue-500 flex items-center justify-center">
+                {user?.photoUrl ? (
+                  <img 
+                    src={user.photoUrl} 
+                    alt={user.fullName}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <User className="h-5 w-5 text-white" />
+                )}
               </div>
               <div className="hidden xs:block text-right">
                 <div className="text-xs sm:text-sm font-medium text-gray-900 truncate max-w-[120px] sm:max-w-[200px]">
@@ -185,7 +254,11 @@ const Header = () => {
               <div className="flex justify-between items-center mb-4 pb-4 border-b">
                 <h3 className="text-xl font-bold text-gray-900">Edit Profil</h3>
                 <button
-                  onClick={() => setIsEditProfileOpen(false)}
+                  onClick={() => {
+                    setIsEditProfileOpen(false);
+                    setSelectedPhoto(null);
+                    setPhotoPreview(null);
+                  }}
                   className="text-gray-500 hover:text-gray-700"
                 >
                   <X size={20} />
@@ -193,6 +266,34 @@ const Header = () => {
               </div>
 
               <form onSubmit={handleEditProfile} className="space-y-4">
+                {/* Photo Upload */}
+                <div className="flex flex-col items-center gap-2">
+                  <div className="relative">
+                    <div className="w-24 h-24 rounded-full overflow-hidden bg-gray-100">
+                      {photoPreview || user?.photoUrl ? (
+                        <img
+                          src={photoPreview || user?.photoUrl}
+                          alt="Preview"
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-blue-500">
+                          <User className="w-12 h-12 text-white" />
+                        </div>
+                      )}
+                    </div>
+                    <label className="absolute bottom-0 right-0 p-1 bg-white rounded-full shadow-lg cursor-pointer hover:bg-gray-50">
+                      <Camera className="w-4 h-4 text-gray-600" />
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handlePhotoChange}
+                        className="hidden"
+                      />
+                    </label>
+                  </div>
+                </div>
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Nama Lengkap
@@ -221,7 +322,11 @@ const Header = () => {
                 <div className="flex justify-end space-x-3 pt-4">
                   <button
                     type="button"
-                    onClick={() => setIsEditProfileOpen(false)}
+                    onClick={() => {
+                      setIsEditProfileOpen(false);
+                      setSelectedPhoto(null);
+                      setPhotoPreview(null);
+                    }}
                     className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300"
                   >
                     Batal
@@ -255,6 +360,7 @@ const Header = () => {
         <Alert
           type={alert.type}
           message={alert.message}
+          duration={alert.duration}
           onClose={hideAlert}
         />
       )}

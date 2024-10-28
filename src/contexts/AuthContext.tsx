@@ -1,18 +1,17 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import { ref, get, set, remove } from 'firebase/database';
-import { auth, db } from '../firebase';
+import { ref, get, set, update, remove } from 'firebase/database';
+import { auth, db, storage } from '../firebase';
 import { UserRole } from '../types';
 import { 
   signInWithEmailAndPassword, 
   signOut,
   createUserWithEmailAndPassword,
   updateProfile,
-  updatePassword,
-  User as FirebaseUser,
-  updateEmail,
-  sendEmailVerification // Tambah import ini
+  User as FirebaseUser
 } from 'firebase/auth';
 import useAlert from '../hooks/useAlert';
+import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { compressImage } from '../utils/imageCompression';
 
 // Interface User
 export interface User {
@@ -21,8 +20,9 @@ export interface User {
   fullName: string;
   role: UserRole;
   barakId?: string;
+  email: string;
+  photoUrl?: string; // Tambah field untuk foto profil
   isDefaultAccount: boolean;
-  email: string; // Tambah field email
 }
 
 interface AuthContextType {
@@ -40,11 +40,12 @@ interface AuthContextType {
   getUsers: () => Promise<User[]>;
   updateUser: (
     userId: string,
-    email: string,
+    username: string,
     password: string | null,
     fullName: string,
     role: UserRole,
-    barakId?: string
+    barakId?: string,
+    photoFile?: File
   ) => Promise<void>;
   deleteUser: (id: string) => Promise<void>;
   isLoading: boolean;
@@ -208,6 +209,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         fullName: userData.fullName,
         role: userData.role,
         barakId: userData.barakId,
+        photoUrl: userData.photoUrl, // Tambahkan ini
         isDefaultAccount: userData.isDefaultAccount
       };
 
@@ -332,120 +334,63 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Update user function
   const updateUser = async (
     userId: string,
-    email: string,
+    username: string,
     password: string | null,
     fullName: string,
     role: UserRole,
-    barakId?: string
+    barakId?: string,
+    photoFile?: File
   ) => {
     try {
-      // Validasi email
-      if (!email || !email.includes('@')) {
-        throw new Error('Email tidak valid');
-      }
-
-      // Validasi fullName
-      if (!fullName.trim()) {
-        throw new Error('Nama lengkap harus diisi');
-      }
-
       const userRef = ref(db, `users/${userId}`);
-      const snapshot = await get(userRef);
-      const existingData = snapshot.val();
+      let updateData: any = { username, fullName, role };
 
-      if (!existingData) {
-        throw new Error('User tidak ditemukan');
-      }
-
-      // Jika email berubah
-      if (existingData.email !== email) {
-        const currentUser = auth.currentUser;
-        if (currentUser) {
-          try {
-            // Update email di Firebase Auth
-            await updateEmail(currentUser, email);
-            // Kirim email verifikasi
-            await sendEmailVerification(currentUser);
-            
-            // Update data di Realtime Database
-            const updatedData = {
-              ...existingData,
-              email,
-              fullName,
-              role,
-              barakId: barakId || null
-            };
-            await set(userRef, updatedData);
-
-            throw new Error(
-              'Email berhasil diubah. Link verifikasi telah dikirim ke email baru Anda. ' +
-              'Silakan verifikasi email baru Anda.'
-            );
-          } catch (error) {
-            if (error instanceof Error) {
-              if (error.message.includes('requires-recent-login')) {
-                throw new Error('Silakan login ulang untuk mengubah email');
-              }
-              throw error;
-            }
-            throw error;
-          }
-        }
-      }
-
-      // Update data lainnya jika email tidak berubah
-      const updatedData = {
-        ...existingData,
-        email,
-        fullName,
-        role,
-        barakId: barakId || null
-      };
-
-      // Update password jika ada
       if (password) {
+        updateData.password = password;
+      }
+      if (barakId) {
+        updateData.barakId = barakId;
+      }
+
+      // Handle photo upload with compression
+      if (photoFile) {
         try {
-          const userRecord = await auth.currentUser;
-          if (userRecord) {
-            await updatePassword(userRecord, password);
-          }
+          // Compress image before upload
+          const compressedFile = await compressImage(photoFile);
+          
+          // Create filename
+          const extension = compressedFile.name.split('.').pop()?.toLowerCase() || '';
+          const fileName = `profile_${userId}_${Date.now()}.${extension}`;
+          
+          // Create storage reference
+          const storageReference = storageRef(storage, `user-photos/${fileName}`);
+          
+          // Upload file
+          console.log('Uploading file...'); // Debug log
+          const uploadResult = await uploadBytes(storageReference, compressedFile);
+          console.log('File uploaded, getting URL...'); // Debug log
+          
+          // Get download URL
+          const photoUrl = await getDownloadURL(uploadResult.ref);
+          console.log('Got download URL:', photoUrl); // Debug log
+          
+          updateData.photoUrl = photoUrl;
         } catch (error) {
-          console.error('Error updating password:', error);
-          throw new Error('Gagal memperbarui password');
+          console.error('Error uploading photo:', error);
+          throw new Error('Gagal mengupload foto: ' + (error instanceof Error ? error.message : 'Unknown error'));
         }
       }
 
-      await set(userRef, updatedData);
-
-      // Update current user jika yang diupdate adalah user yang sedang login
-      if (user && user.id === userId) {
-        const updatedUser = {
-          ...user,
-          email,
-          fullName,
-          role,
-          barakId
-        };
-        setUser(updatedUser);
-        localStorage.setItem('currentUser', JSON.stringify(updatedUser));
-      }
-
+      // Update database
+      console.log('Updating database with:', updateData); // Debug log
+      await update(userRef, updateData);
+      
+      // Update local user state
+      setUser(prev => prev ? { ...prev, ...updateData } : null);
+      
+      console.log('Update completed successfully'); // Debug log
     } catch (error) {
       console.error('Update user error:', error);
-      if (error instanceof Error) {
-        switch (error.message) {
-          case 'Firebase: Error (auth/email-already-in-use)':
-            throw new Error('Email sudah digunakan');
-          case 'Firebase: Error (auth/invalid-email)':
-            throw new Error('Format email tidak valid');
-          case 'Firebase: Error (auth/requires-recent-login)':
-            throw new Error('Silakan login ulang untuk mengubah email');
-          case 'Firebase: Error (auth/operation-not-allowed)':
-            throw new Error('Silakan verifikasi email baru Anda terlebih dahulu');
-          default:
-            throw new Error(error.message);
-        }
-      }
       throw error;
     }
   };
@@ -477,6 +422,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       fullName: data.fullName,
       role: data.role,
       barakId: data.barakId,
+      photoUrl: data.photoUrl, // Tambahkan ini
       isDefaultAccount: data.isDefaultAccount
     }));
   };
@@ -498,6 +444,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             fullName: userData.fullName,
             role: userData.role,
             barakId: userData.barakId,
+            photoUrl: userData.photoUrl, // Tambahkan ini
             isDefaultAccount: userData.isDefaultAccount
           };
           setUser(fullUser);

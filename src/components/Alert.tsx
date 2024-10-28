@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { AlertCircle, CheckCircle, XCircle, Info } from 'lucide-react';
 
 type AlertType = 'success' | 'error' | 'info' | 'warning';
@@ -6,28 +6,23 @@ type AlertType = 'success' | 'error' | 'info' | 'warning';
 interface AlertProps {
   type: AlertType;
   message: string;
-  duration?: number; // Durasi dalam milidetik
+  duration?: number;
   onClose?: () => void;
 }
 
 const Alert: React.FC<AlertProps> = ({ 
   type, 
-  message, 
-  duration = 3000, // Default 3 detik
+  message,
+  duration = 3000,
   onClose 
 }) => {
-  const [isVisible, setIsVisible] = useState(true);
-
   useEffect(() => {
     const timer = setTimeout(() => {
-      setIsVisible(false);
-      onClose && onClose();
+      onClose?.();
     }, duration);
 
     return () => clearTimeout(timer);
   }, [duration, onClose]);
-
-  if (!isVisible) return null;
 
   const alertClasses = {
     success: 'bg-green-100 border-green-500 text-green-700',

@@ -83,6 +83,7 @@ export interface User {
   asramaId?: string;
   barakId?: string;
   email: string;
+  photoUrl?: string; // Tambah field untuk foto profil
   isDefaultAccount?: boolean;
   isMasterAdmin?: boolean;
 }

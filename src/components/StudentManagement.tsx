@@ -3,7 +3,7 @@ import { Student, availableClasses } from '../types';
 import { useStudents } from '../contexts/StudentContext';
 import { useBarak } from '../contexts/BarakContext'; // Ganti useAsrama dengan useBarak
 import Papa from 'papaparse';
-import { Edit, Trash2, Plus, FileText, History, Search, Users, User } from 'lucide-react';
+import { Edit, Trash2, Plus, FileText, History, Search, Users, User, Camera } from 'lucide-react';
 import StudentLeaveHistory from './StudentLeaveHistory';
 import { useAuth } from '../contexts/AuthContext';
 import Alert from '../components/Alert';
@@ -738,30 +738,30 @@ const StudentManagement: React.FC = () => {
         <form onSubmit={handleAddOrUpdateStudent} className="space-y-4">
           {/* Photo Upload */}
           <div className="flex flex-col items-center gap-2">
-            <div className="relative w-24 h-24 rounded-full overflow-hidden bg-gray-100">
-              {photoPreview || (editingStudent?.photoUrl) ? (
-                <img
-                  src={photoPreview || editingStudent?.photoUrl}
-                  alt="Preview"
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center">
-                  <User className="w-12 h-12 text-gray-400" />
-                </div>
-              )}
+            <div className="relative">
+              <div className="w-24 h-24 rounded-full overflow-hidden bg-gray-100">
+                {photoPreview || (editingStudent?.photoUrl) ? (
+                  <img
+                    src={photoPreview || editingStudent?.photoUrl}
+                    alt="Preview"
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center bg-blue-500">
+                    <User className="w-12 h-12 text-white" />
+                  </div>
+                )}
+                <label className="absolute bottom-0 right-0 p-1 bg-white rounded-full shadow-lg cursor-pointer hover:bg-gray-50">
+                  <Camera className="w-4 h-4 text-gray-600" />
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handlePhotoChange}
+                    className="hidden"
+                  />
+                </label>
+              </div>
             </div>
-            <label className="cursor-pointer">
-              <span className="text-sm text-blue-500 hover:text-blue-600">
-                {editingStudent?.photoUrl ? 'Ganti Foto' : 'Upload Foto'}
-              </span>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handlePhotoChange}
-                className="hidden"
-              />
-            </label>
           </div>
 
           {/* Nama Lengkap */}
