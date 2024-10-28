@@ -15,6 +15,7 @@ import useConfirmation from '../hooks/useConfirmation';
 import { exportStudent } from '../utils/exportStudent';
 import { useStudentLeave } from '../contexts/StudentLeaveContext';
 import Modal from '../components/Modal';
+import { compressImage, formatFileSize } from '../utils/imageCompression';
 
 // Update interface untuk tab
 type TabType = 'active' | 'deleted';
@@ -160,6 +161,9 @@ const StudentManagement: React.FC = () => {
           });
           resetForm();
         } else {
+          // Reset foto jika user membatalkan
+          setSelectedPhoto(null);
+          setPhotoPreview(editingStudent.photoUrl || null);
           setIsModalOpen(true);
           return;
         }
@@ -190,17 +194,41 @@ const StudentManagement: React.FC = () => {
     setSelectedPhoto(null);
     setPhotoPreview(null);
     setSelectedGrade('');
+    setEditingStudent(null);
   };
 
-  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      setSelectedPhoto(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPhotoPreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+      try {
+        // Check file size before compression
+        const originalSize = formatFileSize(file.size);
+        
+        // Compress image
+        const compressedFile = await compressImage(file);
+        const compressedSize = formatFileSize(compressedFile.size);
+        
+        setSelectedPhoto(compressedFile);
+        
+        // Create preview
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setPhotoPreview(reader.result as string);
+        };
+        reader.readAsDataURL(compressedFile);
+
+        showAlert({
+          type: 'success',
+          message: `Foto berhasil dikompres dari ${originalSize} menjadi ${compressedSize}`,
+          duration: 5000
+        });
+      } catch (error) {
+        showAlert({
+          type: 'error',
+          message: 'Gagal mengkompress foto. Silakan coba lagi.',
+          duration: 5000
+        });
+      }
     }
   };
 
@@ -703,7 +731,7 @@ const StudentManagement: React.FC = () => {
         isOpen={isModalOpen}
         onClose={() => {
           setIsModalOpen(false);
-          resetForm();
+          resetForm(); // Reset semua form termasuk foto
         }}
         title={editingStudent ? 'Edit Siswa' : 'Tambah Siswa Baru'}
       >
@@ -827,7 +855,10 @@ const StudentManagement: React.FC = () => {
           <div className="flex justify-end space-x-3 pt-4 border-t">
             <button
               type="button"
-              onClick={() => setIsModalOpen(false)}
+              onClick={() => {
+                setIsModalOpen(false);
+                resetForm(); // Reset semua form termasuk foto saat cancel
+              }}
               className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300"
             >
               Batal
@@ -836,7 +867,7 @@ const StudentManagement: React.FC = () => {
               type="submit"
               disabled={!newStudent.barak}
               className={`px-4 py-2 rounded-lg ${
-                !newStudent.barak 
+                !newStudent.barak
                   ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                   : 'bg-blue-500 text-white hover:bg-blue-600'
               }`}

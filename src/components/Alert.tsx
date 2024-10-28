@@ -6,11 +6,16 @@ type AlertType = 'success' | 'error' | 'info' | 'warning';
 interface AlertProps {
   type: AlertType;
   message: string;
-  duration?: number;
+  duration?: number; // Durasi dalam milidetik
   onClose?: () => void;
 }
 
-const Alert: React.FC<AlertProps> = ({ type, message, duration = 3000, onClose }) => {
+const Alert: React.FC<AlertProps> = ({ 
+  type, 
+  message, 
+  duration = 3000, // Default 3 detik
+  onClose 
+}) => {
   const [isVisible, setIsVisible] = useState(true);
 
   useEffect(() => {
@@ -39,7 +44,7 @@ const Alert: React.FC<AlertProps> = ({ type, message, duration = 3000, onClose }
   };
 
   return (
-    <div className={`fixed top-20 right-4 z-50 p-4 rounded-md border-l-4 ${alertClasses[type]} flex items-center shadow-lg`}>
+    <div className={`fixed top-4 right-4 z-[100] p-4 rounded-md border-l-4 ${alertClasses[type]} flex items-center shadow-lg`}>
       {icons[type]}
       <span>{message}</span>
     </div>

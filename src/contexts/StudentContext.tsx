@@ -43,8 +43,15 @@ export const StudentProvider: React.FC<{ children: React.ReactNode }> = ({ child
     });
   }, []);
 
-  const uploadPhoto = async (file: File, studentId: string): Promise<string> => {
-    const fileRef = storageRef(storage, `student-photos/${studentId}/${file.name}`);
+  const uploadPhoto = async (file: File, studentId: string, student: Omit<Student, 'id'>): Promise<string> => {
+    // Get file extension
+    const extension = file.name.split('.').pop()?.toLowerCase() || '';
+    
+    // Create filename: nama_siswa_kelas_barak.extension
+    const fileName = `${student.fullName.replace(/\s+/g, '_')}_${student.class}_${student.barak.replace(/\s+/g, '_')}.${extension}`;
+    
+    // Create reference with new filename
+    const fileRef = storageRef(storage, `student-photos/${studentId}/${fileName}`);
     await uploadBytes(fileRef, file);
     return getDownloadURL(fileRef);
   };
@@ -54,7 +61,7 @@ export const StudentProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const newStudentRef = push(studentsRef);
     
     if (photoFile) {
-      const photoUrl = await uploadPhoto(photoFile, newStudentRef.key!);
+      const photoUrl = await uploadPhoto(photoFile, newStudentRef.key!, student);
       await update(newStudentRef, { ...student, photoUrl });
     } else {
       await update(newStudentRef, student);
@@ -65,7 +72,7 @@ export const StudentProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const studentRef = ref(db, `students/${id}`);
     
     if (photoFile) {
-      const photoUrl = await uploadPhoto(photoFile, id);
+      const photoUrl = await uploadPhoto(photoFile, id, updatedStudent);
       await update(studentRef, { ...updatedStudent, photoUrl });
     } else {
       await update(studentRef, updatedStudent);
