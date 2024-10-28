@@ -1,10 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { RosterEntry, Teacher } from '../types';
-import RosterForm from './RosterForm';
-import { ChevronDown, ChevronUp, Edit, Trash2, Plus, X, Calendar, Search } from 'lucide-react';
 import { useAttendance } from '../contexts/AttendanceContext';
+import RosterForm from './RosterForm';
+import { ChevronDown, ChevronUp, Edit, Trash2, Plus, Calendar, Search } from 'lucide-react';
+import Modal from './Modal';
 
-// Tambahkan interface untuk AttendanceDetail
+interface AttendanceRecord {
+  id: string;
+  rosterId: string;
+  date: string;
+  presentHours: number[];
+  keterangan: string;
+}
+
+// Komponen AttendanceDetail
 interface AttendanceDetailProps {
   teacherId: string;
   teacherName: string;
@@ -12,26 +21,29 @@ interface AttendanceDetailProps {
   roster: RosterEntry[];
 }
 
-// Komponen AttendanceDetail
-const AttendanceDetail: React.FC<AttendanceDetailProps> = ({ teacherId, teacherName, onClose, roster }) => {
+const AttendanceDetail: React.FC<AttendanceDetailProps> = ({ 
+  teacherId, 
+  teacherName, 
+  onClose, 
+  roster 
+}) => {
   const { attendanceRecords, deleteAttendanceRecord } = useAttendance();
   const [selectedDate, setSelectedDate] = useState<string>('');
 
   // Filter attendance records untuk guru ini
-  const teacherAttendance = attendanceRecords.filter(record => {
+  const teacherAttendance = attendanceRecords.filter((record: AttendanceRecord) => {
     const rosterEntry = roster.find(r => r.id === record.rosterId);
     return rosterEntry?.teacherId === teacherId;
   });
 
-  // Group attendance by date dengan pengecekan null/undefined
-  const groupedAttendance = teacherAttendance.reduce((acc, record) => {
+  // Group attendance by date
+  const groupedAttendance = teacherAttendance.reduce((acc: Record<string, AttendanceRecord[]>, record: AttendanceRecord) => {
     if (!record || !record.date) return acc;
     
     if (!acc[record.date]) {
       acc[record.date] = [];
     }
     
-    // Pastikan record memiliki semua properti yang diperlukan
     const safeRecord = {
       ...record,
       presentHours: record.presentHours || [],
@@ -40,7 +52,7 @@ const AttendanceDetail: React.FC<AttendanceDetailProps> = ({ teacherId, teacherN
     
     acc[record.date].push(safeRecord);
     return acc;
-  }, {} as Record<string, typeof attendanceRecords>);
+  }, {});
 
   const handleDelete = async (attendanceId: string) => {
     if (window.confirm('Apakah Anda yakin ingin menghapus data kehadiran ini?')) {
@@ -49,107 +61,90 @@ const AttendanceDetail: React.FC<AttendanceDetailProps> = ({ teacherId, teacherN
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-hidden">
-      <div className="fixed inset-0 bg-black opacity-40" onClick={onClose}></div>
-      
-      <div className="fixed inset-0 flex items-center justify-center p-4">
-        <div className="bg-white w-full max-w-lg rounded-lg shadow-xl max-h-[90vh] flex flex-col relative">
-          <div className="p-4 border-b flex-shrink-0">
-            <div className="flex justify-between items-center">
-              <h2 className="text-lg font-semibold">
-                Detail Kehadiran - {teacherName}
-              </h2>
-              <button
-                onClick={onClose}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <X size={20} />
-              </button>
-            </div>
-          </div>
-          
-          <div className="flex-1 overflow-y-auto p-4">
-            <div className="mb-4">
-              <input
-                type="date"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                className="w-full p-2 border rounded"
-              />
-            </div>
-            
-            {/* Konten detail kehadiran tetap sama */}
-            <div className="space-y-4">
-              {Object.entries(groupedAttendance)
-                .filter(([date]) => !selectedDate || date === selectedDate)
-                .sort(([dateA], [dateB]) => new Date(dateB).getTime() - new Date(dateA).getTime())
-                .map(([date, records]) => (
-                  <div key={date} className="border rounded-lg p-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center space-x-2">
-                        <Calendar className="text-gray-500" size={20} />
-                        <span className="font-semibold">
-                          {new Date(date).toLocaleDateString('id-ID', {
-                            weekday: 'long',
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric'
-                          })}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="space-y-3">
-                      {records.map(record => {
-                        if (!record || !record.id) return null;
-                        
-                        const rosterEntry = roster.find(r => r.id === record.rosterId);
-                        if (!rosterEntry) return null;
-
-                        // Hitung jam yang tidak masuk
-                        const missingHours = rosterEntry.hours.filter(
-                          hour => !record.presentHours?.includes(hour)
-                        );
-                        
-                        return (
-                          <div key={record.id} className="flex items-center justify-between bg-gray-50 p-3 rounded">
-                            <div>
-                              <div className="font-medium">{rosterEntry.classId}</div>
-                              <div className="text-sm text-gray-500">
-                                Jam Hadir: JP {record.presentHours?.sort((a, b) => a - b).map(h => ` ${h}`).join(',')}
-                              </div>
-                              {missingHours.length > 0 && (
-                                <div className="text-sm text-red-500">
-                                  Jam Tidak Hadir: JP {missingHours.sort((a, b) => a - b).map(h => ` ${h}`).join(',')}
-                                </div>
-                              )}
-                              {record.keterangan && (
-                                <div className="text-sm text-gray-600 mt-1">
-                                  Keterangan: {record.keterangan}
-                                </div>
-                              )}
-                            </div>
-                            <button
-                              onClick={() => handleDelete(record.id)}
-                              className="text-red-500 hover:text-red-700"
-                            >
-                              <Trash2 size={18} />
-                            </button>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ))}
-            </div>
-            {Object.keys(groupedAttendance).length === 0 && (
-              <div className="text-center text-gray-500 py-8">
-                Tidak ada data kehadiran
-              </div>
-            )}
-          </div>
+    <Modal
+      isOpen={true}
+      onClose={onClose}
+      title={`Detail Kehadiran - ${teacherName}`}
+      maxWidth="max-w-lg"
+    >
+      <div className="space-y-4">
+        <div className="mb-4">
+          <input
+            type="date"
+            value={selectedDate}
+            onChange={(e) => setSelectedDate(e.target.value)}
+            className="w-full p-2 border rounded"
+          />
         </div>
+        
+        <div className="space-y-4">
+          {Object.entries(groupedAttendance)
+            .filter(([date]) => !selectedDate || date === selectedDate)
+            .sort(([dateA], [dateB]) => new Date(dateB).getTime() - new Date(dateA).getTime())
+            .map(([date, records]) => (
+              <div key={date} className="border rounded-lg p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center space-x-2">
+                    <Calendar className="text-gray-500" size={20} />
+                    <span className="font-semibold">
+                      {new Date(date).toLocaleDateString('id-ID', {
+                        weekday: 'long',
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                      })}
+                    </span>
+                  </div>
+                </div>
+                <div className="space-y-3">
+                  {(records as AttendanceRecord[]).map((record: AttendanceRecord) => {
+                    if (!record || !record.id) return null;
+                    
+                    const rosterEntry = roster.find(r => r.id === record.rosterId);
+                    if (!rosterEntry) return null;
+
+                    const missingHours = rosterEntry.hours.filter(
+                      hour => !record.presentHours?.includes(hour)
+                    );
+                    
+                    return (
+                      <div key={record.id} className="flex items-center justify-between bg-gray-50 p-3 rounded">
+                        <div>
+                          <div className="font-medium">{rosterEntry.classId}</div>
+                          <div className="text-sm text-gray-500">
+                            Jam Hadir: JP {record.presentHours?.sort((a: number, b: number) => a - b).map((h: number) => ` ${h}`).join(',')}
+                          </div>
+                          {missingHours.length > 0 && (
+                            <div className="text-sm text-red-500">
+                              Jam Tidak Hadir: JP {missingHours.sort((a, b) => a - b).map(h => ` ${h}`).join(',')}
+                            </div>
+                          )}
+                          {record.keterangan && (
+                            <div className="text-sm text-gray-600 mt-1">
+                              Keterangan: {record.keterangan}
+                            </div>
+                          )}
+                        </div>
+                        <button
+                          onClick={() => handleDelete(record.id)}
+                          className="text-red-500 hover:text-red-700"
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+        </div>
+        {Object.keys(groupedAttendance).length === 0 && (
+          <div className="text-center text-gray-500 py-8">
+            Tidak ada data kehadiran
+          </div>
+        )}
       </div>
-    </div>
+    </Modal>
   );
 };
 
@@ -210,23 +205,10 @@ const RosterTable: React.FC<RosterTableProps> = ({ roster, teachers, onDelete, o
     return a.classId.localeCompare(b.classId);
   };
 
-  // Tambahkan useEffect untuk mengatur scroll
-  useEffect(() => {
-    if (isModalOpen || showAttendanceDetail) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'unset';
-    }
-
-    return () => {
-      document.body.style.overflow = 'unset';
-    };
-  }, [isModalOpen, showAttendanceDetail]);
-
   return (
     <div className="space-y-6">
-      {/* Search and Add */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
+      {/* Header dengan Search dan Actions */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
         <div className="relative w-full sm:w-64">
           <input
             type="text"
@@ -318,72 +300,34 @@ const RosterTable: React.FC<RosterTableProps> = ({ roster, teachers, onDelete, o
             </div>
           );
         })}
-
-        {filteredTeachers.length === 0 && (
-          <div className="text-center py-8">
-            <Calendar className="mx-auto h-12 w-12 text-gray-400" />
-            <h3 className="mt-2 text-sm font-medium text-gray-900">Tidak ada guru</h3>
-            <p className="mt-1 text-sm text-gray-500">
-              {searchTerm ? 'Tidak ada hasil pencarian' : 'Mulai dengan menambahkan jadwal'}
-            </p>
-          </div>
-        )}
       </div>
 
-      {/* Modal Form */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 overflow-hidden">
-          <div className="fixed inset-0 bg-black opacity-40" onClick={() => {
-            setIsModalOpen(false);
-            setEditingEntry(null);
-            setAddingForTeacher(null);
-          }}></div>
-          
-          <div className="fixed inset-0 flex items-center justify-center p-4">
-            <div className="bg-white w-full max-w-lg rounded-lg shadow-xl max-h-[90vh] flex flex-col relative">
-              <div className="p-4 border-b flex-shrink-0">
-                <div className="flex justify-between items-center">
-                  <h2 className="text-lg font-semibold">
-                    {editingEntry ? 'Edit Jadwal' : 'Tambah Jadwal'}
-                  </h2>
-                  <button
-                    onClick={() => {
-                      setIsModalOpen(false);
-                      setEditingEntry(null);
-                      setAddingForTeacher(null);
-                    }}
-                    className="text-gray-500 hover:text-gray-700"
-                  >
-                    <X size={20} />
-                  </button>
-                </div>
-              </div>
-              
-              <div className="flex-1 overflow-y-auto">
-                <RosterForm
-                  teachers={teachers.map(teacher => ({
-                    ...teacher,
-                    name: `${teacher.name} (${teacher.code})`
-                  }))}
-                  classes={classes}
-                  onSubmit={(entry) => {
-                    if (editingEntry) {
-                      onUpdate(editingEntry.id, entry);
-                    } else {
-                      onAdd({ ...entry, teacherId: addingForTeacher! });
-                    }
-                    setIsModalOpen(false);
-                    setEditingEntry(null);
-                    setAddingForTeacher(null);
-                  }}
-                  initialData={editingEntry}
-                  preselectedTeacherId={addingForTeacher}
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* RosterForm Modal */}
+      <RosterForm
+        isOpen={isModalOpen}
+        onClose={() => {
+          setIsModalOpen(false);
+          setEditingEntry(null);
+          setAddingForTeacher(null);
+        }}
+        teachers={teachers.map(teacher => ({
+          ...teacher,
+          name: `${teacher.name} (${teacher.code})`
+        }))}
+        classes={classes}
+        onSubmit={(entry) => {
+          if (editingEntry) {
+            onUpdate(editingEntry.id, entry);
+          } else {
+            onAdd({ ...entry, teacherId: addingForTeacher! });
+          }
+          setIsModalOpen(false);
+          setEditingEntry(null);
+          setAddingForTeacher(null);
+        }}
+        initialData={editingEntry}
+        preselectedTeacherId={addingForTeacher}
+      />
 
       {/* AttendanceDetail Modal */}
       {showAttendanceDetail && (

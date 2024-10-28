@@ -5,11 +5,12 @@
 @tailwind utilities;
 
 @layer base {
-  html {
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  html, body, #root {
+    @apply h-full;
   }
 
   body {
+    @apply overflow-x-hidden;
     @apply text-base bg-gradient-to-br from-gray-50 via-blue-50/10 to-gray-100;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -20,185 +21,77 @@
     @apply w-full max-w-[1920px] mx-auto px-3 sm:px-4 lg:px-6;
   }
 
-  /* Semua div yang langsung di dalam main akan menggunakan max-width universal */
+  /* Semua div yang langsung di dalam main akan menggunakan max-width universal 
   main > div {
     @apply main-container;
   }
+  */
 
-  /* Semua div yang langsung di dalam section juga akan menggunakan max-width universal */
+  /* Semua div yang langsung di dalam section juga akan menggunakan max-width universal
   section > div {
     @apply main-container;
   }
+*/
 
-  /* Responsive Typography */
-  h1, .h1 {
-    @apply text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-800;
+  
+  
+  /* Animations */
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
 
-  h2, .h2 {
-    @apply text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-800;
+  .animate-fadeIn {
+    animation: fadeIn 0.3s ease-out forwards;
   }
 
-  h3, .h3 {
-    @apply text-xl sm:text-2xl lg:text-3xl font-bold text-gray-800;
+  /* Tambahkan di bagian bawah file */
+  .stat-card {
+    border-bottom-width: 4px;
+    transition: all 0.3s ease;
+    border-top: none;
+    border-left: none;
+    border-right: none;
+    background: rgba(255, 255, 255, 0.9);
+    position: relative;
+    overflow: hidden;
   }
 
-  h4, .h4 {
-    @apply text-lg sm:text-xl lg:text-2xl font-bold text-gray-800;
-  }
-
-  h5, .h5 {
-    @apply text-base sm:text-lg lg:text-xl font-bold text-gray-800;
-  }
-
-  h6, .h6 {
-    @apply text-sm sm:text-base lg:text-lg font-bold text-gray-800;
-  }
-
-  /* Responsive Spacing */
-  .section-padding {
-    @apply p-4 sm:p-6 lg:p-8;
-  }
-
-  .content-margin {
-    @apply mb-4 sm:mb-6 lg:mb-8;
-  }
-
-  /* Responsive Card */
-  .card-responsive {
-    @apply bg-white shadow-sm rounded-lg p-3 sm:p-4;
-  }
-
-  /* Responsive Grid */
-  .grid-responsive {
-    @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6;
-  }
-
-  /* Responsive Table Container */
-  .table-container {
-    @apply overflow-x-auto bg-white shadow-md rounded-lg;
-  }
-
-  /* Responsive Form Elements */
-  input, select, textarea {
-    @apply w-full p-2 sm:p-3 border rounded-lg focus:ring-2 focus:ring-blue-500;
-  }
-
-  /* Responsive Buttons */
-  button {
-    @apply px-4 py-2 sm:px-6 sm:py-3 rounded-lg transition-colors duration-200;
-  }
-
-  /* Primary Button */
-  .btn-primary {
-    @apply bg-blue-500 text-white hover:bg-blue-600;
-  }
-
-  /* Secondary Button */
-  .btn-secondary {
-    @apply bg-gray-200 text-gray-800 hover:bg-gray-300;
-  }
-
-  /* Danger Button */
-  .btn-danger {
-    @apply bg-red-500 text-white hover:bg-red-600;
-  }
-
-  /* Success Button */
-  .btn-success {
-    @apply bg-green-500 text-white hover:bg-green-600;
-  }
-
-  /* Modal Container */
-  .modal-container {
-    @apply fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-50 flex items-center justify-center p-4;
-  }
-
-  /* Modal Content */
-  .modal-content {
-    @apply bg-white w-full max-w-2xl rounded-lg shadow-xl overflow-hidden;
-  }
-
-  /* Modal Header */
-  .modal-header {
-    @apply p-4 sm:p-6 bg-gray-50 border-b flex justify-between items-center;
-  }
-
-  /* Modal Body */
-  .modal-body {
-    @apply p-4 sm:p-6;
-  }
-
-  /* Custom Scrollbar */
-  ::-webkit-scrollbar {
-    @apply w-2;
-  }
-
-  ::-webkit-scrollbar-track {
-    @apply bg-gray-100 rounded-full;
-  }
-
-  ::-webkit-scrollbar-thumb {
-    @apply bg-gray-300 rounded-full hover:bg-gray-400;
-  }
-}
-
-/* Animations */
-@keyframes fadeIn {
-  from {
+  .stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(
+      to right bottom,
+      rgba(255, 255, 255, 0.2),
+      rgba(255, 255, 255, 0.05)
+    );
     opacity: 0;
-    transform: translateY(10px);
+    transition: opacity 0.3s ease;
   }
-  to {
+
+  .stat-card:hover::before {
     opacity: 1;
-    transform: translateY(0);
   }
-}
 
-.animate-fadeIn {
-  animation: fadeIn 0.3s ease-out forwards;
+  .stat-card.border-blue-600:hover { border-bottom-color: rgb(37, 99, 235); }
+  .stat-card.border-green-600:hover { border-bottom-color: rgb(22, 163, 74); }
+  .stat-card.border-emerald-600:hover { border-bottom-color: rgb(5, 150, 105); }
+  .stat-card.border-yellow-600:hover { border-bottom-color: rgb(202, 138, 4); }
+  .stat-card.border-indigo-600:hover { border-bottom-color: rgb(79, 70, 229); }
+  .stat-card.border-rose-600:hover { border-bottom-color: rgb(225, 29, 72); }
+  .stat-card.border-cyan-600:hover { border-bottom-color: rgb(8, 145, 178); }
+  .stat-card.border-red-600:hover { border-bottom-color: rgb(220, 38, 38); }
+  .stat-card.border-violet-600:hover { border-bottom-color: rgb(124, 58, 237); }
+  .stat-card.border-amber-600:hover { border-bottom-color: rgb(217, 119, 6); }
+  .stat-card.border-pink-600:hover { border-bottom-color: rgb(219, 39, 119); }
 }
-
-/* Tambahkan di bagian bawah file */
-.stat-card {
-  border-bottom-width: 4px;
-  transition: all 0.3s ease;
-  border-top: none;
-  border-left: none;
-  border-right: none;
-  background: rgba(255, 255, 255, 0.9);
-  position: relative;
-  overflow: hidden;
-}
-
-.stat-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(
-    to right bottom,
-    rgba(255, 255, 255, 0.2),
-    rgba(255, 255, 255, 0.05)
-  );
-  opacity: 0;
-  transition: opacity 0.3s ease;
-}
-
-.stat-card:hover::before {
-  opacity: 1;
-}
-
-.stat-card.border-blue-600:hover { border-bottom-color: rgb(37, 99, 235); }
-.stat-card.border-green-600:hover { border-bottom-color: rgb(22, 163, 74); }
-.stat-card.border-emerald-600:hover { border-bottom-color: rgb(5, 150, 105); }
-.stat-card.border-yellow-600:hover { border-bottom-color: rgb(202, 138, 4); }
-.stat-card.border-indigo-600:hover { border-bottom-color: rgb(79, 70, 229); }
-.stat-card.border-rose-600:hover { border-bottom-color: rgb(225, 29, 72); }
-.stat-card.border-cyan-600:hover { border-bottom-color: rgb(8, 145, 178); }
-.stat-card.border-red-600:hover { border-bottom-color: rgb(220, 38, 38); }
-.stat-card.border-violet-600:hover { border-bottom-color: rgb(124, 58, 237); }
-.stat-card.border-amber-600:hover { border-bottom-color: rgb(217, 119, 6); }
-.stat-card.border-pink-600:hover { border-bottom-color: rgb(219, 39, 119); }

@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Teacher } from '../types';
 import { Users, Edit, Trash2, Search, UserPlus, History } from 'lucide-react';
-import TeacherForm from './TeacherForm'; // tambah import
+import TeacherForm from './TeacherForm';
 
 type TabType = 'active' | 'deleted';
 
@@ -46,22 +46,12 @@ const TeacherList: React.FC<TeacherListProps> = ({
 
   return (
     <>
-      {showModal && (
-        <div className="fixed inset-0 z-50 overflow-hidden">
-          <div className="fixed inset-0 bg-black opacity-40" onClick={onCloseModal}></div>
-          
-          {/* Tambahkan overflow-y-auto dan max-h-screen */}
-          <div className="fixed inset-0 overflow-y-auto">
-            <div className="flex items-center justify-center min-h-screen p-4">
-              <TeacherForm 
-                onSubmit={onSubmit} 
-                initialTeacher={selectedTeacher} 
-                onClose={onCloseModal} 
-              />
-            </div>
-          </div>
-        </div>
-      )}
+      <TeacherForm 
+        isOpen={showModal}
+        onClose={onCloseModal}
+        onSubmit={onSubmit}
+        initialTeacher={selectedTeacher}
+      />
 
       <div className="space-y-4 p-3 sm:p-4">
         {/* Header with Search and Add */}

@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { RosterEntry, Teacher, Attendance } from '../types';
 import { Check } from 'lucide-react';
+// Menghapus import yang tidak digunakan
+// import Modal from './Modal';
 
 interface AttendanceTableProps {
   roster: RosterEntry[];
@@ -138,9 +140,6 @@ const AttendanceTable: React.FC<AttendanceTableProps> = ({
     <div className="space-y-6">
       {/* Date Selection */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          Tanggal
-        </label>
         <input
           type="date"
           value={currentDate}

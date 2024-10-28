@@ -10,6 +10,7 @@ import useAlert from '../hooks/useAlert';
 import ConfirmationModal from './ConfirmationModal';
 import useConfirmation from '../hooks/useConfirmation';
 import { User } from '../contexts/AuthContext';
+import Modal from './Modal';
 
 interface UserManagementProps {
   onUserAdded?: () => void;
@@ -496,18 +497,316 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
   }, [openBarakDropdown]);
 
   return (
-    <div className="space-y-4"> {/* Kurangi spacing */}
+    <>
       {/* Alert dan ConfirmationModal */}
-      {alert && <Alert type={alert.type} message={alert.message} onClose={hideAlert} />}
+      {alert && (
+        <Alert
+          type={alert.type}
+          message={alert.message}
+          onClose={hideAlert}
+        />
+      )}
+
       <ConfirmationModal
         isOpen={isOpen}
         onClose={handleCancel}
         onConfirm={handleConfirm}
-        title={options?.title ?? ''} // Gunakan nullish coalescing untuk memastikan selalu ada nilai string
-        message={options?.message ?? ''} // Gunakan nullish coalescing untuk memastikan selalu ada nilai string
-        confirmText={options?.confirmText ?? 'Konfirmasi'} // Berikan nilai default
-        cancelText={options?.cancelText ?? 'Batal'} // Berikan nilai default
+        title={options?.title ?? ''}
+        message={options?.message ?? ''}
+        confirmText={options?.confirmText}
+        cancelText={options?.cancelText}
       />
+
+      {/* User Form Modal */}
+      <Modal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        title={editingUser ? 'Edit Pengguna' : 'Tambah Pengguna Baru'}
+      >
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Kolom Kiri */}
+            <div className="space-y-4">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Email
+                  </label>
+                  {!editingUser && (
+                    <span className="text-xs text-gray-500 italic">
+                      * Pastikan email benar-benar ada / tersedia
+                    </span>
+                  )}
+                </div>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                  placeholder="Masukkan email"
+                  disabled={editingUser !== null}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Username
+                </label>
+                <input
+                  type="text"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value.toLowerCase())}
+                  required
+                  minLength={3}
+                  className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                  placeholder="Minimal 3 karakter"
+                  disabled={editingUser !== null}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  {editingUser ? 'Password Baru (opsional)' : 'Password'}
+                </label>
+                <div className="relative">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required={!editingUser}
+                    className="w-full p-2.5 pr-10 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                    placeholder={editingUser ? 'Kosongkan jika tidak diubah' : 'Masukkan password'}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-2 top-2.5 text-gray-400 hover:text-gray-600"
+                  >
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Kolom Kanan */}
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Nama Lengkap
+                </label>
+                <input
+                  type="text"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  required
+                  className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                  placeholder="Masukkan nama lengkap"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Hak Akses
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  {getAvailableRoles().map(({ value, label }) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => setRole(value)}
+                      className={`p-2.5 rounded-lg transition-colors ${
+                        role === value
+                          ? 'bg-blue-500 text-white'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Barak Selection - Full Width */}
+          {showBarakField(role) && (
+            <div className="pt-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                {role === 'pengasuh' ? 'Barak yang Diawasi' : 'Hak Akses Barak'}
+              </label>
+              {role === 'admin_asrama' ? (
+                <div className="space-y-4">
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <div className="flex items-center gap-2">
+                      <div className="p-2 bg-blue-100 rounded-lg">
+                        <Users size={20} className="text-blue-600" />
+                      </div>
+                      <div>
+                        <p className="font-medium text-blue-900">Admin Asrama</p>
+                        <p className="text-sm text-blue-700">
+                          Dapat mengelola seluruh barak yang tersedia
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="bg-white p-4 rounded-lg border border-gray-200">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {baraks.map((barak) => (
+                        <div
+                          key={barak.id}
+                          className={`p-4 rounded-lg ${
+                            barak.gender === 'Laki-laki'
+                              ? 'bg-blue-500 text-white'
+                              : 'bg-pink-500 text-white'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="font-medium">{barak.name}</p>
+                              <p className="text-sm opacity-90">{barak.gender}</p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                // Bagian untuk pengasuh tetap sama
+                <div className="bg-white p-4 rounded-lg border border-gray-200">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {baraks.map((barak) => (
+                      <div
+                        key={barak.id}
+                        onClick={() => {
+                          if (selectedBaraks.includes(barak.id)) {
+                            setSelectedBaraks(prev => prev.filter(id => id !== barak.id));
+                          } else {
+                            setSelectedBaraks(prev => [...prev, barak.id]);
+                          }
+                        }}
+                        className={`p-4 rounded-lg border-2 cursor-pointer transition-all duration-200 ${
+                          selectedBaraks.includes(barak.id)
+                            ? barak.gender === 'Laki-laki'
+                              ? 'bg-blue-500 text-white border-blue-600'
+                              : 'bg-pink-500 text-white border-pink-600'
+                            : 'border-gray-200 hover:border-gray-300'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className={`font-medium ${selectedBaraks.includes(barak.id) ? 'text-white' : 'text-gray-900'}`}>
+                              {barak.name}
+                            </p>
+                            <p className={`text-sm ${selectedBaraks.includes(barak.id) ? 'text-white opacity-90' : 'text-gray-500'}`}>
+                              {barak.gender}
+                            </p>
+                          </div>
+                          {role === 'pengasuh' && (
+                            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                              selectedBaraks.includes(barak.id)
+                                ? 'border-white bg-white'
+                                : 'border-gray-300'
+                            }`}>
+                              {selectedBaraks.includes(barak.id) && (
+                                <svg className={`w-3 h-3 ${
+                                  barak.gender === 'Laki-laki' ? 'text-blue-500' : 'text-pink-500'
+                                }`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                </svg>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Action Buttons */}
+          <div className="flex justify-end space-x-3 pt-4 border-t">
+            <button
+              type="button"
+              onClick={() => setIsModalOpen(false)}
+              className="px-4 py-2.5 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300"
+            >
+              Batal
+            </button>
+            <button
+              type="submit"
+              className="px-4 py-2.5 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+            >
+              {editingUser ? 'Update' : 'Simpan'}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Change Password Modal */}
+      <Modal
+        isOpen={isChangePasswordModalOpen}
+        onClose={() => {
+          setIsChangePasswordModalOpen(false);
+          setUserForPasswordChange(null);
+        }}
+        title={`Ganti Password - ${userForPasswordChange?.username}`}
+      >
+        <form onSubmit={handleChangePassword} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Password Baru
+            </label>
+            <div className="relative">
+              <input
+                type={showNewPassword ? "text" : "password"}
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                required
+                className="w-full p-2.5 pr-10 text-sm border rounded-md"
+              />
+              <button
+                type="button"
+                onClick={() => setShowNewPassword(!showNewPassword)}
+                className="absolute right-2 top-2.5 text-gray-400 hover:text-gray-600"
+              >
+                {showNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
+          </div>
+          <div className="flex justify-end space-x-3">
+            <button
+              type="button"
+              onClick={() => {
+                setIsChangePasswordModalOpen(false);
+                setUserForPasswordChange(null);
+              }}
+              className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300"
+              disabled={isLoading}
+            >
+              Batal
+            </button>
+            <button
+              type="submit"
+              className={`px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 flex items-center gap-2
+                ${isLoading ? 'opacity-75 cursor-not-allowed' : ''}`}
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <>
+                  <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></span>
+                  <span>Menyimpan...</span>
+                </>
+              ) : (
+                'Simpan'
+              )}
+            </button>
+          </div>
+        </form>
+      </Modal>
 
       {/* Header dengan Search dan Add */}
       <div className="flex flex-col sm:flex-row justify-between items-center gap-3">
@@ -650,338 +949,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
           </p>
         </div>
       )}
-
-      {/* Modal Form */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 overflow-hidden">
-          <div className="fixed inset-0 bg-black opacity-40" onClick={() => setIsModalOpen(false)}></div>
-          
-          <div className="fixed inset-0 flex items-center justify-center p-4">
-            <div className="bg-white w-full max-w-[1000px] rounded-lg shadow-xl max-h-[90vh] flex flex-col relative">
-              <div className="p-4 border-b flex-shrink-0">
-                <div className="flex justify-between items-center">
-                  <h2 className="text-lg font-semibold">
-                    {editingUser ? 'Edit User' : 'Tambah User Baru'}
-                  </h2>
-                  <button onClick={() => setIsModalOpen(false)} className="text-gray-500 hover:text-gray-700">
-                    <X size={20} />
-                  </button>
-                </div>
-              </div>
-
-              <div className="flex-1 overflow-y-auto p-4">
-                <form onSubmit={handleSubmit} className="space-y-6">
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {/* Kolom Kiri */}
-                    <div className="space-y-4">
-                      <div>
-                        <div className="flex items-center gap-2 mb-1">
-                          <label className="block text-sm font-medium text-gray-700">
-                            Email
-                          </label>
-                          {!editingUser && (
-                            <span className="text-xs text-gray-500 italic">
-                              * Pastikan email benar-benar ada / tersedia
-                            </span>
-                          )}
-                        </div>
-                        <input
-                          type="email"
-                          value={email}
-                          onChange={(e) => setEmail(e.target.value)}
-                          required
-                          className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                          placeholder="Masukkan email"
-                          disabled={editingUser !== null}
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Username
-                        </label>
-                        <input
-                          type="text"
-                          value={username}
-                          onChange={(e) => setUsername(e.target.value.toLowerCase())}
-                          required
-                          minLength={3}
-                          className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                          placeholder="Minimal 3 karakter"
-                          disabled={editingUser !== null}
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          {editingUser ? 'Password Baru (opsional)' : 'Password'}
-                        </label>
-                        <div className="relative">
-                          <input
-                            type={showPassword ? "text" : "password"}
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            required={!editingUser}
-                            className="w-full p-2.5 pr-10 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                            placeholder={editingUser ? 'Kosongkan jika tidak diubah' : 'Masukkan password'}
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setShowPassword(!showPassword)}
-                            className="absolute right-2 top-2.5 text-gray-400 hover:text-gray-600"
-                          >
-                            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Kolom Kanan */}
-                    <div className="space-y-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Nama Lengkap
-                        </label>
-                        <input
-                          type="text"
-                          value={fullName}
-                          onChange={(e) => setFullName(e.target.value)}
-                          required
-                          className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                          placeholder="Masukkan nama lengkap"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Hak Akses
-                        </label>
-                        <div className="grid grid-cols-2 gap-2">
-                          {getAvailableRoles().map(({ value, label }) => (
-                            <button
-                              key={value}
-                              type="button"
-                              onClick={() => setRole(value)}
-                              className={`p-2.5 rounded-lg transition-colors ${
-                                role === value
-                                  ? 'bg-blue-500 text-white'
-                                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                              }`}
-                            >
-                              {label}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Barak Selection - Full Width */}
-                  {showBarakField(role) && (
-                    <div className="pt-2">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        {role === 'pengasuh' ? 'Barak yang Diawasi' : 'Hak Akses Barak'}
-                      </label>
-                      {role === 'admin_asrama' ? (
-                        <div className="space-y-4">
-                          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                            <div className="flex items-center gap-2">
-                              <div className="p-2 bg-blue-100 rounded-lg">
-                                <Users size={20} className="text-blue-600" />
-                              </div>
-                              <div>
-                                <p className="font-medium text-blue-900">Admin Asrama</p>
-                                <p className="text-sm text-blue-700">
-                                  Dapat mengelola seluruh barak yang tersedia
-                                </p>
-                              </div>
-                            </div>
-                          </div>
-                          <div className="bg-white p-4 rounded-lg border border-gray-200">
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                              {baraks.map((barak) => (
-                                <div
-                                  key={barak.id}
-                                  className={`p-4 rounded-lg ${
-                                    barak.gender === 'Laki-laki'
-                                      ? 'bg-blue-500 text-white'
-                                      : 'bg-pink-500 text-white'
-                                  }`}
-                                >
-                                  <div className="flex items-center justify-between">
-                                    <div>
-                                      <p className="font-medium">{barak.name}</p>
-                                      <p className="text-sm opacity-90">{barak.gender}</p>
-                                    </div>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
-                      ) : (
-                        // Bagian untuk pengasuh tetap sama
-                        <div className="bg-white p-4 rounded-lg border border-gray-200">
-                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {baraks.map((barak) => (
-                              <div
-                                key={barak.id}
-                                onClick={() => {
-                                  if (selectedBaraks.includes(barak.id)) {
-                                    setSelectedBaraks(prev => prev.filter(id => id !== barak.id));
-                                  } else {
-                                    setSelectedBaraks(prev => [...prev, barak.id]);
-                                  }
-                                }}
-                                className={`p-4 rounded-lg border-2 cursor-pointer transition-all duration-200 ${
-                                  selectedBaraks.includes(barak.id)
-                                    ? barak.gender === 'Laki-laki'
-                                      ? 'bg-blue-500 text-white border-blue-600'
-                                      : 'bg-pink-500 text-white border-pink-600'
-                                    : 'border-gray-200 hover:border-gray-300'
-                                }`}
-                              >
-                                <div className="flex items-center justify-between">
-                                  <div>
-                                    <p className={`font-medium ${selectedBaraks.includes(barak.id) ? 'text-white' : 'text-gray-900'}`}>
-                                      {barak.name}
-                                    </p>
-                                    <p className={`text-sm ${selectedBaraks.includes(barak.id) ? 'text-white opacity-90' : 'text-gray-500'}`}>
-                                      {barak.gender}
-                                    </p>
-                                  </div>
-                                  {role === 'pengasuh' && (
-                                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                                      selectedBaraks.includes(barak.id)
-                                        ? 'border-white bg-white'
-                                        : 'border-gray-300'
-                                    }`}>
-                                      {selectedBaraks.includes(barak.id) && (
-                                        <svg className={`w-3 h-3 ${
-                                          barak.gender === 'Laki-laki' ? 'text-blue-500' : 'text-pink-500'
-                                        }`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                        </svg>
-                                      )}
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Action Buttons */}
-                  <div className="flex justify-end space-x-3 pt-4 border-t">
-                    <button
-                      type="button"
-                      onClick={() => setIsModalOpen(false)}
-                      className="px-4 py-2.5 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300"
-                    >
-                      Batal
-                    </button>
-                    <button
-                      type="submit"
-                      className="px-4 py-2.5 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
-                    >
-                      {editingUser ? 'Update' : 'Simpan'}
-                    </button>
-                  </div>
-                </form>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal Ganti Password */}
-      {isChangePasswordModalOpen && (
-        <div className="fixed inset-0 z-50 overflow-hidden">
-          <div className="fixed inset-0 bg-black opacity-40" onClick={() => {
-            setIsChangePasswordModalOpen(false);
-            setUserForPasswordChange(null);
-          }}></div>
-          
-          <div className="fixed inset-0 flex items-center justify-center p-4">
-            <div className="bg-white w-full max-w-[600px] rounded-lg shadow-xl max-h-[90vh] flex flex-col relative">
-              <div className="p-4 border-b flex-shrink-0">
-                <div className="flex justify-between items-center">
-                  <h3 className="text-lg font-semibold">
-                    Ganti Password - {userForPasswordChange?.username}
-                  </h3>
-                  <button
-                    onClick={() => {
-                      setIsChangePasswordModalOpen(false);
-                      setUserForPasswordChange(null);
-                    }}
-                    className="text-gray-500 hover:text-gray-700"
-                  >
-                    <X size={20} />
-                  </button>
-                </div>
-              </div>
-
-              <div className="flex-1 overflow-y-auto p-4">
-                <form onSubmit={handleChangePassword} className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Password Baru
-                    </label>
-                    <div className="relative">
-                      <input
-                        type={showNewPassword ? "text" : "password"}
-                        value={newPassword}
-                        onChange={(e) => setNewPassword(e.target.value)}
-                        required
-                        className="w-full p-2.5 pr-10 text-sm border rounded-md"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowNewPassword(!showNewPassword)}
-                        className="absolute right-2 top-2.5 text-gray-400 hover:text-gray-600"
-                      >
-                        {showNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                      </button>
-                    </div>
-                  </div>
-                  <div className="flex justify-end space-x-3">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsChangePasswordModalOpen(false);
-                        setUserForPasswordChange(null);
-                      }}
-                      className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300"
-                      disabled={isLoading}
-                    >
-                      Batal
-                    </button>
-                    <button
-                      type="submit"
-                      className={`px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 flex items-center gap-2
-                        ${isLoading ? 'opacity-75 cursor-not-allowed' : ''}`}
-                      disabled={isLoading}
-                    >
-                      {isLoading ? (
-                        <>
-                          <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></span>
-                          <span>Menyimpan...</span>
-                        </>
-                      ) : (
-                        'Simpan'
-                      )}
-                    </button>
-                  </div>
-                </form>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
+    </>
   );
 };
 

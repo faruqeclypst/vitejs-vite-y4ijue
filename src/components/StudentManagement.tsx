@@ -3,7 +3,7 @@ import { Student, availableClasses } from '../types';
 import { useStudents } from '../contexts/StudentContext';
 import { useBarak } from '../contexts/BarakContext'; // Ganti useAsrama dengan useBarak
 import Papa from 'papaparse';
-import { Edit, Trash2, Plus, X, FileText, History, Search, Users } from 'lucide-react';
+import { Edit, Trash2, Plus, FileText, History, Search, Users } from 'lucide-react';
 import StudentLeaveHistory from './StudentLeaveHistory';
 import { useAuth } from '../contexts/AuthContext';
 import Alert from '../components/Alert';
@@ -14,6 +14,7 @@ import ConfirmationModal from '../components/ConfirmationModal';
 import useConfirmation from '../hooks/useConfirmation';
 import { exportStudent } from '../utils/exportStudent';
 import { useStudentLeave } from '../contexts/StudentLeaveContext';
+import Modal from '../components/Modal';
 
 // Update interface untuk tab
 type TabType = 'active' | 'deleted';
@@ -678,166 +679,130 @@ const StudentManagement: React.FC = () => {
         )}
       </div>
 
-      {/* Modal Form */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 overflow-hidden">
-          <div className="fixed inset-0 bg-black opacity-40" onClick={() => setIsModalOpen(false)}></div>
-          
-          <div className="fixed inset-0 flex items-center justify-center p-4">
-            <div className="bg-white w-full max-w-lg rounded-lg shadow-xl max-h-[90vh] flex flex-col relative">
-              <div className="p-4 border-b flex-shrink-0">
-                <div className="flex justify-between items-center">
-                  <h2 className="text-lg font-semibold">
-                    {editingStudent ? 'Edit Siswa' : 'Tambah Siswa Baru'}
-                  </h2>
-                  <button onClick={() => setIsModalOpen(false)} className="text-gray-500 hover:text-gray-700">
-                    <X size={20} />
-                  </button>
-                </div>
-              </div>
+      {/* Student Form Modal */}
+      <Modal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        title={editingStudent ? 'Edit Siswa' : 'Tambah Siswa Baru'}
+      >
+        <form onSubmit={handleAddOrUpdateStudent} className="space-y-4">
+          {/* Nama Lengkap */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Nama Lengkap
+            </label>
+            <input
+              type="text"
+              value={newStudent.fullName}
+              onChange={(e) => setNewStudent({ ...newStudent, fullName: e.target.value })}
+              className="w-full p-2.5 text-sm border rounded-md"
+              required
+            />
+          </div>
 
-              <div className="flex-1 overflow-y-auto p-4">
-                <form onSubmit={handleAddOrUpdateStudent} className="space-y-4">
-                  {/* Nama Lengkap */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Nama Lengkap
-                    </label>
-                    <input
-                      type="text"
-                      value={newStudent.fullName}
-                      onChange={(e) => setNewStudent({ ...newStudent, fullName: e.target.value })}
-                      className="w-full p-2.5 text-sm border rounded-md"
-                      required
-                    />
-                  </div>
-
-                  {/* Tingkat */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Tingkat
-                    </label>
-                    <div className="grid grid-cols-3 gap-2">
-                      {['X', 'XI', 'XII'].map((grade) => (
-                        <button
-                          key={grade}
-                          type="button"
-                          onClick={() => setSelectedGrade(grade as 'X' | 'XI' | 'XII')}
-                          className={`p-2.5 rounded-md transition-colors ${
-                            selectedGrade === grade
-                              ? 'bg-blue-500 text-white'
-                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                          }`}
-                        >
-                          {grade}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Kelas */}
-                  {selectedGrade && (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Kelas
-                      </label>
-                      <div className="grid grid-cols-3 gap-2">
-                        {['1', '2', '3', '4', '5', '6'].map((num) => (
-                          <button
-                            key={num}
-                            type="button"
-                            onClick={() => setNewStudent({ ...newStudent, class: `${selectedGrade}-${num}` })}
-                            className={`p-2.5 rounded-md transition-colors ${
-                              newStudent.class === `${selectedGrade}-${num}`
-                                ? 'bg-blue-500 text-white'
-                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                            }`}
-                          >
-                            {`${selectedGrade}-${num}`}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Barak */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Barak
-                    </label>
-                    <div className="grid grid-cols-2 gap-2 max-h-[200px] overflow-y-auto">
-                      {availableBaraks.map((barak) => (
-                        <button
-                          key={barak.id}
-                          type="button"
-                          onClick={() => handleBarakSelect(barak.name)}
-                          className={`p-2.5 rounded-md transition-colors ${
-                            newStudent.barak === barak.name
-                              ? barak.gender === 'Laki-laki'
-                                ? 'bg-blue-500 text-white'
-                                : 'bg-pink-500 text-white'
-                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                          }`}
-                        >
-                          {barak.name}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Action Buttons */}
-                  <div className="flex justify-end space-x-3 pt-4 border-t">
-                    <button
-                      type="button"
-                      onClick={() => setIsModalOpen(false)}
-                      className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300"
-                    >
-                      Batal
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={!newStudent.barak}
-                      className={`px-4 py-2 rounded-lg ${
-                        !newStudent.barak 
-                          ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                          : 'bg-blue-500 text-white hover:bg-blue-600'
-                      }`}
-                    >
-                      {editingStudent ? 'Update' : 'Simpan'}
-                    </button>
-                  </div>
-                </form>
-              </div>
+          {/* Tingkat */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Tingkat
+            </label>
+            <div className="grid grid-cols-3 gap-2">
+              {['X', 'XI', 'XII'].map((grade) => (
+                <button
+                  key={grade}
+                  type="button"
+                  onClick={() => setSelectedGrade(grade as 'X' | 'XI' | 'XII')}
+                  className={`p-2.5 rounded-md transition-colors ${
+                    selectedGrade === grade
+                      ? 'bg-blue-500 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  {grade}
+                </button>
+              ))}
             </div>
           </div>
-        </div>
-      )}
+
+          {/* Kelas */}
+          {selectedGrade && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Kelas
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                {['1', '2', '3', '4', '5', '6'].map((num) => (
+                  <button
+                    key={num}
+                    type="button"
+                    onClick={() => setNewStudent({ ...newStudent, class: `${selectedGrade}-${num}` })}
+                    className={`p-2.5 rounded-md transition-colors ${
+                      newStudent.class === `${selectedGrade}-${num}`
+                        ? 'bg-blue-500 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    {`${selectedGrade}-${num}`}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Barak */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Barak
+            </label>
+            <div className="grid grid-cols-2 gap-2 max-h-[200px] overflow-y-auto">
+              {availableBaraks.map((barak) => (
+                <button
+                  key={barak.id}
+                  type="button"
+                  onClick={() => handleBarakSelect(barak.name)}
+                  className={`p-2.5 rounded-md transition-colors ${
+                    newStudent.barak === barak.name
+                      ? barak.gender === 'Laki-laki'
+                        ? 'bg-blue-500 text-white'
+                        : 'bg-pink-500 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  {barak.name}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex justify-end space-x-3 pt-4 border-t">
+            <button
+              type="button"
+              onClick={() => setIsModalOpen(false)}
+              className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300"
+            >
+              Batal
+            </button>
+            <button
+              type="submit"
+              disabled={!newStudent.barak}
+              className={`px-4 py-2 rounded-lg ${
+                !newStudent.barak 
+                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  : 'bg-blue-500 text-white hover:bg-blue-600'
+              }`}
+            >
+              {editingStudent ? 'Update' : 'Simpan'}
+            </button>
+          </div>
+        </form>
+      </Modal>
 
       {/* Student History Modal */}
       {selectedStudentForHistory && (
-        <div className="fixed inset-0 z-50 overflow-hidden">
-          <div className="fixed inset-0 bg-black opacity-40" onClick={() => setSelectedStudentForHistory(null)}></div>
-          
-          <div className="fixed inset-0 flex items-center justify-center p-4">
-            <div className="bg-white w-full max-w-lg rounded-lg shadow-xl max-h-[90vh] flex flex-col relative">
-              <div className="p-4 border-b flex-shrink-0">
-                <div className="flex justify-between items-center">
-                  <h2 className="text-lg font-semibold">Riwayat Perizinan</h2>
-                  <button onClick={() => setSelectedStudentForHistory(null)} className="text-gray-500 hover:text-gray-700">
-                    <X size={20} />
-                  </button>
-                </div>
-              </div>
-              
-              <div className="flex-1 overflow-y-auto p-4">
-                <StudentLeaveHistory
-                  student={selectedStudentForHistory}
-                  onClose={() => setSelectedStudentForHistory(null)}
-                />
-              </div>
-            </div>
-          </div>
-        </div>
+        <StudentLeaveHistory
+          student={selectedStudentForHistory}
+          onClose={() => setSelectedStudentForHistory(null)}
+        />
       )}
     </>
   );

@@ -579,31 +579,27 @@ const StudentLeaveManagement: React.FC = () => {
                       )}
                     </td>
                     <td className="px-4 py-2 whitespace-nowrap">
-                      {(currentUser?.role === 'pengasuh' || currentUser?.role === 'admin_asrama') && (
-                        <>
-                          {student && hasAccessToBarak(student.barak) ? (
-                            <select
-                              value={leave.returnStatus || 'Belum Kembali'}
-                              onChange={(e) => handleStatusChange(leave, e.target.value as ReturnStatus)}
-                              className={`px-2 py-1 rounded-lg text-xs ${
-                                leave.returnStatus === 'Sudah Kembali'
-                                  ? 'bg-green-100 text-green-700'
-                                  : 'bg-yellow-100 text-yellow-700'
-                              }`}
-                            >
-                              <option value="Belum Kembali">Belum Kembali</option>
-                              <option value="Sudah Kembali">Sudah Kembali</option>
-                            </select>
-                          ) : (
-                            <span className={`inline-flex items-center px-2 py-1 rounded-lg text-xs ${
-                              leave.returnStatus === 'Sudah Kembali'
-                                ? 'bg-green-100 text-green-700'
-                                : 'bg-yellow-100 text-yellow-700'
-                            }`}>
-                              {leave.returnStatus || 'Belum Kembali'}
-                            </span>
-                          )}
-                        </>
+                      {(currentUser?.role === 'admin_master' || currentUser?.role === 'admin_asrama' || currentUser?.role === 'pengasuh') ? (
+                        <select
+                          value={leave.returnStatus || 'Belum Kembali'}
+                          onChange={(e) => handleStatusChange(leave, e.target.value as ReturnStatus)}
+                          className={`px-2 py-1 rounded-lg text-xs ${
+                            leave.returnStatus === 'Sudah Kembali'
+                              ? 'bg-green-100 text-green-700'
+                              : 'bg-yellow-100 text-yellow-700'
+                          }`}
+                        >
+                          <option value="Belum Kembali">Belum Kembali</option>
+                          <option value="Sudah Kembali">Sudah Kembali</option>
+                        </select>
+                      ) : (
+                        <span className={`inline-flex items-center px-2 py-1 rounded-lg text-xs ${
+                          leave.returnStatus === 'Sudah Kembali'
+                            ? 'bg-green-100 text-green-700'
+                            : 'bg-yellow-100 text-yellow-700'
+                        }`}>
+                          {leave.returnStatus || 'Belum Kembali'}
+                        </span>
                       )}
                     </td>
                     <td className="px-4 py-2 whitespace-nowrap text-right space-x-1">
@@ -677,31 +673,27 @@ const StudentLeaveManagement: React.FC = () => {
                     <div className="grid grid-cols-2 gap-2">
                       <div className="text-gray-500">Status:</div>
                       <div>
-                        {(currentUser?.role === 'pengasuh' || currentUser?.role === 'admin_asrama') && (
-                          <>
-                            {student && hasAccessToBarak(student.barak) ? (
-                              <select
-                                value={leave.returnStatus || 'Belum Kembali'}
-                                onChange={(e) => handleStatusChange(leave, e.target.value as ReturnStatus)}
-                                className={`px-2 py-1 rounded-lg text-sm ${
-                                  leave.returnStatus === 'Sudah Kembali'
-                                    ? 'bg-green-100 text-green-700'
-                                    : 'bg-yellow-100 text-yellow-700'
-                                }`}
-                              >
-                                <option value="Belum Kembali">Belum Kembali</option>
-                                <option value="Sudah Kembali">Sudah Kembali</option>
-                              </select>
-                            ) : (
-                              <span className={`inline-flex items-center px-2 py-1 rounded-lg text-sm ${
-                                leave.returnStatus === 'Sudah Kembali'
-                                  ? 'bg-green-100 text-green-700'
-                                  : 'bg-yellow-100 text-yellow-700'
-                              }`}>
-                                {leave.returnStatus || 'Belum Kembali'}
-                              </span>
-                            )}
-                          </>
+                        {(currentUser?.role === 'admin_master' || currentUser?.role === 'admin_asrama' || currentUser?.role === 'pengasuh') ? (
+                          <select
+                            value={leave.returnStatus || 'Belum Kembali'}
+                            onChange={(e) => handleStatusChange(leave, e.target.value as ReturnStatus)}
+                            className={`px-2 py-1 rounded-lg text-sm ${
+                              leave.returnStatus === 'Sudah Kembali'
+                                ? 'bg-green-100 text-green-700'
+                                : 'bg-yellow-100 text-yellow-700'
+                            }`}
+                          >
+                            <option value="Belum Kembali">Belum Kembali</option>
+                            <option value="Sudah Kembali">Sudah Kembali</option>
+                          </select>
+                        ) : (
+                          <span className={`inline-flex items-center px-2 py-1 rounded-lg text-sm ${
+                            leave.returnStatus === 'Sudah Kembali'
+                              ? 'bg-green-100 text-green-700'
+                              : 'bg-yellow-100 text-yellow-700'
+                          }`}>
+                            {leave.returnStatus || 'Belum Kembali'}
+                          </span>
                         )}
                       </div>
                     </div>

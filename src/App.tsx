@@ -38,13 +38,13 @@ const AppRoutes = () => {
 
   return (
     <Router>
-      <div className="flex min-h-screen bg-gray-50">
+      <div className={`min-h-screen ${!user ? 'h-screen overflow-hidden' : 'flex bg-gray-50'}`}>
         {user && <Sidebar isExpanded={isSidebarExpanded} setIsExpanded={setIsSidebarExpanded} />}
         <div className={`flex-1 flex flex-col transition-all duration-300 ${
           user ? (isSidebarExpanded ? 'md:ml-64' : 'md:ml-20') : ''
         }`}>
           {user && <Header />}
-          <main>
+          <main className={`flex-1 ${!user ? 'h-full' : ''}`}>
             <Routes>
               <Route 
                 path="/login" 

@@ -95,6 +95,25 @@ const ViolationManagement: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {/* Alert dan ConfirmationModal */}
+      {alert && (
+        <Alert
+          type={alert.type}
+          message={alert.message}
+          onClose={hideAlert}
+        />
+      )}
+      
+      <ConfirmationModal
+        isOpen={isOpen}
+        onClose={handleCancel}
+        onConfirm={handleConfirm}
+        title={options?.title || ''}
+        message={options?.message || ''}
+        confirmText={options?.confirmText}
+        cancelText={options?.cancelText}
+      />
+
       {/* Header dan Filter */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div className="relative w-full sm:w-64">
@@ -115,6 +134,18 @@ const ViolationManagement: React.FC = () => {
           <span>Tambah Pelanggaran</span>
         </button>
       </div>
+
+      {/* ViolationForm Modal */}
+      <ViolationForm
+        isOpen={isModalOpen}
+        onClose={() => {
+          setIsModalOpen(false);
+          setEditingViolation(null);
+        }}
+        onSubmit={handleSubmit}
+        initialViolation={editingViolation}
+        students={students}
+      />
 
       {/* Daftar Pelanggaran */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -177,47 +208,6 @@ const ViolationManagement: React.FC = () => {
           );
         })}
       </div>
-
-      {/* Form Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 overflow-y-auto">
-          <div className="fixed inset-0 bg-black opacity-40" onClick={() => {
-            setIsModalOpen(false);
-            setEditingViolation(null);
-          }} />
-          
-          <div className="relative min-h-screen flex items-center justify-center p-4">
-            <ViolationForm
-              onSubmit={handleSubmit}
-              initialViolation={editingViolation}
-              onClose={() => {
-                setIsModalOpen(false);
-                setEditingViolation(null);
-              }}
-              students={students}
-            />
-          </div>
-        </div>
-      )}
-
-      {/* Alerts and Modals */}
-      {alert && (
-        <Alert
-          type={alert.type}
-          message={alert.message}
-          onClose={hideAlert}
-        />
-      )}
-      
-      <ConfirmationModal
-        isOpen={isOpen}
-        onClose={handleCancel}
-        onConfirm={handleConfirm}
-        title={options?.title || ''}
-        message={options?.message || ''}
-        confirmText={options?.confirmText}
-        cancelText={options?.cancelText}
-      />
 
       {/* History Modal */}
       {selectedStudentForHistory && (
