@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -6,7 +6,7 @@
 
 @layer base {
   html, body, #root {
-    @apply h-full;
+    @apply h-full font-['Poppins'];
   }
 
   body {
@@ -94,4 +94,23 @@
   .stat-card.border-violet-600:hover { border-bottom-color: rgb(124, 58, 237); }
   .stat-card.border-amber-600:hover { border-bottom-color: rgb(217, 119, 6); }
   .stat-card.border-pink-600:hover { border-bottom-color: rgb(219, 39, 119); }
+
+  /* Hapus outline default */
+  input:focus,
+  select:focus,
+  textarea:focus,
+  button:focus {
+    @apply outline-none;
+  }
+
+  /* Hapus highlight default */
+  * {
+    @apply select-none;
+  }
+
+  /* Izinkan select text untuk input dan textarea */
+  input,
+  textarea {
+    @apply select-text;
+  }
 }

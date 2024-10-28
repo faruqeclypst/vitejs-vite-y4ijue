@@ -595,22 +595,22 @@ const StudentManagement: React.FC = () => {
           />
           <Search className="absolute left-2 top-2.5 text-gray-400" size={18} />
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
           <button
             onClick={openModal}
-            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2"
+            className="w-full sm:w-auto bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 flex items-center justify-center gap-2"
           >
             <Plus size={18} />
             <span>Tambah Siswa</span>
           </button>
-          <label className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 cursor-pointer">
+          <label className="w-full sm:w-auto bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 flex items-center justify-center gap-2 cursor-pointer">
             <Plus size={18} />
             <span>Import CSV</span>
             <input type="file" accept=".csv" onChange={handleImportCSV} className="hidden" />
           </label>
           <button 
             onClick={handleExportCSV}
-            className="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg flex items-center gap-2"
+            className="w-full sm:w-auto bg-yellow-500 text-white px-4 py-2 rounded-lg hover:bg-yellow-600 flex items-center justify-center gap-2"
           >
             <Plus size={18} />
             <span>Export CSV</span>

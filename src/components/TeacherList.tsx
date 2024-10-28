@@ -54,8 +54,8 @@ const TeacherList: React.FC<TeacherListProps> = ({
       />
 
       <div className="space-y-4 p-3 sm:p-4">
-        {/* Header with Search and Add */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
+        {/* Header dengan Search dan Add */}
+        <div className="flex flex-col sm:flex-row justify-between items-center gap-3">
           <div className="relative w-full sm:w-64">
             <input
               type="text"
@@ -68,9 +68,9 @@ const TeacherList: React.FC<TeacherListProps> = ({
           </div>
           <button
             onClick={onOpenModal}
-            className="w-full sm:w-auto bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 flex items-center justify-center"
+            className="w-full sm:w-auto bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 flex items-center justify-center gap-2"
           >
-            <UserPlus size={20} className="mr-2" />
+            <UserPlus size={18} />
             <span>Tambah Guru</span>
           </button>
         </div>
@@ -101,115 +101,59 @@ const TeacherList: React.FC<TeacherListProps> = ({
           </nav>
         </div>
 
-        {/* Table/Card View */}
-        <div className="overflow-x-auto mt-4">
-          {/* Desktop View */}
-          <div className="hidden sm:block">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kode</th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {filteredAndSortedTeachers.map((teacher) => (
-                  <tr key={teacher.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 whitespace-nowrap">{teacher.name}</td>
-                    <td className="px-4 py-3 whitespace-nowrap">{teacher.code}</td>
-                    <td className="px-4 py-3 whitespace-nowrap text-right">
-                      <div className="flex justify-end space-x-2">
-                        {activeTab === 'active' ? (
-                          <>
-                            <button
-                              onClick={() => onEdit(teacher)}
-                              className="text-blue-500 hover:text-blue-700 p-1"
-                            >
-                              <Edit size={18} />
-                            </button>
-                            <button
-                              onClick={() => onDelete(teacher.id)}
-                              className="text-red-500 hover:text-red-700 p-1"
-                            >
-                              <Trash2 size={18} />
-                            </button>
-                          </>
-                        ) : (
-                          <>
-                            <button
-                              onClick={() => onRestore(teacher.id)}
-                              className="text-green-500 hover:text-green-700 p-1"
-                            >
-                              <History size={18} />
-                            </button>
-                            <button
-                              onClick={() => onDeletePermanent(teacher.id)}
-                              className="text-red-500 hover:text-red-700 p-1"
-                            >
-                              <Trash2 size={18} />
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Mobile View */}
-          <div className="sm:hidden space-y-4">
-            {filteredAndSortedTeachers.map((teacher) => (
-              <div key={teacher.id} className="bg-white p-4 rounded-lg shadow-sm border">
-                <div className="flex justify-between items-center">
-                  <div>
-                    <h3 className="font-medium text-gray-900">{teacher.name}</h3>
-                    <p className="text-sm text-gray-500 mt-1">Kode: {teacher.code}</p>
-                  </div>
-                  <div className="flex space-x-3">
-                    {activeTab === 'active' ? (
-                      <>
-                        <button
-                          onClick={() => onEdit(teacher)}
-                          className="p-2 text-blue-500 hover:bg-blue-50 rounded-full"
-                        >
-                          <Edit size={20} />
-                        </button>
-                        <button
-                          onClick={() => onDelete(teacher.id)}
-                          className="p-2 text-red-500 hover:bg-red-50 rounded-full"
-                        >
-                          <Trash2 size={20} />
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        <button
-                          onClick={() => onRestore(teacher.id)}
-                          className="p-2 text-green-500 hover:bg-green-50 rounded-full"
-                        >
-                          <History size={20} />
-                        </button>
-                        <button
-                          onClick={() => onDeletePermanent(teacher.id)}
-                          className="p-2 text-red-500 hover:bg-red-50 rounded-full"
-                        >
-                          <Trash2 size={20} />
-                        </button>
-                      </>
-                    )}
-                  </div>
+        {/* Grid Layout untuk Guru */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredAndSortedTeachers.map((teacher) => (
+            <div
+              key={teacher.id}
+              className="p-4 rounded-lg bg-white shadow-sm border border-gray-200"
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium">{teacher.name}</p>
+                  <p className="text-sm text-gray-500">{teacher.code}</p>
+                </div>
+                <div className="flex space-x-2">
+                  {activeTab === 'active' ? (
+                    <>
+                      <button
+                        onClick={() => onEdit(teacher)}
+                        className="p-1 hover:bg-blue-50 rounded text-blue-600"
+                      >
+                        <Edit size={16} />
+                      </button>
+                      <button
+                        onClick={() => onDelete(teacher.id)}
+                        className="p-1 hover:bg-red-50 rounded text-red-600"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        onClick={() => onRestore(teacher.id)}
+                        className="p-1 hover:bg-green-50 rounded text-green-600"
+                      >
+                        <History size={16} />
+                      </button>
+                      <button
+                        onClick={() => onDeletePermanent(teacher.id)}
+                        className="p-1 hover:bg-red-50 rounded text-red-600"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
-            ))}
-          </div>
+            </div>
+          ))}
         </div>
 
         {/* Empty State */}
         {filteredAndSortedTeachers.length === 0 && (
-          <div className="text-center py-8">
+          <div className="text-center py-12">
             <Users className="mx-auto h-12 w-12 text-gray-400" />
             <h3 className="mt-2 text-sm font-medium text-gray-900">Tidak ada guru</h3>
             <p className="mt-1 text-sm text-gray-500">
