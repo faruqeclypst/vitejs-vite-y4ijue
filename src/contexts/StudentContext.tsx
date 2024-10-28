@@ -2,15 +2,17 @@ import React, { createContext, useState, useContext, useEffect } from 'react';
 import { ref, onValue, push, update, remove } from 'firebase/database';
 import { db } from '../firebase';
 import { Student } from '../types';
+import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { storage } from '../firebase'; // Pastikan storage sudah diexport dari firebase.ts
 
 interface StudentContextType {
   students: Student[];
   allStudents: Student[];
-  addStudent: (student: Omit<Student, 'id'>) => void;
-  updateStudent: (id: string, student: Omit<Student, 'id'>) => void;
-  deleteStudent: (id: string) => void;
-  restoreStudent: (id: string) => void;
-  deleteStudentPermanently: (id: string) => void; // Tambah ini
+  addStudent: (student: Omit<Student, 'id'>, photoFile?: File) => Promise<void>;
+  updateStudent: (id: string, student: Omit<Student, 'id'>, photoFile?: File) => Promise<void>;
+  deleteStudent: (id: string) => Promise<void>;
+  restoreStudent: (id: string) => Promise<void>;
+  deleteStudentPermanently: (id: string) => Promise<void>;
 }
 
 const StudentContext = createContext<StudentContextType | undefined>(undefined);
@@ -41,14 +43,33 @@ export const StudentProvider: React.FC<{ children: React.ReactNode }> = ({ child
     });
   }, []);
 
-  const addStudent = (student: Omit<Student, 'id'>) => {
-    const studentsRef = ref(db, 'students');
-    push(studentsRef, student);
+  const uploadPhoto = async (file: File, studentId: string): Promise<string> => {
+    const fileRef = storageRef(storage, `student-photos/${studentId}/${file.name}`);
+    await uploadBytes(fileRef, file);
+    return getDownloadURL(fileRef);
   };
 
-  const updateStudent = (id: string, updatedStudent: Omit<Student, 'id'>) => {
+  const addStudent = async (student: Omit<Student, 'id'>, photoFile?: File) => {
+    const studentsRef = ref(db, 'students');
+    const newStudentRef = push(studentsRef);
+    
+    if (photoFile) {
+      const photoUrl = await uploadPhoto(photoFile, newStudentRef.key!);
+      await update(newStudentRef, { ...student, photoUrl });
+    } else {
+      await update(newStudentRef, student);
+    }
+  };
+
+  const updateStudent = async (id: string, updatedStudent: Omit<Student, 'id'>, photoFile?: File) => {
     const studentRef = ref(db, `students/${id}`);
-    update(studentRef, updatedStudent);
+    
+    if (photoFile) {
+      const photoUrl = await uploadPhoto(photoFile, id);
+      await update(studentRef, { ...updatedStudent, photoUrl });
+    } else {
+      await update(studentRef, updatedStudent);
+    }
   };
 
   // Update deleteStudent untuk soft delete
@@ -69,14 +90,14 @@ export const StudentProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   return (
-    <StudentContext.Provider value={{ 
-      students, 
+    <StudentContext.Provider value={{
+      students,
       allStudents,
-      addStudent, 
-      updateStudent, 
+      addStudent,
+      updateStudent,
       deleteStudent,
       restoreStudent,
-      deleteStudentPermanently // Tambah ini
+      deleteStudentPermanently
     }}>
       {children}
     </StudentContext.Provider>

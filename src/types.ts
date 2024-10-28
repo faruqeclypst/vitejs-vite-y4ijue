@@ -28,6 +28,7 @@ export interface Student {
   gender: 'Laki-laki' | 'Perempuan';
   class: string;
   barak: string;
+  photoUrl?: string; // Tambah field untuk foto profil
   isDeleted?: boolean;
 }
 

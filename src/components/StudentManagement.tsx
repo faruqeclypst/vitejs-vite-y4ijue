@@ -3,7 +3,7 @@ import { Student, availableClasses } from '../types';
 import { useStudents } from '../contexts/StudentContext';
 import { useBarak } from '../contexts/BarakContext'; // Ganti useAsrama dengan useBarak
 import Papa from 'papaparse';
-import { Edit, Trash2, Plus, FileText, History, Search, Users } from 'lucide-react';
+import { Edit, Trash2, Plus, FileText, History, Search, Users, User } from 'lucide-react';
 import StudentLeaveHistory from './StudentLeaveHistory';
 import { useAuth } from '../contexts/AuthContext';
 import Alert from '../components/Alert';
@@ -38,6 +38,9 @@ const StudentManagement: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('active');
   const { isOpen: isConfirmOpen, options: confirmOptions, confirm, handleConfirm, handleCancel } = useConfirmation();
   const { leaves, deleteLeave } = useStudentLeave();
+  const [selectedPhoto, setSelectedPhoto] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [previewPhoto, setPreviewPhoto] = useState<string | null>(null);
 
   // Tambahkan useEffect untuk memantau perubahan user dan barakId
   useEffect(() => {
@@ -140,63 +143,33 @@ const StudentManagement: React.FC = () => {
   const handleAddOrUpdateStudent = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      // Validasi akses barak
-      if (currentUser?.role === 'pengasuh') {
-        const selectedBarak = baraks.find(b => b.name === newStudent.barak);
-        if (!selectedBarak || !currentUser.barakId?.includes(selectedBarak.id)) {
-          showAlert({
-            type: 'error',
-            message: 'Anda tidak memiliki akses untuk menambahkan siswa ke barak ini'
-          });
-          return;
-        }
-      }
-
-      const studentData = {
-        ...newStudent,
-        barak: newStudent.barak
-      };
-
       if (editingStudent) {
-        // Tutup modal form terlebih dahulu
         setIsModalOpen(false);
-
         const confirmed = await confirm({
           title: 'Konfirmasi Perubahan',
-          message: 'Anda yakin ingin melakukan perubahan data siswa/barak/kelas? Perubahan tidak dapat dikembalikan.',
+          message: 'Anda yakin ingin melakukan perubahan data siswa? Perubahan tidak dapat dikembalikan.',
           confirmText: 'Ya, Ubah',
           cancelText: 'Batal'
         });
 
         if (confirmed) {
-          await updateStudent(editingStudent.id, studentData);
+          await updateStudent(editingStudent.id, newStudent, selectedPhoto || undefined);
           showAlert({
             type: 'success',
             message: 'Data siswa berhasil diperbarui'
           });
-          setNewStudent({
-            fullName: '',
-            gender: 'Laki-laki',
-            class: availableClasses[0],
-            barak: ''
-          });
+          resetForm();
         } else {
-          // Jika user membatalkan, buka kembali modal form
           setIsModalOpen(true);
           return;
         }
       } else {
-        await addStudent(studentData);
+        await addStudent(newStudent, selectedPhoto || undefined);
         showAlert({
           type: 'success',
           message: 'Data siswa berhasil ditambahkan'
         });
-        setNewStudent({
-          fullName: '',
-          gender: 'Laki-laki',
-          class: availableClasses[0],
-          barak: ''
-        });
+        resetForm();
         setIsModalOpen(false);
       }
     } catch (error) {
@@ -204,6 +177,30 @@ const StudentManagement: React.FC = () => {
         type: 'error',
         message: 'Gagal menyimpan data siswa'
       });
+    }
+  };
+
+  const resetForm = () => {
+    setNewStudent({
+      fullName: '',
+      gender: 'Laki-laki',
+      class: availableClasses[0],
+      barak: ''
+    });
+    setSelectedPhoto(null);
+    setPhotoPreview(null);
+    setSelectedGrade('');
+  };
+
+  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setSelectedPhoto(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPhotoPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
     }
   };
 
@@ -442,6 +439,7 @@ const StudentManagement: React.FC = () => {
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[5%]">No</th>
+                <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[15%]">Foto</th>
                 <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama</th>
                 <th className="hidden md:table-cell px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kelas</th>
                 <th className="hidden sm:table-cell px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Gender</th>
@@ -452,6 +450,7 @@ const StudentManagement: React.FC = () => {
               {[...Array(10)].map((_, index) => (
                 <tr key={index}>
                   <td className="px-2 py-3 whitespace-nowrap text-sm text-gray-500">{index + 1}</td>
+                  <td className="px-2 py-3 text-sm text-gray-500">-</td>
                   <td className="px-2 py-3 text-sm text-gray-500">-</td>
                   <td className="hidden md:table-cell px-2 py-3 text-sm text-gray-500">-</td>
                   <td className="hidden sm:table-cell px-2 py-3 text-sm text-gray-500">-</td>
@@ -473,6 +472,7 @@ const StudentManagement: React.FC = () => {
           <thead className="bg-gray-50">
             <tr>
               <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[5%]">No</th>
+              <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[15%]">Foto</th>
               <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama</th>
               <th className="hidden md:table-cell px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kelas</th>
               <th className="hidden sm:table-cell px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Gender</th>
@@ -483,6 +483,24 @@ const StudentManagement: React.FC = () => {
             {students.map((student, index) => (
               <tr key={student.id} className="group hover:bg-gray-50">
                 <td className="px-2 py-3 whitespace-nowrap text-sm text-gray-500">{index + 1}</td>
+                <td className="px-2 py-3">
+                  <div 
+                    className="w-10 h-10 rounded-full overflow-hidden bg-gray-100 cursor-pointer hover:opacity-80 transition-opacity"
+                    onClick={() => student.photoUrl && setPreviewPhoto(student.photoUrl)}
+                  >
+                    {student.photoUrl ? (
+                      <img
+                        src={student.photoUrl}
+                        alt={student.fullName}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <User className="w-5 h-5 text-gray-400" />
+                      </div>
+                    )}
+                  </div>
+                </td>
                 <td className="px-2 py-3">
                   <div className="text-sm font-medium text-gray-900">{student.fullName}</div>
                   {/* Tampilkan kelas di mobile */}
@@ -552,6 +570,7 @@ const StudentManagement: React.FC = () => {
             {[...Array(emptyRows)].map((_, index) => (
               <tr key={`empty-${index}`}>
                 <td className="px-2 py-3 whitespace-nowrap text-sm text-gray-500">{students.length + index + 1}</td>
+                <td className="px-2 py-3 text-sm text-gray-500">-</td>
                 <td className="px-2 py-3 text-sm text-gray-500">-</td>
                 <td className="hidden md:table-cell px-2 py-3 text-sm text-gray-500">-</td>
                 <td className="hidden sm:table-cell px-2 py-3 text-sm text-gray-500">-</td>
@@ -682,10 +701,41 @@ const StudentManagement: React.FC = () => {
       {/* Student Form Modal */}
       <Modal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={() => {
+          setIsModalOpen(false);
+          resetForm();
+        }}
         title={editingStudent ? 'Edit Siswa' : 'Tambah Siswa Baru'}
       >
         <form onSubmit={handleAddOrUpdateStudent} className="space-y-4">
+          {/* Photo Upload */}
+          <div className="flex flex-col items-center gap-2">
+            <div className="relative w-24 h-24 rounded-full overflow-hidden bg-gray-100">
+              {photoPreview || (editingStudent?.photoUrl) ? (
+                <img
+                  src={photoPreview || editingStudent?.photoUrl}
+                  alt="Preview"
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center">
+                  <User className="w-12 h-12 text-gray-400" />
+                </div>
+              )}
+            </div>
+            <label className="cursor-pointer">
+              <span className="text-sm text-blue-500 hover:text-blue-600">
+                {editingStudent?.photoUrl ? 'Ganti Foto' : 'Upload Foto'}
+              </span>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handlePhotoChange}
+                className="hidden"
+              />
+            </label>
+          </div>
+
           {/* Nama Lengkap */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -803,6 +853,33 @@ const StudentManagement: React.FC = () => {
           student={selectedStudentForHistory}
           onClose={() => setSelectedStudentForHistory(null)}
         />
+      )}
+
+      {/* Photo Preview Modal */}
+      {previewPhoto && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4"
+          onClick={() => setPreviewPhoto(null)}
+        >
+          <div 
+            className="relative bg-white rounded-lg overflow-hidden"
+            onClick={e => e.stopPropagation()}
+          >
+            <img
+              src={previewPhoto}
+              alt="Student"
+              className="w-[400px] h-[400px] object-cover" // Ukuran fix 400x400
+            />
+            <button
+              onClick={() => setPreviewPhoto(null)}
+              className="absolute top-2 right-2 p-1 bg-white rounded-full shadow-lg hover:bg-gray-100"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
       )}
     </>
   );
