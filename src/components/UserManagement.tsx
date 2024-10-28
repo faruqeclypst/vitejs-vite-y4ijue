@@ -809,69 +809,119 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
       </Modal>
 
       {/* Header dengan Search dan Add */}
-      <div className="flex flex-col sm:flex-row justify-between items-center gap-3">
-        <div className="relative w-full sm:w-64">
-          <input
-            type="text"
-            placeholder="Cari pengguna..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full p-2 pl-8 border rounded-lg"
-          />
-          <Search className="absolute left-2 top-2.5 text-gray-400" size={18} />
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+          <div className="relative w-full sm:w-64">
+            <input
+              type="text"
+              placeholder="Cari pengguna..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full p-2 pl-8 border rounded-lg"
+            />
+            <Search className="absolute left-2 top-2.5 text-gray-400" size={18} />
+          </div>
+          <button
+            onClick={openModal}
+            className="w-full sm:w-auto bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 flex items-center justify-center gap-2"
+          >
+            <Plus size={18} />
+            <span>Tambah User</span>
+          </button>
         </div>
-        <button
-          onClick={openModal}
-          className="w-full sm:w-auto bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 flex items-center justify-center gap-2"
-        >
-          <Plus size={18} />
-          <span>Tambah User</span>
-        </button>
-      </div>
 
-      {/* Table/Card View */}
-      <div className="overflow-x-auto">
-        {/* Desktop View */}
-        <div className="hidden sm:block">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Lengkap</th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Username</th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
-                {(currentUser?.role === 'admin_barak' || currentUser?.role === 'admin_asrama') && (
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Barak</th>
-                )}
-                <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {users.map((user) => (
-                <tr key={user.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-2 whitespace-nowrap">{user.fullName}</td>
-                  <td className="px-4 py-2 whitespace-nowrap">{user.username}</td>
-                  <td className="px-4 py-2 whitespace-nowrap">
-                    <span className="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800">
-                      {user.role}
-                    </span>
-                  </td>
+        {/* Table/Grid */}
+        <div className="overflow-x-auto">
+          {/* Desktop View */}
+          <div className="hidden sm:block">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Lengkap</th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Username</th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
                   {(currentUser?.role === 'admin_barak' || currentUser?.role === 'admin_asrama') && (
-                    <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500">
-                      <BarakDropdown barakId={user.barakId} userName={user.fullName} />
-                    </td>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Barak</th>
                   )}
-                  <td className="px-4 py-2 whitespace-nowrap text-right space-x-1">
+                  <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {users.map((user) => (
+                  <tr key={user.id} className="hover:bg-gray-50">
+                    <td className="px-4 py-2 whitespace-nowrap">{user.fullName}</td>
+                    <td className="px-4 py-2 whitespace-nowrap">{user.username}</td>
+                    <td className="px-4 py-2 whitespace-nowrap">
+                      <span className="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800">
+                        {user.role}
+                      </span>
+                    </td>
+                    {(currentUser?.role === 'admin_barak' || currentUser?.role === 'admin_asrama') && (
+                      <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500">
+                        <BarakDropdown barakId={user.barakId} userName={user.fullName} />
+                      </td>
+                    )}
+                    <td className="px-4 py-2 whitespace-nowrap text-right space-x-1">
+                      {canManageUser(user) ? (
+                        <>
+                          <button
+                            onClick={() => handleEdit(user)}
+                            className="text-blue-500 hover:text-blue-700 p-1"
+                          >
+                            <Edit size={16} />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(user.id)}
+                            className="text-red-500 hover:text-red-700 p-1"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </>
+                      ) : canChangePassword(user) && (
+                        <button
+                          onClick={() => openChangePasswordModal(user)}
+                          className="text-green-500 hover:text-green-700 p-1"
+                        >
+                          <Key size={16} />
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile View */}
+          <div className="sm:hidden space-y-2">
+            {users.map((user) => (
+              <div key={user.id} className="bg-white p-3 rounded-lg shadow-sm border">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h3 className="font-medium text-gray-900">{user.fullName}</h3>
+                    <p className="text-sm text-gray-500">@{user.username}</p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="px-2 py-0.5 text-xs rounded-full bg-blue-100 text-blue-800">
+                        {user.role}
+                      </span>
+                      {(currentUser?.role === 'admin_barak' || currentUser?.role === 'admin_asrama') && (
+                        <BarakDropdown barakId={user.barakId} userName={user.fullName} />
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex gap-1">
                     {canManageUser(user) ? (
                       <>
                         <button
                           onClick={() => handleEdit(user)}
-                          className="text-blue-500 hover:text-blue-700 p-1"
+                          className="p-1.5 text-blue-500 hover:bg-blue-50 rounded-full"
                         >
                           <Edit size={16} />
                         </button>
                         <button
                           onClick={() => handleDelete(user.id)}
-                          className="text-red-500 hover:text-red-700 p-1"
+                          className="p-1.5 text-red-500 hover:bg-red-50 rounded-full"
                         >
                           <Trash2 size={16} />
                         </button>
@@ -879,63 +929,16 @@ const UserManagement: React.FC<UserManagementProps> = ({ onUserAdded }) => {
                     ) : canChangePassword(user) && (
                       <button
                         onClick={() => openChangePasswordModal(user)}
-                        className="text-green-500 hover:text-green-700 p-1"
+                        className="p-1.5 text-green-500 hover:bg-green-50 rounded-full"
                       >
                         <Key size={16} />
                       </button>
                     )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Mobile View */}
-        <div className="sm:hidden space-y-2">
-          {users.map((user) => (
-            <div key={user.id} className="bg-white p-3 rounded-lg shadow-sm border">
-              <div className="flex justify-between items-start">
-                <div>
-                  <h3 className="font-medium text-gray-900">{user.fullName}</h3>
-                  <p className="text-sm text-gray-500">@{user.username}</p>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="px-2 py-0.5 text-xs rounded-full bg-blue-100 text-blue-800">
-                      {user.role}
-                    </span>
-                    {(currentUser?.role === 'admin_barak' || currentUser?.role === 'admin_asrama') && (
-                      <BarakDropdown barakId={user.barakId} userName={user.fullName} />
-                    )}
                   </div>
                 </div>
-                <div className="flex gap-1">
-                  {canManageUser(user) ? (
-                    <>
-                      <button
-                        onClick={() => handleEdit(user)}
-                        className="p-1.5 text-blue-500 hover:bg-blue-50 rounded-full"
-                      >
-                        <Edit size={16} />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(user.id)}
-                        className="p-1.5 text-red-500 hover:bg-red-50 rounded-full"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </>
-                  ) : canChangePassword(user) && (
-                    <button
-                      onClick={() => openChangePasswordModal(user)}
-                      className="p-1.5 text-green-500 hover:bg-green-50 rounded-full"
-                    >
-                      <Key size={16} />
-                    </button>
-                  )}
-                </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </div>
 

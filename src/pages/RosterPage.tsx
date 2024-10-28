@@ -51,11 +51,11 @@ const RosterPage: React.FC = () => {
   };
 
   return (
-    <div className="main-container mt-6">
-      <div className="flex flex-col space-y-4">
-        {/* Header Section */}
-        <div className="bg-white p-6 rounded-lg shadow-sm">
-          <h2 className="h2 cursor-pointer" onClick={(e) => {
+    <div className="p-6">
+      <div className="flex flex-col gap-4">
+        {/* Header */}
+        <div className="bg-white p-6 rounded-lg shadow">
+          <h2 className="text-2xl font-bold text-gray-800 cursor-pointer" onClick={(e) => {
             const target = e.currentTarget.nextElementSibling as HTMLElement;
             if (target) {
               target.classList.toggle('hidden');
@@ -65,18 +65,20 @@ const RosterPage: React.FC = () => {
           <p className="mt-2 text-gray-600 hidden sm:block">Atur jadwal mengajar guru dan mata pelajaran</p>
         </div>
 
-        {/* Content Section */}
-        <div className="bg-white shadow-md rounded-lg p-4">
-          <RosterTable
-            roster={roster}
-            teachers={teachers}
-            onDelete={handleDeleteRosterEntry}
-            onAdd={handleAddRosterEntry}
-            onUpdate={handleUpdateRosterEntry}
-            classes={availableClasses}
-          />
+        {/* Content */}
+        <div className="bg-white rounded-lg shadow">
+          <div className="p-4">
+            <RosterTable
+              roster={roster}
+              teachers={teachers}
+              onDelete={handleDeleteRosterEntry}
+              onAdd={handleAddRosterEntry}
+              onUpdate={handleUpdateRosterEntry}
+              classes={availableClasses}
+            />
+          </div>
         </div>
-
+        
         {/* Alert */}
         {alert && (
           <Alert

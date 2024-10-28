@@ -53,9 +53,9 @@ const TeacherList: React.FC<TeacherListProps> = ({
         initialTeacher={selectedTeacher}
       />
 
-      <div className="space-y-4 p-3 sm:p-4">
-        {/* Header dengan Search dan Add */}
-        <div className="flex flex-col sm:flex-row justify-between items-center gap-3">
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
           <div className="relative w-full sm:w-64">
             <input
               type="text"
@@ -76,7 +76,7 @@ const TeacherList: React.FC<TeacherListProps> = ({
         </div>
 
         {/* Tabs */}
-        <div className="border border-gray-200 p-1 mt-4">
+        <div className="border border-gray-200 p-1">
           <nav className="flex space-x-1">
             <button
               onClick={() => setActiveTab('active')}
@@ -101,7 +101,7 @@ const TeacherList: React.FC<TeacherListProps> = ({
           </nav>
         </div>
 
-        {/* Grid Layout untuk Guru */}
+        {/* Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredAndSortedTeachers.map((teacher) => (
             <div

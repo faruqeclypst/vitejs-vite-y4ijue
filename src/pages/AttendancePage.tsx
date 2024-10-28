@@ -158,11 +158,11 @@ const AttendancePage: React.FC = () => {
   }
 
   return (
-    <div className="main-container mt-6">
-      <div className="flex flex-col space-y-4">
-        {/* Header Section */}
-        <div className="bg-white p-6 rounded-lg shadow-sm">
-          <h2 className="h2 cursor-pointer" onClick={(e) => {
+    <div className="p-6">
+      <div className="flex flex-col gap-4">
+        {/* Header */}
+        <div className="bg-white p-6 rounded-lg shadow">
+          <h2 className="text-2xl font-bold text-gray-800 cursor-pointer" onClick={(e) => {
             const target = e.currentTarget.nextElementSibling as HTMLElement;
             if (target) {
               target.classList.toggle('hidden');
@@ -172,8 +172,8 @@ const AttendancePage: React.FC = () => {
           <p className="mt-2 text-gray-600 hidden sm:block">Kelola dan pantau kehadiran guru dalam mengajar</p>
         </div>
 
-        {/* Content Section - Gabungan date dan table */}
-        <div className="bg-white shadow-sm rounded-lg">
+        {/* Content */}
+        <div className="bg-white rounded-lg shadow">
           <div className="p-4">
             <AttendanceTable
               roster={currentRoster}
@@ -188,48 +188,44 @@ const AttendancePage: React.FC = () => {
           </div>
         </div>
 
-        {/* Export Section - Untuk Admin dan Admin Master */}
+        {/* Export Section */}
         {isAdmin && (
-          <div className="bg-white p-4 rounded-lg shadow-sm">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">Ekspor Data Kehadiran</h3>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              {/* Export Custom */}
+          <div className="bg-white p-6 rounded-lg shadow">
+            <h3 className="text-xl font-semibold mb-4">Ekspor Data Kehadiran</h3>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Custom Export */}
               <div className="bg-gray-50 p-4 rounded-lg">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Ekspor Kustom
-                </label>
-                <div className="flex flex-col sm:flex-row gap-2">
+                <label className="block text-sm font-medium mb-2">Ekspor Kustom</label>
+                <div className="flex flex-col sm:flex-row gap-3">
                   <input
                     type="date"
                     value={exportStartDate.toISOString().split('T')[0]}
                     onChange={(e) => handleExportStartDateChange(new Date(e.target.value))}
-                    className="flex-1 p-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                    className="flex-1 px-3 py-2 border rounded focus:ring-2 focus:ring-blue-500 focus:outline-none"
                   />
                   <input
                     type="date"
                     value={exportEndDate.toISOString().split('T')[0]}
                     onChange={(e) => handleExportEndDateChange(new Date(e.target.value))}
-                    className="flex-1 p-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                    className="flex-1 px-3 py-2 border rounded focus:ring-2 focus:ring-blue-500 focus:outline-none"
                   />
                   <button
                     onClick={() => handleExport('custom')}
-                    className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 whitespace-nowrap"
+                    className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
                   >
                     Ekspor
                   </button>
                 </div>
               </div>
 
-              {/* Export Monthly */}
+              {/* Monthly Export */}
               <div className="bg-gray-50 p-4 rounded-lg">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Ekspor Bulanan
-                </label>
-                <div className="flex flex-col sm:flex-row gap-2">
+                <label className="block text-sm font-medium mb-2">Ekspor Bulanan</label>
+                <div className="flex flex-col sm:flex-row gap-3">
                   <select
                     value={exportMonth}
                     onChange={(e) => setExportMonth(parseInt(e.target.value))}
-                    className="flex-1 p-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                    className="flex-1 px-3 py-2 border rounded focus:ring-2 focus:ring-blue-500 focus:outline-none"
                   >
                     {Array.from({ length: 12 }, (_, i) => (
                       <option key={i} value={i}>
@@ -240,7 +236,7 @@ const AttendancePage: React.FC = () => {
                   <select
                     value={exportYear}
                     onChange={(e) => setExportYear(parseInt(e.target.value))}
-                    className="flex-1 p-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                    className="flex-1 px-3 py-2 border rounded focus:ring-2 focus:ring-blue-500 focus:outline-none"
                   >
                     {Array.from({ length: 10 }, (_, i) => (
                       <option key={i} value={new Date().getFullYear() - i}>
@@ -250,7 +246,7 @@ const AttendancePage: React.FC = () => {
                   </select>
                   <button
                     onClick={() => handleExport('monthly')}
-                    className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 whitespace-nowrap"
+                    className="px-6 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
                   >
                     Ekspor
                   </button>

@@ -138,15 +138,17 @@ const AttendanceTable: React.FC<AttendanceTableProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Date Selection */}
-      <div>
-        <input
-          type="date"
-          value={currentDate}
-          onChange={handleDateInputChange}
-          disabled={!isAdmin}
-          className="w-full sm:w-64 p-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-        />
+      {/* Header section */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-6">
+        <div className="w-full sm:w-64">
+          <input
+            type="date"
+            value={currentDate}
+            onChange={handleDateInputChange}
+            disabled={!isAdmin}
+            className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
       </div>
 
       {/* Desktop View */}
