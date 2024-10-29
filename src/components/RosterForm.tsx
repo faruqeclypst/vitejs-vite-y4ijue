@@ -37,7 +37,6 @@ const RosterForm: React.FC<RosterFormProps> = ({
   });
   const [conflicts, setConflicts] = useState<Conflict[]>([]);
   const { roster } = useRoster();
-  const [grade, setGrade] = useState<'X' | 'XI' | 'XII' | ''>('');
 
   const days = Object.keys(daySchedule) as DayOfWeek[];
 
@@ -48,6 +47,9 @@ const RosterForm: React.FC<RosterFormProps> = ({
     teacherSchedules: [],
     classSchedules: []
   });
+
+  const [grade, setGrade] = useState<'X' | 'XI' | 'XII' | ''>('');
+  const gradeOptions = ['X', 'XI', 'XII'];
 
   const updateExistingSchedules = useCallback(() => {
     if (formData.teacherId && formData.dayOfWeek && formData.classId) {
@@ -92,7 +94,7 @@ const RosterForm: React.FC<RosterFormProps> = ({
     const classSchedule = existingSchedules.classSchedules.find(s => s.hours.includes(hour));
     if (classSchedule) {
       const teacher = teachers.find(t => t.id === classSchedule.teacherId);
-      details.push(`Kelas sudah ada jadwal dengan ${teacher?.name || 'Unknown'}`);
+      details.push(`Kelas ${classSchedule.classId} sudah ada jadwal dengan ${teacher?.name || 'Unknown'} (${teacher?.code || 'Unknown'})`);
     }
 
     return details.join(', ');
@@ -101,6 +103,8 @@ const RosterForm: React.FC<RosterFormProps> = ({
   useEffect(() => {
     if (initialData) {
       setFormData(initialData);
+      const gradeFromClassId = initialData.classId.split('-')[0] as 'X' | 'XI' | 'XII';
+      setGrade(gradeFromClassId);
     } else if (preselectedTeacherId) {
       setFormData(prev => ({
         ...prev,
@@ -206,11 +210,6 @@ const RosterForm: React.FC<RosterFormProps> = ({
     return message.trim();
   };
 
-  const gradeOptions = ['X', 'XI', 'XII'];
-  const filteredClasses = grade 
-    ? classes.filter(cls => new RegExp(`^${grade}-\\d+$`).test(cls))
-    : [];
-
   const isFormValid = useMemo(() => {
     return (
       formData.teacherId && 
@@ -265,7 +264,7 @@ const RosterForm: React.FC<RosterFormProps> = ({
                   key={g}
                   type="button"
                   onClick={() => setGrade(g as "X" | "XI" | "XII")}
-                  className={`py-2 px-3 text-sm rounded-md ${
+                  className={`min-w-[80px] min-h-[40px] p-2 text-sm rounded-md ${
                     grade === g 
                       ? 'bg-blue-500 text-white' 
                       : 'bg-gray-200 text-gray-700'
@@ -282,23 +281,26 @@ const RosterForm: React.FC<RosterFormProps> = ({
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Kelas</label>
             <div className="grid grid-cols-3 gap-2">
-              {filteredClasses.map((cls) => (
-                <button
-                  key={cls}
-                  type="button" 
-                  onClick={() => setFormData(prev => ({
-                    ...prev,
-                    classId: cls
-                  }))}
-                  className={`p-2 text-sm rounded-md ${
-                    formData.classId === cls 
-                      ? 'bg-blue-500 text-white' 
-                      : 'bg-gray-200 text-gray-700'
-                  }`}
-                >
-                  {cls}
-                </button>
-              ))}
+              {Array.from({ length: 6 }, (_, i) => i + 1).map((num) => {
+                const cls = `${grade}-${num}`;
+                return (
+                  <button
+                    key={cls}
+                    type="button" 
+                    onClick={() => setFormData(prev => ({
+                      ...prev,
+                      classId: cls
+                    }))}
+                    className={`min-w-[80px] min-h-[40px] p-2 text-sm rounded-md ${
+                      formData.classId === cls 
+                        ? 'bg-blue-500 text-white' 
+                        : 'bg-gray-200 text-gray-700'
+                    }`}
+                  >
+                    {cls}
+                  </button>
+                );
+              })}
             </div>
           </div>
         )}
@@ -311,7 +313,7 @@ const RosterForm: React.FC<RosterFormProps> = ({
                 key={day}
                 type="button"
                 onClick={() => handleDayChange(day)}
-                className={`p-2 rounded-md transition-colors ${
+                className={`min-w-[80px] min-h-[40px] p-2 rounded-md transition-colors ${
                   formData.dayOfWeek === day 
                     ? 'bg-blue-500 text-white' 
                     : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
@@ -338,11 +340,11 @@ const RosterForm: React.FC<RosterFormProps> = ({
                       key={hour}
                       type="button"
                       onClick={() => !isUpacara && !hasConflict && toggleHour(hour)}
-                      className={`p-2 rounded-md transition-colors relative group ${
+                      className={`min-w-[80px] min-h-[40px] p-2 rounded-md transition-colors relative group ${
                         isUpacara
                           ? 'bg-yellow-500 text-white cursor-not-allowed hover:bg-yellow-600'
                           : hasConflict
-                          ? 'bg-red-100 text-red-700 border border-red-300 cursor-not-allowed'
+                          ? 'bg-red-100 text-red-700  cursor-not-allowed'
                           : formData.hours.includes(hour)
                           ? 'bg-green-500 text-white'
                           : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
@@ -353,27 +355,23 @@ const RosterForm: React.FC<RosterFormProps> = ({
                       {isUpacara ? 'JP 1' : `JP ${hour}`}
                       {/* Tooltip untuk konflik */}
                       {hasConflict && (
-                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50">
+                        <div className={`absolute mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 ${
+                          hour <= 2 ? 'bottom-full left-0' : 
+                          hour >= daySchedule[formData.dayOfWeek] - 1 ? 'bottom-full right-0' : 
+                          'bottom-full left-1/2 transform -translate-x-1/2'
+                        }`}>
                           {conflictDetails}
-                          <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2 rotate-45 w-2 h-2 bg-gray-900"></div>
+                          <div className={`absolute bottom-0 w-2 h-2 bg-gray-900 transform translate-y-1/2 rotate-45 ${
+                            hour <= 2 ? 'left-4' :
+                            hour >= daySchedule[formData.dayOfWeek] - 1 ? 'right-4' :
+                            'left-1/2 -translate-x-1/2'
+                          }`}></div>
                         </div>
                       )}
                     </button>
                   );
                 })}
               </div>
-              {existingSchedules.teacherSchedules.length > 0 && (
-                <div className="mt-2 text-sm text-gray-600">
-                  <p className="font-medium">Jadwal yang sudah ada:</p>
-                  <ul className="list-disc list-inside">
-                    {existingSchedules.teacherSchedules.map((schedule, idx) => (
-                      <li key={idx}>
-                        Kelas {schedule.classId}: JP {schedule.hours.join(', ')}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
             </>
           ) : (
             <p className="text-sm text-gray-500">
@@ -385,12 +383,6 @@ const RosterForm: React.FC<RosterFormProps> = ({
         {conflicts.length > 0 && (
           <p className="text-red-500 font-bold">
             {getConflictMessage()}
-          </p>
-        )}
-
-        {formData.hours.length === 0 && (
-          <p className="text-red-500 text-sm">
-            Pilih minimal satu jam pelajaran
           </p>
         )}
 
@@ -419,8 +411,7 @@ const RosterForm: React.FC<RosterFormProps> = ({
           <p className="text-red-500 text-sm text-center">
             {!formData.teacherId ? 'Pilih guru' : 
              !formData.dayOfWeek ? 'Pilih hari' :
-             !formData.classId ? 'Pilih kelas' :
-             !formData.hours.length ? 'Pilih minimal satu jam pelajaran' : ''}
+             !formData.classId ? 'Pilih kelas' : ''}
           </p>
         )}
       </form>

@@ -37,15 +37,14 @@ const Login: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen w-screen flex items-center justify-center bg-gradient-to-br from-blue-500 to-purple-600 fixed inset-0 overflow-hidden">
+    <div className="min-h-screen w-screen flex items-center justify-center bg-gradient-to-br from-blue-500 to-blue-600 fixed inset-0 overflow-hidden">
       <div className="w-full max-w-sm sm:max-w-md space-y-6 bg-white/95 backdrop-blur-sm p-6 sm:p-8 rounded-xl shadow-2xl mx-4">
         <div className="text-center">
-          <div className="mx-auto w-20 h-20 sm:w-24 sm:h-24 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full mb-4" />
-          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">
-            Welcome Back
-          </h2>
-          <p className="mt-2 text-sm sm:text-base text-gray-600">
-            Please sign in to your account
+          <span className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight">
+            Sistem Manajemen Akademik dan Asrama
+          </span>
+          <p className="mt-2 text-sm sm:text-base text-gray-600 font-medium">
+            SMAN MODAL BANGSA
           </p>
         </div>
         
@@ -86,7 +85,7 @@ const Login: React.FC = () => {
 
           <button
             type="submit"
-            className="w-full py-2 sm:py-3 px-4 border border-transparent rounded-lg text-white bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-300 font-medium text-sm sm:text-base"
+            className="w-full py-2 sm:py-3 px-4 border border-transparent rounded-lg text-white bg-gradient-to-r from-blue-600 to-blue-600 hover:from-blue-700 hover:to-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-300 font-medium text-sm sm:text-base"
           >
             Sign in
           </button>

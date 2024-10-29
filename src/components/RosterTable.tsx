@@ -7,6 +7,9 @@ import Modal from './Modal';
 import LoadingSpinner from './common/LoadingSpinner';
 import { useRoster } from '../contexts/RosterContext';
 import useConfirmation from '../hooks/useConfirmation';
+import ConfirmationModal from './ConfirmationModal';
+import useAlert from '../hooks/useAlert';
+import Alert from './Alert';
 
 interface AttendanceRecord {
   id: string;
@@ -228,8 +231,9 @@ const RosterTable: React.FC<RosterTableProps> = ({
   const [showAttendanceDetail, setShowAttendanceDetail] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [showHistory, setShowHistory] = useState<string | null>(null);
-  const { confirm } = useConfirmation();
+  const { confirm, isOpen, options, handleConfirm, handleCancel } = useConfirmation();
   const { deleteRoster, rosterHistory } = useRoster();
+  const { alert, showAlert } = useAlert();
 
   const groupedRoster = roster.reduce((acc, entry) => {
     if (!acc[entry.teacherId]) {
@@ -255,6 +259,9 @@ const RosterTable: React.FC<RosterTableProps> = ({
   const handleEdit = (entry: RosterEntry) => {
     setEditingEntry(entry);
     setIsModalOpen(true);
+    if (!openTeachers.includes(entry.teacherId)) {
+      setOpenTeachers(prev => [...prev, entry.teacherId]);
+    }
   };
 
   const handleAddForTeacher = (teacherId: string, e: React.MouseEvent) => {
@@ -293,10 +300,28 @@ const RosterTable: React.FC<RosterTableProps> = ({
     if (shouldDelete) {
       try {
         await deleteRoster(id);
+        showAlert({
+          type: 'success',
+          message: 'Jadwal berhasil dihapus',
+          duration: 3000
+        });
       } catch (error) {
+        showAlert({
+          type: 'error',
+          message: 'Gagal menghapus jadwal',
+          duration: 3000
+        });
         console.error('Error deleting roster:', error);
       }
     }
+  };
+
+  const hideAlert = () => {
+    showAlert({
+      type: 'success',
+      message: '',
+      duration: 0
+    });
   };
 
   return (
@@ -366,7 +391,7 @@ const RosterTable: React.FC<RosterTableProps> = ({
                             <div>
                               <p className="font-medium">{entry.dayOfWeek}</p>
                               <p className="text-sm text-gray-600">{entry.classId}</p>
-                              <p className="text-sm text-gray-500">Jam: {entry.hours.join(', ')}</p>
+                              <p className="text-sm text-gray-500">Jam: {entry.hours.sort((a, b) => a - b).join(', ')}</p>
                               <div className="mt-2 text-xs text-gray-400">
                                 <p>Dibuat: {new Date(entry.createdAt).toLocaleString('id-ID')}</p>
                                 {entry.updatedAt && (
@@ -444,9 +469,30 @@ const RosterTable: React.FC<RosterTableProps> = ({
       {showHistory && (
         <RosterHistoryModal
           rosterId={showHistory}
-          teacherName={teachers.find(t => t.id === addingForTeacher)?.name || ''}
+          teacherName={`${teachers.find(t => roster.find(r => r.id === showHistory)?.teacherId === t.id)?.name || ''} (${teachers.find(t => roster.find(r => r.id === showHistory)?.teacherId === t.id)?.code || ''})`}
           onClose={() => setShowHistory(null)}
           rosterHistory={rosterHistory}
+        />
+      )}
+
+      {/* Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={isOpen}
+        onClose={handleCancel}
+        onConfirm={handleConfirm}
+        title={options?.title || ''}
+        message={options?.message || ''}
+        confirmText={options?.confirmText}
+        cancelText={options?.cancelText}
+      />
+
+      {/* Tambahkan Alert component */}
+      {alert && (
+        <Alert
+          type={alert.type}
+          message={alert.message}
+          duration={alert.duration}
+          onClose={hideAlert}
         />
       )}
     </div>
