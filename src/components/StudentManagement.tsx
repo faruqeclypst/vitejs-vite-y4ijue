@@ -3,7 +3,7 @@ import { Student, availableClasses } from '../types';
 import { useStudents } from '../contexts/StudentContext';
 import { useBarak } from '../contexts/BarakContext'; // Ganti useAsrama dengan useBarak
 import Papa from 'papaparse';
-import { Edit, Trash2, Plus, FileText, History, Search, Users, User, Camera } from 'lucide-react';
+import { Edit, Trash2, Plus, FileText, History, Search, Users, User, Camera, MoreVertical } from 'lucide-react';
 import StudentLeaveHistory from './StudentLeaveHistory';
 import { useAuth } from '../contexts/AuthContext';
 import Alert from '../components/Alert';
@@ -42,6 +42,7 @@ const StudentManagement: React.FC = () => {
   const [selectedPhoto, setSelectedPhoto] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [previewPhoto, setPreviewPhoto] = useState<string | null>(null);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
   // Tambahkan useEffect untuk memantau perubahan user dan barakId
   useEffect(() => {
@@ -107,6 +108,13 @@ const StudentManagement: React.FC = () => {
       unsubscribeBaraks();
     };
   }, [currentUser?.id, students, allStudents, baraks, activeTab]);
+
+  // Tambahkan useEffect untuk menutup menu saat klik di luar
+  useEffect(() => {
+    const handleClickOutside = () => setOpenMenuId(null);
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, []);
 
   // Update fungsi untuk filter barak yang tersedia
   const availableBaraks = useMemo(() => {
@@ -462,27 +470,27 @@ const StudentManagement: React.FC = () => {
   const renderStudentTable = (students: Student[], barakName: string) => {
     if (!students || students.length === 0) {
       return (
-        <div className="overflow-hidden">
-          <table className="min-w-full divide-y divide-gray-200">
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200 text-xs sm:text-sm">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[5%]">No</th>
-                <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[15%]">Foto</th>
-                <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama</th>
-                <th className="hidden md:table-cell px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kelas</th>
-                <th className="hidden sm:table-cell px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Gender</th>
-                <th className="px-2 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-[15%]">Aksi</th>
+                <th className="px-1 sm:px-2 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[5%]">No</th>
+                <th className="px-1 sm:px-2 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[12%] sm:w-[15%]">Foto</th>
+                <th className="px-1 sm:px-2 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama</th>
+                <th className="hidden md:table-cell px-1 sm:px-2 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kelas</th>
+                <th className="hidden sm:table-cell px-1 sm:px-2 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Gender</th>
+                <th className="px-1 sm:px-2 py-2 sm:py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-[12%] sm:w-[15%]">Aksi</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {[...Array(10)].map((_, index) => (
                 <tr key={index}>
-                  <td className="px-2 py-3 whitespace-nowrap text-sm text-gray-500">{index + 1}</td>
-                  <td className="px-2 py-3 text-sm text-gray-500">-</td>
-                  <td className="px-2 py-3 text-sm text-gray-500">-</td>
-                  <td className="hidden md:table-cell px-2 py-3 text-sm text-gray-500">-</td>
-                  <td className="hidden sm:table-cell px-2 py-3 text-sm text-gray-500">-</td>
-                  <td className="px-2 py-3 text-right text-sm text-gray-500">-</td>
+                  <td className="px-1 sm:px-2 py-2 sm:py-3 whitespace-nowrap text-sm text-gray-500">{index + 1}</td>
+                  <td className="px-1 sm:px-2 py-2 sm:py-3 text-sm text-gray-500">-</td>
+                  <td className="px-1 sm:px-2 py-2 sm:py-3 text-sm text-gray-500">-</td>
+                  <td className="hidden md:table-cell px-1 sm:px-2 py-2 sm:py-3 text-sm text-gray-500">-</td>
+                  <td className="hidden sm:table-cell px-1 sm:px-2 py-2 sm:py-3 text-sm text-gray-500">-</td>
+                  <td className="px-1 sm:px-2 py-2 sm:py-3 text-right text-sm text-gray-500">-</td>
                 </tr>
               ))}
             </tbody>
@@ -495,25 +503,25 @@ const StudentManagement: React.FC = () => {
     const emptyRows = Math.max(0, 10 - students.length);
 
     return (
-      <div className="overflow-hidden">
-        <table className="min-w-full divide-y divide-gray-200">
+      <div className="overflow-x-auto">
+        <table className="min-w-full divide-y divide-gray-200 text-xs sm:text-sm">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[5%]">No</th>
-              <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[15%]">Foto</th>
-              <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama</th>
-              <th className="hidden md:table-cell px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kelas</th>
-              <th className="hidden sm:table-cell px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Gender</th>
-              <th className="px-2 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-[15%]">Aksi</th>
+              <th className="px-1 sm:px-2 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[5%]">No</th>
+              <th className="px-1 sm:px-2 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[12%] sm:w-[15%]">Foto</th>
+              <th className="px-1 sm:px-2 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama</th>
+              <th className="hidden md:table-cell px-1 sm:px-2 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kelas</th>
+              <th className="hidden sm:table-cell px-1 sm:px-2 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Gender</th>
+              <th className="px-1 sm:px-2 py-2 sm:py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-[12%] sm:w-[15%]">Aksi</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {students.map((student, index) => (
               <tr key={student.id} className="group hover:bg-gray-50">
-                <td className="px-2 py-3 whitespace-nowrap text-sm text-gray-500">{index + 1}</td>
-                <td className="px-2 py-3">
+                <td className="px-1 sm:px-2 py-2 sm:py-3 whitespace-nowrap">{index + 1}</td>
+                <td className="px-1 sm:px-2 py-2 sm:py-3">
                   <div 
-                    className="w-10 h-10 rounded-full overflow-hidden bg-gray-100 cursor-pointer hover:opacity-80 transition-opacity"
+                    className="w-8 h-8 sm:w-10 sm:h-10 rounded-full overflow-hidden bg-gray-100 cursor-pointer hover:opacity-80 transition-opacity"
                     onClick={() => student.photoUrl && setPreviewPhoto(student.photoUrl)}
                   >
                     {student.photoUrl ? (
@@ -524,21 +532,20 @@ const StudentManagement: React.FC = () => {
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center">
-                        <User className="w-5 h-5 text-gray-400" />
+                        <User className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
                       </div>
                     )}
                   </div>
                 </td>
-                <td className="px-2 py-3">
-                  <div className="text-sm font-medium text-gray-900">{student.fullName}</div>
-                  {/* Tampilkan kelas di mobile */}
-                  <div className="md:hidden text-xs text-gray-500 mt-1">
+                <td className="px-1 sm:px-2 py-2 sm:py-3">
+                  <div className="font-medium text-gray-900">{student.fullName}</div>
+                  <div className="md:hidden text-xs text-gray-500 mt-0.5">
                     {student.class}
                   </div>
                 </td>
-                <td className="hidden md:table-cell px-2 py-3 text-sm text-gray-500">{student.class}</td>
-                <td className="hidden sm:table-cell px-2 py-3">
-                  <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                <td className="hidden md:table-cell px-1 sm:px-2 py-2 sm:py-3 text-gray-500">{student.class}</td>
+                <td className="hidden sm:table-cell px-1 sm:px-2 py-2 sm:py-3">
+                  <span className={`px-1.5 py-0.5 inline-flex text-xs leading-5 font-semibold rounded-full ${
                     student.gender === 'Laki-laki' 
                       ? 'bg-blue-100 text-blue-800' 
                       : 'bg-pink-100 text-pink-800'
@@ -546,50 +553,127 @@ const StudentManagement: React.FC = () => {
                     {student.gender}
                   </span>
                 </td>
-                <td className="px-2 py-3 text-right text-sm font-medium">
-                  <div className="flex justify-end space-x-1">
+                <td className="px-1 sm:px-2 py-2 sm:py-3 text-right font-medium">
+                  <div className="hidden sm:flex justify-end space-x-0.5 sm:space-x-1">
                     {activeTab === 'active' && canEditBarak ? (
                       <>
                         <button
                           onClick={() => handleEdit(student)}
-                          className="text-blue-600 hover:text-blue-900 p-1"
+                          className="text-blue-600 hover:text-blue-900 p-0.5 sm:p-1"
                           title="Edit"
                         >
-                          <Edit className="h-4 w-4" />
+                          <Edit className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                         </button>
                         <button
                           onClick={() => handleDelete(student.id)}
-                          className="text-red-600 hover:text-red-900 p-1"
+                          className="text-red-600 hover:text-red-900 p-0.5 sm:p-1"
                           title="Hapus"
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                         </button>
                       </>
                     ) : activeTab === 'deleted' ? (
                       <>
                         <button
                           onClick={() => handleRestore(student.id)}
-                          className="text-green-600 hover:text-green-900 p-1"
+                          className="text-green-600 hover:text-green-900 p-0.5 sm:p-1"
                           title="Pulihkan"
                         >
-                          <History className="h-4 w-4" />
+                          <History className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                         </button>
                         <button
                           onClick={() => handlePermanentDelete(student.id)}
-                          className="text-red-600 hover:text-red-900 p-1"
+                          className="text-red-600 hover:text-red-900 p-0.5 sm:p-1"
                           title="Hapus Permanen"
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                         </button>
                       </>
                     ) : null}
                     <button
                       onClick={() => setSelectedStudentForHistory(student)}
-                      className="text-indigo-600 hover:text-indigo-900 p-1"
+                      className="text-indigo-600 hover:text-indigo-900 p-0.5 sm:p-1"
                       title="Lihat Riwayat"
                     >
-                      <FileText className="h-4 w-4" />
+                      <FileText className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                     </button>
+                  </div>
+
+                  <div className="sm:hidden relative">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setOpenMenuId(openMenuId === student.id ? null : student.id);
+                      }}
+                      className="p-1 rounded-full hover:bg-gray-100"
+                    >
+                      <MoreVertical className="h-4 w-4 text-gray-500" />
+                    </button>
+
+                    {/* Dropdown menu */}
+                    {openMenuId === student.id && (
+                      <div className="absolute right-0 mt-1 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-10">
+                        <div className="py-1" role="menu">
+                          {activeTab === 'active' && canEditBarak ? (
+                            <>
+                              <button
+                                onClick={() => {
+                                  handleEdit(student);
+                                  setOpenMenuId(null);
+                                }}
+                                className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                              >
+                                <Edit className="h-4 w-4" />
+                                Edit
+                              </button>
+                              <button
+                                onClick={() => {
+                                  handleDelete(student.id);
+                                  setOpenMenuId(null);
+                                }}
+                                className="w-full text-left px-4 py-2 text-sm text-red-700 hover:bg-gray-100 flex items-center gap-2"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                                Hapus
+                              </button>
+                            </>
+                          ) : activeTab === 'deleted' ? (
+                            <>
+                              <button
+                                onClick={() => {
+                                  handleRestore(student.id);
+                                  setOpenMenuId(null);
+                                }}
+                                className="w-full text-left px-4 py-2 text-sm text-green-700 hover:bg-gray-100 flex items-center gap-2"
+                              >
+                                <History className="h-4 w-4" />
+                                Pulihkan
+                              </button>
+                              <button
+                                onClick={() => {
+                                  handlePermanentDelete(student.id);
+                                  setOpenMenuId(null);
+                                }}
+                                className="w-full text-left px-4 py-2 text-sm text-red-700 hover:bg-gray-100 flex items-center gap-2"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                                Hapus Permanen
+                              </button>
+                            </>
+                          ) : null}
+                          <button
+                            onClick={() => {
+                              setSelectedStudentForHistory(student);
+                              setOpenMenuId(null);
+                            }}
+                            className="w-full text-left px-4 py-2 text-sm text-indigo-700 hover:bg-gray-100 flex items-center gap-2"
+                          >
+                            <FileText className="h-4 w-4" />
+                            Lihat Riwayat
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </td>
               </tr>
@@ -597,12 +681,12 @@ const StudentManagement: React.FC = () => {
             {/* Empty rows */}
             {[...Array(emptyRows)].map((_, index) => (
               <tr key={`empty-${index}`}>
-                <td className="px-2 py-3 whitespace-nowrap text-sm text-gray-500">{students.length + index + 1}</td>
-                <td className="px-2 py-3 text-sm text-gray-500">-</td>
-                <td className="px-2 py-3 text-sm text-gray-500">-</td>
-                <td className="hidden md:table-cell px-2 py-3 text-sm text-gray-500">-</td>
-                <td className="hidden sm:table-cell px-2 py-3 text-sm text-gray-500">-</td>
-                <td className="px-2 py-3 text-right text-sm text-gray-500">-</td>
+                <td className="px-1 sm:px-2 py-2 sm:py-3 whitespace-nowrap text-sm text-gray-500">{students.length + index + 1}</td>
+                <td className="px-1 sm:px-2 py-2 sm:py-3 text-sm text-gray-500">-</td>
+                <td className="px-1 sm:px-2 py-2 sm:py-3 text-sm text-gray-500">-</td>
+                <td className="hidden md:table-cell px-1 sm:px-2 py-2 sm:py-3 text-sm text-gray-500">-</td>
+                <td className="hidden sm:table-cell px-1 sm:px-2 py-2 sm:py-3 text-sm text-gray-500">-</td>
+                <td className="px-1 sm:px-2 py-2 sm:py-3 text-right text-sm text-gray-500">-</td>
               </tr>
             ))}
           </tbody>
