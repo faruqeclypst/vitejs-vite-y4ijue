@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, Suspense } from 'react';
 import { useViolation } from '../contexts/ViolationContext';
 import { useStudents } from '../contexts/StudentContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -10,12 +10,12 @@ import ConfirmationModal from './ConfirmationModal';
 import useConfirmation from '../hooks/useConfirmation';
 import ViolationHistory from './ViolationHistory';
 import ViolationForm from './ViolationForm';
+import LoadingSpinner from './common/LoadingSpinner';
 
 const ViolationManagement: React.FC = () => {
   const { violations, addViolation, updateViolation } = useViolation();
   const { students } = useStudents();
   const { user: currentUser } = useAuth();
-  const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStudentForHistory, setSelectedStudentForHistory] = useState<Student | null>(null);
   const { alert, showAlert, hideAlert } = useAlert();
@@ -23,6 +23,7 @@ const ViolationManagement: React.FC = () => {
   const [editingViolation, setEditingViolation] = useState<Violation | null>(null);
   const [previewPhoto, setPreviewPhoto] = useState<string | null>(null);
   const [currentViolationIndex, setCurrentViolationIndex] = useState<number>(0);
+  const [showViolationForm, setShowViolationForm] = useState(false);
 
   // Kelompokkan pelanggaran berdasarkan siswa
   const groupedViolations = useMemo(() => {
@@ -85,7 +86,7 @@ const ViolationManagement: React.FC = () => {
           message: 'Data pelanggaran berhasil ditambahkan'
         });
       }
-      setIsModalOpen(false);
+      setShowViolationForm(false);
       setEditingViolation(null);
     } catch (error) {
       showAlert({
@@ -95,6 +96,9 @@ const ViolationManagement: React.FC = () => {
     }
   };
 
+  const handleAddViolation = () => {
+    setShowViolationForm(true);
+  };
 
   return (
     <div className="relative">
@@ -160,7 +164,7 @@ const ViolationManagement: React.FC = () => {
             <Search className="absolute left-2 top-2.5 text-gray-400" size={18} />
           </div>
           <button
-            onClick={() => setIsModalOpen(true)}
+            onClick={handleAddViolation}
             className="w-full sm:w-auto bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center justify-center gap-2"
           >
             <Plus size={18} />
@@ -169,16 +173,15 @@ const ViolationManagement: React.FC = () => {
         </div>
 
         {/* ViolationForm Modal */}
-        <ViolationForm
-          isOpen={isModalOpen}
-          onClose={() => {
-            setIsModalOpen(false);
-            setEditingViolation(null);
-          }}
-          onSubmit={handleSubmit}
-          initialViolation={editingViolation}
-          students={students}
-        />
+        <Suspense fallback={<LoadingSpinner />}>
+          <ViolationForm
+            isOpen={showViolationForm}
+            onClose={() => setShowViolationForm(false)}
+            onSubmit={handleSubmit}
+            initialViolation={editingViolation}
+            students={students}
+          />
+        </Suspense>
 
         {/* Daftar Pelanggaran (Dikelompokkan per Siswa) */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-2">
@@ -297,10 +300,12 @@ const ViolationManagement: React.FC = () => {
 
         {/* History Modal */}
         {selectedStudentForHistory && (
-          <ViolationHistory
-            student={selectedStudentForHistory}
-            onClose={() => setSelectedStudentForHistory(null)}
-          />
+          <Suspense fallback={<LoadingSpinner />}>
+            <ViolationHistory
+              student={selectedStudentForHistory}
+              onClose={() => setSelectedStudentForHistory(null)}
+            />
+          </Suspense>
         )}
       </div>
     </div>

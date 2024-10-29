@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, Suspense } from 'react';
 import { RosterEntry, Teacher } from '../types';
 import { useAttendance } from '../contexts/AttendanceContext';
 import RosterForm from './RosterForm';
 import { ChevronDown, ChevronUp, Edit, Trash2, Plus, Calendar, Search } from 'lucide-react';
 import Modal from './Modal';
+import LoadingSpinner from './common/LoadingSpinner';
 
 interface AttendanceRecord {
   id: string;
@@ -205,6 +206,17 @@ const RosterTable: React.FC<RosterTableProps> = ({ roster, teachers, onDelete, o
     return a.classId.localeCompare(b.classId);
   };
 
+  const handleSubmit = (entry: Omit<RosterEntry, 'id'>) => {
+    if (editingEntry) {
+      onUpdate(editingEntry.id, entry);
+    } else {
+      onAdd({ ...entry, teacherId: addingForTeacher! });
+    }
+    setIsModalOpen(false);
+    setEditingEntry(null);
+    setAddingForTeacher(null);
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -303,31 +315,23 @@ const RosterTable: React.FC<RosterTableProps> = ({ roster, teachers, onDelete, o
       </div>
 
       {/* RosterForm Modal */}
-      <RosterForm
-        isOpen={isModalOpen}
-        onClose={() => {
-          setIsModalOpen(false);
-          setEditingEntry(null);
-          setAddingForTeacher(null);
-        }}
-        teachers={teachers.map(teacher => ({
-          ...teacher,
-          name: `${teacher.name} (${teacher.code})`
-        }))}
-        classes={classes}
-        onSubmit={(entry) => {
-          if (editingEntry) {
-            onUpdate(editingEntry.id, entry);
-          } else {
-            onAdd({ ...entry, teacherId: addingForTeacher! });
-          }
-          setIsModalOpen(false);
-          setEditingEntry(null);
-          setAddingForTeacher(null);
-        }}
-        initialData={editingEntry}
-        preselectedTeacherId={addingForTeacher}
-      />
+      {isModalOpen && (
+        <Suspense fallback={<LoadingSpinner />}>
+          <RosterForm
+            isOpen={isModalOpen}
+            onClose={() => {
+              setIsModalOpen(false);
+              setEditingEntry(null);
+              setAddingForTeacher(null);
+            }}
+            teachers={teachers}
+            classes={classes}
+            onSubmit={handleSubmit}
+            initialData={editingEntry}
+            preselectedTeacherId={addingForTeacher}
+          />
+        </Suspense>
+      )}
 
       {/* AttendanceDetail Modal */}
       {showAttendanceDetail && (

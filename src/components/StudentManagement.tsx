@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, Suspense } from 'react';
 import { Student, availableClasses } from '../types';
 import { useStudents } from '../contexts/StudentContext';
 import { useBarak } from '../contexts/BarakContext'; // Ganti useAsrama dengan useBarak
@@ -16,6 +16,7 @@ import { exportStudent } from '../utils/exportStudent';
 import { useStudentLeave } from '../contexts/StudentLeaveContext';
 import Modal from '../components/Modal';
 import { compressImage, formatFileSize } from '../utils/imageCompression';
+import LoadingSpinner from './common/LoadingSpinner';
 
 // Update interface untuk tab
 type TabType = 'active' | 'deleted';
@@ -1010,10 +1011,12 @@ const StudentManagement: React.FC = () => {
 
       {/* Student History Modal */}
       {selectedStudentForHistory && (
-        <StudentLeaveHistory
-          student={selectedStudentForHistory}
-          onClose={() => setSelectedStudentForHistory(null)}
-        />
+        <Suspense fallback={<LoadingSpinner />}>
+          <StudentLeaveHistory
+            student={selectedStudentForHistory}
+            onClose={() => setSelectedStudentForHistory(null)}
+          />
+        </Suspense>
       )}
 
       {/* Photo Preview Modal */}

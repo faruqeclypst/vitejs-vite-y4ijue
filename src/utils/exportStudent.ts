@@ -1,4 +1,3 @@
-import ExcelJS from 'exceljs';
 import { Student } from '../types';
 
 interface ExportOptions {
@@ -7,7 +6,8 @@ interface ExportOptions {
 }
 
 export const exportStudent = async ({ students, baraks }: ExportOptions) => {
-  const workbook = new ExcelJS.Workbook();
+  const ExcelJS = await import('exceljs');
+  const workbook = new ExcelJS.default.Workbook();
   
   // Create summary sheet
   const summarySheet = workbook.addWorksheet('Ringkasan');

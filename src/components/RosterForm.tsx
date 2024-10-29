@@ -1,16 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Teacher, DayOfWeek, daySchedule, RosterEntry } from '../types';
 import { useRoster } from '../contexts/RosterContext';
 import Modal from './Modal';
 
 interface RosterFormProps {
-  teachers: Teacher[];
-  classes: string[];
-  onSubmit: (roster: Omit<RosterEntry, 'id'>) => void;
-  initialData?: RosterEntry | null;
-  preselectedTeacherId?: string | null;
   isOpen: boolean;
   onClose: () => void;
+  teachers: Teacher[];
+  classes: string[];
+  onSubmit: (entry: Omit<RosterEntry, 'id'>) => void;
+  initialData?: RosterEntry | null;
+  preselectedTeacherId?: string | null;
 }
 
 interface Conflict {
@@ -20,18 +20,20 @@ interface Conflict {
 }
 
 const RosterForm: React.FC<RosterFormProps> = ({ 
+  isOpen, 
+  onClose, 
   teachers, 
   classes, 
   onSubmit, 
   initialData, 
-  preselectedTeacherId,
-  isOpen,
-  onClose
+  preselectedTeacherId
 }) => {
-  const [teacherId, setTeacherId] = useState(preselectedTeacherId || '');
-  const [classId, setClassId] = useState('');
-  const [dayOfWeek, setDayOfWeek] = useState<DayOfWeek | ''>('');
-  const [hours, setHours] = useState<number[]>([]);
+  const [formData, setFormData] = useState<Omit<RosterEntry, 'id'>>({
+    teacherId: preselectedTeacherId || '',
+    dayOfWeek: 'Senin',
+    classId: classes[0],
+    hours: []
+  });
   const [conflicts, setConflicts] = useState<Conflict[]>([]);
   const { roster } = useRoster();
   const [grade, setGrade] = useState<'X' | 'XI' | 'XII' | ''>('');
@@ -40,43 +42,42 @@ const RosterForm: React.FC<RosterFormProps> = ({
 
   useEffect(() => {
     if (initialData) {
-      setTeacherId(initialData.teacherId);
-      setClassId(initialData.classId);
-      setDayOfWeek(initialData.dayOfWeek);
-      setHours(initialData.hours);
-      setGrade(initialData.classId.split('-')[0] as 'X' | 'XI' | 'XII');
+      setFormData(initialData);
     } else if (preselectedTeacherId) {
-      setTeacherId(preselectedTeacherId);
+      setFormData(prev => ({
+        ...prev,
+        teacherId: preselectedTeacherId
+      }));
     }
   }, [initialData, preselectedTeacherId]);
 
   useEffect(() => {
-    if(dayOfWeek) {
+    if(formData.dayOfWeek) {
       checkConflicts();
     }
-  }, [teacherId, classId, dayOfWeek, hours, roster]);
+  }, [formData.teacherId, formData.classId, formData.dayOfWeek, formData.hours, roster]);
 
   const checkConflicts = () => {
     const newConflicts: Conflict[] = [];
     
-    hours.forEach(hour => {
+    formData.hours.forEach(hour => {
       const conflictingEntries = roster.filter(
         entry => (
-          entry.dayOfWeek === dayOfWeek &&
+          entry.dayOfWeek === formData.dayOfWeek &&
           entry.hours.includes(hour) &&
           entry.id !== initialData?.id
         )
       );
 
       conflictingEntries.forEach(entry => {
-        if (entry.classId === classId) {
+        if (entry.classId === formData.classId) {
           newConflicts.push({
             hour,
             conflictType: 'class',
             conflictWith: teachers.find(t => t.id === entry.teacherId)?.name || 'Unknown Teacher'
           });
         }
-        if (entry.teacherId === teacherId) {
+        if (entry.teacherId === formData.teacherId) {
           newConflicts.push({
             hour,
             conflictType: 'teacher',
@@ -95,22 +96,26 @@ const RosterForm: React.FC<RosterFormProps> = ({
       alert('Tidak dapat menyimpan jadwal karena ada konflik. Harap selesaikan konflik terlebih dahulu.');
       return;
     }
-    if (dayOfWeek === '') {
+    if (!formData.dayOfWeek) {
       alert('Harap pilih hari.');
       return;
     }
-    onSubmit({ teacherId, classId, dayOfWeek: dayOfWeek as DayOfWeek, hours });
+    onSubmit(formData);
     if (!initialData) {
-      setHours([]);
+      setFormData(prev => ({
+        ...prev,
+        hours: []
+      }));
     }
     onClose();
   };
 
   const toggleHour = (hour: number) => {
-    if (dayOfWeek === 'Senin' && hour === 1) return; // Prevent toggling first hour on Monday
-    setHours(prev =>
-      prev.includes(hour) ? prev.filter(h => h !== hour) : [...prev, hour]
-    );
+    if (formData.dayOfWeek === 'Senin' && hour === 1) return; // Prevent toggling first hour on Monday
+    setFormData(prev => ({
+      ...prev,
+      hours: prev.hours.includes(hour) ? prev.hours.filter(h => h !== hour) : [...prev.hours, hour]
+    }));
   };
 
   const getConflictMessage = () => {
@@ -124,12 +129,12 @@ const RosterForm: React.FC<RosterFormProps> = ({
     
     if (classConflicts.length > 0) {
       const conflictingTeachers = [...new Set(classConflicts.map(c => c.conflictWith))].join(', ');
-      message += `Kelas ${classId} sudah ada jadwal dengan ${conflictingTeachers}. `;
+      message += `Kelas ${formData.classId} sudah ada jadwal dengan ${conflictingTeachers}. `;
     }
     
     if (teacherConflicts.length > 0) {
       const conflictingClasses = [...new Set(teacherConflicts.map(c => c.conflictWith))].join(', ');
-      const teacherName = teachers.find(t => t.id === teacherId)?.name || 'Unknown Teacher';
+      const teacherName = teachers.find(t => t.id === formData.teacherId)?.name || 'Unknown Teacher';
       message += `${teacherName} sudah mengajar kelas ${conflictingClasses}.`;
     }
     
@@ -140,6 +145,15 @@ const RosterForm: React.FC<RosterFormProps> = ({
   const filteredClasses = grade 
     ? classes.filter(cls => new RegExp(`^${grade}-\\d+$`).test(cls))
     : [];
+
+  const isFormValid = useMemo(() => {
+    return (
+      formData.teacherId && 
+      formData.dayOfWeek && 
+      formData.classId && 
+      formData.hours.length > 0 // Pastikan minimal 1 jam dipilih
+    );
+  }, [formData]);
 
   return (
     <Modal
@@ -153,15 +167,19 @@ const RosterForm: React.FC<RosterFormProps> = ({
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Guru</label>
             <select
-              value={teacherId}
-              onChange={(e) => setTeacherId(e.target.value)}
-              className="w-full p-2.5 text-sm border rounded-md"
+              value={formData.teacherId}
+              onChange={(e) => setFormData({ ...formData, teacherId: e.target.value })}
+              disabled={!!preselectedTeacherId}
+              className={`w-full p-2 border rounded-lg ${
+                preselectedTeacherId ? 'bg-gray-100' : ''
+              }`}
               required
-              disabled={Boolean(initialData || preselectedTeacherId)}
             >
-              <option value="">Pilih guru</option>
+              <option value="">Pilih Guru</option>
               {teachers.map((teacher) => (
-                <option key={teacher.id} value={teacher.id}>{teacher.name}</option>
+                <option key={teacher.id} value={teacher.id}>
+                  {teacher.name} ({teacher.code})
+                </option>
               ))}
             </select>
           </div>
@@ -195,9 +213,12 @@ const RosterForm: React.FC<RosterFormProps> = ({
                 <button
                   key={cls}
                   type="button" 
-                  onClick={() => setClassId(cls)}
+                  onClick={() => setFormData(prev => ({
+                    ...prev,
+                    classId: cls
+                  }))}
                   className={`p-2 text-sm rounded-md ${
-                    classId === cls 
+                    formData.classId === cls 
                       ? 'bg-blue-500 text-white' 
                       : 'bg-gray-200 text-gray-700'
                   }`}
@@ -216,9 +237,12 @@ const RosterForm: React.FC<RosterFormProps> = ({
               <button
                 key={day}
                 type="button"
-                onClick={() => setDayOfWeek(day)}
+                onClick={() => setFormData(prev => ({
+                  ...prev,
+                  dayOfWeek: day
+                }))}
                 className={`p-2 rounded-md transition-colors ${
-                  dayOfWeek === day 
+                  formData.dayOfWeek === day 
                     ? 'bg-blue-500 text-white' 
                     : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                 }`}
@@ -232,8 +256,8 @@ const RosterForm: React.FC<RosterFormProps> = ({
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Jam Pelajaran</label>
           <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2">
-            {dayOfWeek && Array.from({ length: daySchedule[dayOfWeek] }, (_, i) => i + 1).map((hour) => {
-              const isUpacara = dayOfWeek === 'Senin' && hour === 1;
+            {formData.dayOfWeek && Array.from({ length: daySchedule[formData.dayOfWeek] }, (_, i) => i + 1).map((hour) => {
+              const isUpacara = formData.dayOfWeek === 'Senin' && hour === 1;
               return (
                 <button
                   key={hour}
@@ -242,7 +266,7 @@ const RosterForm: React.FC<RosterFormProps> = ({
                   className={`p-2 rounded-md transition-colors ${
                     isUpacara
                       ? 'bg-yellow-500 text-white cursor-not-allowed hover:bg-yellow-600'
-                      : hours.includes(hour)
+                      : formData.hours.includes(hour)
                       ? conflicts.some(c => c.hour === hour)
                         ? 'bg-red-500 text-white'
                         : 'bg-green-500 text-white'
@@ -264,6 +288,12 @@ const RosterForm: React.FC<RosterFormProps> = ({
           </p>
         )}
 
+        {formData.hours.length === 0 && (
+          <p className="text-red-500 text-sm">
+            Pilih minimal satu jam pelajaran
+          </p>
+        )}
+
         <div className="flex justify-end space-x-3">
           <button
             type="button"
@@ -274,16 +304,25 @@ const RosterForm: React.FC<RosterFormProps> = ({
           </button>
           <button
             type="submit"
+            disabled={!isFormValid || conflicts.length > 0}
             className={`px-4 py-2 text-white rounded-lg ${
-              conflicts.length > 0
+              !isFormValid || conflicts.length > 0
                 ? 'bg-gray-400 cursor-not-allowed'
                 : 'bg-blue-500 hover:bg-blue-600'
             }`}
-            disabled={conflicts.length > 0}
           >
             {initialData ? 'Update' : 'Simpan'}
           </button>
         </div>
+
+        {!isFormValid && (
+          <p className="text-red-500 text-sm text-center">
+            {!formData.teacherId ? 'Pilih guru' : 
+             !formData.dayOfWeek ? 'Pilih hari' :
+             !formData.classId ? 'Pilih kelas' :
+             !formData.hours.length ? 'Pilih minimal satu jam pelajaran' : ''}
+          </p>
+        )}
       </form>
     </Modal>
   );

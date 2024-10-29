@@ -1,7 +1,8 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, Suspense } from 'react';
 import { Teacher } from '../types';
 import { Users, Edit, Trash2, Search, UserPlus, History } from 'lucide-react';
 import TeacherForm from './TeacherForm';
+import LoadingSpinner from './common/LoadingSpinner';
 
 type TabType = 'active' | 'deleted';
 
@@ -46,12 +47,16 @@ const TeacherList: React.FC<TeacherListProps> = ({
 
   return (
     <>
-      <TeacherForm 
-        isOpen={showModal}
-        onClose={onCloseModal}
-        onSubmit={onSubmit}
-        initialTeacher={selectedTeacher}
-      />
+      {showModal && (
+        <Suspense fallback={<LoadingSpinner />}>
+          <TeacherForm 
+            isOpen={showModal}
+            onClose={onCloseModal}
+            onSubmit={onSubmit}
+            initialTeacher={selectedTeacher}
+          />
+        </Suspense>
+      )}
 
       <div className="space-y-6">
         {/* Header */}

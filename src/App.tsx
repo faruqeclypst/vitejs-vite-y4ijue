@@ -1,3 +1,4 @@
+import { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { TeachersProvider } from './contexts/TeachersContext';
@@ -7,33 +8,38 @@ import { StudentProvider } from './contexts/StudentContext';
 import { StudentLeaveProvider } from './contexts/StudentLeaveContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Sidebar from './components/Sidebar';
-import LandingPage from './pages/LandingPage';
-import TeachersPage from './pages/TeachersPage';
-import RosterPage from './pages/RosterPage';
-import AttendancePage from './pages/AttendancePage';
-import UserManagementPage from './pages/UserManagementPage';
-import StudentManagementPage from './pages/StudentManagementPage';
-import Login from './components/Login';
 import Header from './components/Header';
 import { useState } from 'react';
-import BarakPage from './pages/BarakPage';
-import StudentLeavePage from './pages/StudentLeavePage';
 import { BarakProvider } from './contexts/BarakContext';
-import ViolationPage from './pages/ViolationPage';
-import GuidancePage from './pages/GuidancePage';
 import { ViolationProvider } from './contexts/ViolationContext';
 import { GuidanceProvider } from './contexts/GuidanceContext';
+
+// Lazy load pages
+const Login = lazy(() => import('./components/Login'));
+const LandingPage = lazy(() => import('./pages/LandingPage'));
+const TeachersPage = lazy(() => import('./pages/TeachersPage' /* webpackChunkName: "teachers" */));
+const RosterPage = lazy(() => import('./pages/RosterPage'));
+const AttendancePage = lazy(() => import('./pages/AttendancePage'));
+const UserManagementPage = lazy(() => import('./pages/UserManagementPage'));
+const StudentManagementPage = lazy(() => import('./pages/StudentManagementPage'));
+const BarakPage = lazy(() => import('./pages/BarakPage'));
+const StudentLeavePage = lazy(() => import('./pages/StudentLeavePage'));
+const ViolationPage = lazy(() => import('./pages/ViolationPage'));
+const GuidancePage = lazy(() => import('./pages/GuidancePage'));
+
+// Loading component
+const LoadingSpinner = () => (
+  <div className="flex items-center justify-center min-h-screen">
+    <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+  </div>
+);
 
 const AppRoutes = () => {
   const { user, isLoading } = useAuth();
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-      </div>
-    );
+    return <LoadingSpinner />;
   }
 
   return (
@@ -45,93 +51,95 @@ const AppRoutes = () => {
         }`}>
           {user && <Header />}
           <main className={`flex-1 ${!user ? 'h-full' : ''}`}>
-            <Routes>
-              <Route 
-                path="/login" 
-                element={user ? <Navigate to="/" /> : <Login />} 
-              />
-              <Route 
-                path="/" 
-                element={
-                  <ProtectedRoute allowedRoles={['admin_master', 'admin', 'piket', 'wakil_kepala', 'pengasuh', 'admin_asrama']}>
-                    <LandingPage />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/teachers" 
-                element={
-                  <ProtectedRoute allowedRoles={['admin_master', 'admin']}>
-                    <TeachersPage />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/roster" 
-                element={
-                  <ProtectedRoute allowedRoles={['admin_master', 'admin', 'piket']}>
-                    <RosterPage />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/attendance" 
-                element={
-                  <ProtectedRoute allowedRoles={['admin_master', 'admin', 'piket', 'wakil_kepala']}>
-                    <AttendancePage />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/user-management" 
-                element={
-                  <ProtectedRoute allowedRoles={['admin_master', 'admin', 'admin_asrama']}>
-                    <UserManagementPage />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/barak" 
-                element={
-                  <ProtectedRoute allowedRoles={['admin_master', 'admin_asrama']}>
-                    <BarakPage />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/students" 
-                element={
-                  <ProtectedRoute allowedRoles={['admin_master', 'admin_asrama', 'pengasuh']}>
-                    <StudentManagementPage />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/student-leave" 
-                element={
-                  <ProtectedRoute allowedRoles={['admin_master', 'admin_asrama', 'pengasuh']}>
-                    <StudentLeavePage />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/violations" 
-                element={
-                  <ProtectedRoute allowedRoles={['admin_master', 'admin', 'admin_asrama', 'pengasuh']}>
-                    <ViolationPage />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/guidance" 
-                element={
-                  <ProtectedRoute allowedRoles={['admin_master', 'admin', 'admin_asrama', 'pengasuh']}>
-                    <GuidancePage />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route path="*" element={<Navigate to="/" />} />
-            </Routes>
+            <Suspense fallback={<LoadingSpinner />}>
+              <Routes>
+                <Route 
+                  path="/login" 
+                  element={user ? <Navigate to="/" /> : <Login />} 
+                />
+                <Route 
+                  path="/" 
+                  element={
+                    <ProtectedRoute allowedRoles={['admin_master', 'admin', 'piket', 'wakil_kepala', 'pengasuh', 'admin_asrama']}>
+                      <LandingPage />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/teachers" 
+                  element={
+                    <ProtectedRoute allowedRoles={['admin_master', 'admin']}>
+                      <TeachersPage />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/roster" 
+                  element={
+                    <ProtectedRoute allowedRoles={['admin_master', 'admin', 'piket']}>
+                      <RosterPage />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/attendance" 
+                  element={
+                    <ProtectedRoute allowedRoles={['admin_master', 'admin', 'piket', 'wakil_kepala']}>
+                      <AttendancePage />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/user-management" 
+                  element={
+                    <ProtectedRoute allowedRoles={['admin_master', 'admin', 'admin_asrama']}>
+                      <UserManagementPage />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/barak" 
+                  element={
+                    <ProtectedRoute allowedRoles={['admin_master', 'admin_asrama']}>
+                      <BarakPage />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/students" 
+                  element={
+                    <ProtectedRoute allowedRoles={['admin_master', 'admin_asrama', 'pengasuh']}>
+                      <StudentManagementPage />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/student-leave" 
+                  element={
+                    <ProtectedRoute allowedRoles={['admin_master', 'admin_asrama', 'pengasuh']}>
+                      <StudentLeavePage />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/violations" 
+                  element={
+                    <ProtectedRoute allowedRoles={['admin_master', 'admin', 'admin_asrama', 'pengasuh']}>
+                      <ViolationPage />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/guidance" 
+                  element={
+                    <ProtectedRoute allowedRoles={['admin_master', 'admin', 'admin_asrama', 'pengasuh']}>
+                      <GuidancePage />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route path="*" element={<Navigate to="/" />} />
+              </Routes>
+            </Suspense>
           </main>
           <div className="h-20 md:hidden" />
         </div>
