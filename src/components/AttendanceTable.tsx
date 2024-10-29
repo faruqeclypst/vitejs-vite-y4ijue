@@ -3,6 +3,7 @@ import { RosterEntry, Teacher, Attendance } from '../types';
 import { Check } from 'lucide-react';
 // Menghapus import yang tidak digunakan
 // import Modal from './Modal';
+import { useRoster } from '../contexts/RosterContext';
 
 interface AttendanceTableProps {
   roster: RosterEntry[];
@@ -91,6 +92,15 @@ const AttendanceTable: React.FC<AttendanceTableProps> = ({
     setHasUnsavedChanges(false);
   };
 
+  const { getEffectiveRoster } = useRoster();
+
+  // Fungsi untuk mendapatkan nama hari
+  const getDayName = (dateString: string) => {
+    const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+    const date = new Date(dateString);
+    return days[date.getDay()];
+  };
+
   if (!roster.length) {
     return (
       <div className="space-y-6">
@@ -138,16 +148,21 @@ const AttendanceTable: React.FC<AttendanceTableProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Header section */}
+      {/* Header section dengan tambahan hari */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-      <div className="relative w-full sm:w-64">
-          <input
-            type="date"
-            value={currentDate}
-            onChange={handleDateInputChange}
-            disabled={!isAdmin}
-            className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-          />
+        <div className="relative w-full sm:w-auto">
+          <div className="flex items-center gap-2">
+            <input
+              type="date"
+              value={currentDate}
+              onChange={handleDateInputChange}
+              disabled={!isAdmin}
+              className="w-full sm:w-64 p-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+            />
+            <span className="text-gray-600 font-medium">
+              ({getDayName(currentDate)})
+            </span>
+          </div>
         </div>
       </div>
 
@@ -182,9 +197,12 @@ const AttendanceTable: React.FC<AttendanceTableProps> = ({
                   <td key={i} className="py-2 px-3 text-center">
                     <div className="flex flex-col space-y-1">
                       {groupedRoster[teacherId].map(entry => {
-                        if (entry.hours.includes(i + 1)) {
+                        const effectiveRoster = getEffectiveRoster(entry.id, currentDate);
+                        
+                        if (effectiveRoster?.hours.includes(i + 1)) {
                           const currentData = attendanceData[entry.id] || { presentHours: [], keterangan: '' };
-                          const isUpacara = entry.dayOfWeek === 'Senin' && i === 0;
+                          const isUpacara = effectiveRoster.dayOfWeek === 'Senin' && i === 0;
+                          
                           return (
                             <button
                               key={entry.id}
@@ -199,7 +217,7 @@ const AttendanceTable: React.FC<AttendanceTableProps> = ({
                               disabled={isUpacara}
                               title={isUpacara ? 'UPACARA' : undefined}
                             >
-                              {isUpacara ? 'UPACARA' : entry.classId}
+                              {isUpacara ? 'UPACARA' : effectiveRoster.classId}
                             </button>
                           );
                         }

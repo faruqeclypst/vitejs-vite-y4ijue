@@ -9,10 +9,10 @@ import useAlert from '../hooks/useAlert';
 import useConfirmation from '../hooks/useConfirmation';
 
 const RosterPage: React.FC = () => {
-  const { roster, addRosterEntry, deleteRosterEntry, updateRosterEntry } = useRoster();
+  const { roster, addRosterEntry, updateRosterEntry } = useRoster();
   const { teachers } = useTeachers();
   const { alert, showAlert, hideAlert } = useAlert();
-  const { isOpen, options, confirm, handleConfirm, handleCancel } = useConfirmation();
+  const { isOpen, options, handleConfirm, handleCancel } = useConfirmation();
 
   const handleAddRosterEntry = async (entry: Omit<RosterEntry, 'id'>) => {
     try {
@@ -29,24 +29,6 @@ const RosterPage: React.FC = () => {
       showAlert({ type: 'success', message: 'Jadwal berhasil diperbarui' });
     } catch (error) {
       showAlert({ type: 'error', message: 'Gagal memperbarui jadwal' });
-    }
-  };
-
-  const handleDeleteRosterEntry = async (id: string) => {
-    const shouldDelete = await confirm({
-      title: 'Konfirmasi Hapus',
-      message: 'Apakah Anda yakin ingin menghapus jadwal ini?',
-      confirmText: 'Hapus',
-      cancelText: 'Batal',
-    });
-
-    if (shouldDelete) {
-      try {
-        await deleteRosterEntry(id);
-        showAlert({ type: 'success', message: 'Jadwal berhasil dihapus' });
-      } catch (error) {
-        showAlert({ type: 'error', message: 'Gagal menghapus jadwal' });
-      }
     }
   };
 
@@ -71,7 +53,6 @@ const RosterPage: React.FC = () => {
             <RosterTable
               roster={roster}
               teachers={teachers}
-              onDelete={handleDeleteRosterEntry}
               onAdd={handleAddRosterEntry}
               onUpdate={handleUpdateRosterEntry}
               classes={availableClasses}

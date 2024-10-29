@@ -12,6 +12,8 @@ export interface RosterEntry {
   dayOfWeek: DayOfWeek;
   hours: number[];
   isDeleted?: boolean;
+  createdAt: string;
+  updatedAt?: string;
 }
 
 export interface Attendance {
@@ -172,4 +174,17 @@ export interface Guidance {
   conductedBy: string;
   conductedAt: string;
   resolveViolation?: boolean; // Tambah field ini
+}
+
+// Tambahkan interface baru
+export interface RosterHistory {
+  id: string;
+  rosterId: string;
+  teacherId: string;
+  classId: string;
+  dayOfWeek: DayOfWeek;
+  hours: number[];
+  effectiveFrom: string; // Timestamp kapan perubahan mulai berlaku
+  createdAt: string;
+  updatedAt?: string;
 }

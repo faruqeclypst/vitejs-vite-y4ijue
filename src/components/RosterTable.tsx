@@ -1,10 +1,12 @@
 import React, { useState, Suspense } from 'react';
-import { RosterEntry, Teacher } from '../types';
+import { RosterEntry, Teacher, RosterHistory } from '../types';
 import { useAttendance } from '../contexts/AttendanceContext';
 import RosterForm from './RosterForm';
-import { ChevronDown, ChevronUp, Edit, Trash2, Plus, Calendar, Search } from 'lucide-react';
+import { ChevronDown, ChevronUp, Edit, Trash2, Plus, Calendar, Search, Clock } from 'lucide-react';
 import Modal from './Modal';
 import LoadingSpinner from './common/LoadingSpinner';
+import { useRoster } from '../contexts/RosterContext';
+import useConfirmation from '../hooks/useConfirmation';
 
 interface AttendanceRecord {
   id: string;
@@ -152,19 +154,82 @@ const AttendanceDetail: React.FC<AttendanceDetailProps> = ({
 interface RosterTableProps {
   roster: RosterEntry[];
   teachers: Teacher[];
-  onDelete: (id: string) => void;
   onAdd: (entry: Omit<RosterEntry, 'id'>) => void;
   onUpdate: (id: string, entry: Omit<RosterEntry, 'id'>) => void;
   classes: string[];
 }
 
-const RosterTable: React.FC<RosterTableProps> = ({ roster, teachers, onDelete, onAdd, onUpdate, classes }) => {
+// Tambahkan interface untuk RosterHistoryModal
+interface RosterHistoryModalProps {
+  rosterId: string;
+  teacherName: string;
+  onClose: () => void;
+  rosterHistory: RosterHistory[];
+}
+
+// Komponen untuk menampilkan history
+const RosterHistoryModal: React.FC<RosterHistoryModalProps> = ({
+  rosterId,
+  teacherName,
+  onClose,
+  rosterHistory
+}) => {
+  const sortedHistory = rosterHistory
+    .filter(h => h.rosterId === rosterId)
+    .sort((a, b) => new Date(b.effectiveFrom).getTime() - new Date(a.effectiveFrom).getTime());
+
+  return (
+    <Modal
+      isOpen={true}
+      onClose={onClose}
+      title={`Riwayat Perubahan Jadwal - ${teacherName}`}
+      maxWidth="max-w-lg"
+    >
+      <div className="space-y-4">
+        {sortedHistory.length > 0 ? (
+          sortedHistory.map((history, index) => (
+            <div key={history.id} className="border rounded-lg p-4">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium text-gray-500">
+                  {index === 0 ? 'Jadwal Terkini' : `Perubahan ${sortedHistory.length - index}`}
+                </span>
+                <span className="text-xs text-gray-400">
+                  Efektif: {new Date(history.effectiveFrom).toLocaleString('id-ID')}
+                </span>
+              </div>
+              <div className="space-y-2">
+                <p className="font-medium">{history.dayOfWeek}</p>
+                <p className="text-sm text-gray-600">{history.classId}</p>
+                <p className="text-sm text-gray-500">Jam: {history.hours.sort((a: number, b: number) => a - b).join(', ')}</p>
+              </div>
+            </div>
+          ))
+        ) : (
+          <div className="text-center text-gray-500 py-4">
+            Belum ada riwayat perubahan
+          </div>
+        )}
+      </div>
+    </Modal>
+  );
+};
+
+const RosterTable: React.FC<RosterTableProps> = ({ 
+  roster, 
+  teachers, 
+  onAdd, 
+  onUpdate, 
+  classes 
+}) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [openTeachers, setOpenTeachers] = useState<string[]>([]);
   const [editingEntry, setEditingEntry] = useState<RosterEntry | null>(null);
   const [addingForTeacher, setAddingForTeacher] = useState<string | null>(null);
   const [showAttendanceDetail, setShowAttendanceDetail] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [showHistory, setShowHistory] = useState<string | null>(null);
+  const { confirm } = useConfirmation();
+  const { deleteRoster, rosterHistory } = useRoster();
 
   const groupedRoster = roster.reduce((acc, entry) => {
     if (!acc[entry.teacherId]) {
@@ -215,6 +280,23 @@ const RosterTable: React.FC<RosterTableProps> = ({ roster, teachers, onDelete, o
     setIsModalOpen(false);
     setEditingEntry(null);
     setAddingForTeacher(null);
+  };
+
+  const handleDelete = async (id: string) => {
+    const shouldDelete = await confirm({
+      title: 'Hapus Jadwal',
+      message: 'Apakah Anda yakin ingin menghapus jadwal ini? Tindakan ini tidak dapat dibatalkan.',
+      confirmText: 'Hapus',
+      cancelText: 'Batal'
+    });
+
+    if (shouldDelete) {
+      try {
+        await deleteRoster(id);
+      } catch (error) {
+        console.error('Error deleting roster:', error);
+      }
+    }
   };
 
   return (
@@ -285,17 +367,32 @@ const RosterTable: React.FC<RosterTableProps> = ({ roster, teachers, onDelete, o
                               <p className="font-medium">{entry.dayOfWeek}</p>
                               <p className="text-sm text-gray-600">{entry.classId}</p>
                               <p className="text-sm text-gray-500">Jam: {entry.hours.join(', ')}</p>
+                              <div className="mt-2 text-xs text-gray-400">
+                                <p>Dibuat: {new Date(entry.createdAt).toLocaleString('id-ID')}</p>
+                                {entry.updatedAt && (
+                                  <p>Diubah: {new Date(entry.updatedAt).toLocaleString('id-ID')}</p>
+                                )}
+                              </div>
                             </div>
                             <div className="flex space-x-2">
                               <button
+                                onClick={() => setShowHistory(entry.id)}
+                                className="text-blue-500 hover:text-blue-700 p-1"
+                                title="Lihat Riwayat"
+                              >
+                                <Clock size={16} />
+                              </button>
+                              <button
                                 onClick={() => handleEdit(entry)}
                                 className="text-blue-500 hover:text-blue-700 p-1"
+                                title="Edit Jadwal"
                               >
                                 <Edit size={16} />
                               </button>
                               <button
-                                onClick={() => onDelete(entry.id)}
+                                onClick={() => handleDelete(entry.id)}
                                 className="text-red-500 hover:text-red-700 p-1"
+                                title="Hapus Jadwal"
                               >
                                 <Trash2 size={16} />
                               </button>
@@ -340,6 +437,16 @@ const RosterTable: React.FC<RosterTableProps> = ({ roster, teachers, onDelete, o
           teacherName={teachers.find(t => t.id === showAttendanceDetail)?.name || ''}
           onClose={() => setShowAttendanceDetail(null)}
           roster={roster}
+        />
+      )}
+
+      {/* Tambahkan RosterHistoryModal */}
+      {showHistory && (
+        <RosterHistoryModal
+          rosterId={showHistory}
+          teacherName={teachers.find(t => t.id === addingForTeacher)?.name || ''}
+          onClose={() => setShowHistory(null)}
+          rosterHistory={rosterHistory}
         />
       )}
     </div>

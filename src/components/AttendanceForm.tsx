@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Teacher, RosterEntry } from '../types';
 import Modal from './Modal';
+import { useRoster } from '../contexts/RosterContext';
 
 interface AttendanceFormProps {
   teacher: Teacher;
@@ -20,6 +21,7 @@ const AttendanceForm: React.FC<AttendanceFormProps> = ({
 }) => {
   const [date] = useState<string>(new Date().toISOString().split('T')[0]);
   const [presentHours, setPresentHours] = useState<number[]>([]);
+  const { getEffectiveRoster } = useRoster();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,6 +29,9 @@ const AttendanceForm: React.FC<AttendanceFormProps> = ({
     setPresentHours([]);
     onClose();
   };
+
+  const effectiveRoster = getEffectiveRoster(rosterEntry.id, date);
+  const effectiveHours = effectiveRoster?.hours || [];
 
   return (
     <Modal
@@ -40,7 +45,7 @@ const AttendanceForm: React.FC<AttendanceFormProps> = ({
             Jam Kehadiran
           </label>
           <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
-            {rosterEntry.hours.map((hour) => (
+            {effectiveHours.map((hour) => (
               <button
                 key={hour}
                 type="button"

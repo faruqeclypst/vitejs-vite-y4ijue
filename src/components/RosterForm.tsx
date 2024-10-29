@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Teacher, DayOfWeek, daySchedule, RosterEntry } from '../types';
 import { useRoster } from '../contexts/RosterContext';
 import Modal from './Modal';
@@ -32,13 +32,71 @@ const RosterForm: React.FC<RosterFormProps> = ({
     teacherId: preselectedTeacherId || '',
     dayOfWeek: 'Senin',
     classId: classes[0],
-    hours: []
+    hours: [],
+    createdAt: new Date().toISOString()
   });
   const [conflicts, setConflicts] = useState<Conflict[]>([]);
   const { roster } = useRoster();
   const [grade, setGrade] = useState<'X' | 'XI' | 'XII' | ''>('');
 
   const days = Object.keys(daySchedule) as DayOfWeek[];
+
+  const [existingSchedules, setExistingSchedules] = useState<{
+    teacherSchedules: RosterEntry[];
+    classSchedules: RosterEntry[];
+  }>({
+    teacherSchedules: [],
+    classSchedules: []
+  });
+
+  const updateExistingSchedules = useCallback(() => {
+    if (formData.teacherId && formData.dayOfWeek && formData.classId) {
+      const teacherSchedules = roster.filter(r => 
+        r.teacherId === formData.teacherId && 
+        r.dayOfWeek === formData.dayOfWeek &&
+        r.id !== initialData?.id
+      );
+
+      const classSchedules = roster.filter(r => 
+        r.classId === formData.classId && 
+        r.dayOfWeek === formData.dayOfWeek &&
+        r.id !== initialData?.id
+      );
+
+      setExistingSchedules({ teacherSchedules, classSchedules });
+    }
+  }, [formData.teacherId, formData.dayOfWeek, formData.classId, roster, initialData]);
+
+  useEffect(() => {
+    updateExistingSchedules();
+  }, [updateExistingSchedules]);
+
+  const isHourConflict = (hour: number) => {
+    const teacherConflict = existingSchedules.teacherSchedules.some(schedule => 
+      schedule.hours.includes(hour)
+    );
+    const classConflict = existingSchedules.classSchedules.some(schedule => 
+      schedule.hours.includes(hour)
+    );
+    return teacherConflict || classConflict;
+  };
+
+  const getHourConflictDetails = (hour: number) => {
+    const details = [];
+    
+    const teacherSchedule = existingSchedules.teacherSchedules.find(s => s.hours.includes(hour));
+    if (teacherSchedule) {
+      details.push(`Guru sudah mengajar kelas ${teacherSchedule.classId}`);
+    }
+
+    const classSchedule = existingSchedules.classSchedules.find(s => s.hours.includes(hour));
+    if (classSchedule) {
+      const teacher = teachers.find(t => t.id === classSchedule.teacherId);
+      details.push(`Kelas sudah ada jadwal dengan ${teacher?.name || 'Unknown'}`);
+    }
+
+    return details.join(', ');
+  };
 
   useEffect(() => {
     if (initialData) {
@@ -100,7 +158,14 @@ const RosterForm: React.FC<RosterFormProps> = ({
       alert('Harap pilih hari.');
       return;
     }
-    onSubmit(formData);
+    
+    const submitData = {
+      ...formData,
+      createdAt: initialData?.createdAt || formData.createdAt
+    };
+    
+    onSubmit(submitData);
+    
     if (!initialData) {
       setFormData(prev => ({
         ...prev,
@@ -154,6 +219,14 @@ const RosterForm: React.FC<RosterFormProps> = ({
       formData.hours.length > 0 // Pastikan minimal 1 jam dipilih
     );
   }, [formData]);
+
+  const handleDayChange = (day: DayOfWeek) => {
+    setFormData(prev => ({
+      ...prev,
+      dayOfWeek: day,
+      hours: [] // Reset jam saat hari berubah
+    }));
+  };
 
   return (
     <Modal
@@ -237,10 +310,7 @@ const RosterForm: React.FC<RosterFormProps> = ({
               <button
                 key={day}
                 type="button"
-                onClick={() => setFormData(prev => ({
-                  ...prev,
-                  dayOfWeek: day
-                }))}
+                onClick={() => handleDayChange(day)}
                 className={`p-2 rounded-md transition-colors ${
                   formData.dayOfWeek === day 
                     ? 'bg-blue-500 text-white' 
@@ -255,31 +325,61 @@ const RosterForm: React.FC<RosterFormProps> = ({
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Jam Pelajaran</label>
-          <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2">
-            {formData.dayOfWeek && Array.from({ length: daySchedule[formData.dayOfWeek] }, (_, i) => i + 1).map((hour) => {
-              const isUpacara = formData.dayOfWeek === 'Senin' && hour === 1;
-              return (
-                <button
-                  key={hour}
-                  type="button"
-                  onClick={() => toggleHour(hour)}
-                  className={`p-2 rounded-md transition-colors ${
-                    isUpacara
-                      ? 'bg-yellow-500 text-white cursor-not-allowed hover:bg-yellow-600'
-                      : formData.hours.includes(hour)
-                      ? conflicts.some(c => c.hour === hour)
-                        ? 'bg-red-500 text-white'
-                        : 'bg-green-500 text-white'
-                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                  }`}
-                  disabled={isUpacara}
-                  title={isUpacara ? 'Jam Upacara' : `Jam Pelajaran ${hour}`}
-                >
-                  {isUpacara ? 'JP 1' : `JP ${hour}`}
-                </button>
-              );
-            })}
-          </div>
+          {formData.teacherId && formData.dayOfWeek && formData.classId ? (
+            <>
+              <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2">
+                {formData.dayOfWeek && Array.from({ length: daySchedule[formData.dayOfWeek] }, (_, i) => i + 1).map((hour) => {
+                  const isUpacara = formData.dayOfWeek === 'Senin' && hour === 1;
+                  const hasConflict = isHourConflict(hour);
+                  const conflictDetails = hasConflict ? getHourConflictDetails(hour) : '';
+                  
+                  return (
+                    <button
+                      key={hour}
+                      type="button"
+                      onClick={() => !isUpacara && !hasConflict && toggleHour(hour)}
+                      className={`p-2 rounded-md transition-colors relative group ${
+                        isUpacara
+                          ? 'bg-yellow-500 text-white cursor-not-allowed hover:bg-yellow-600'
+                          : hasConflict
+                          ? 'bg-red-100 text-red-700 border border-red-300 cursor-not-allowed'
+                          : formData.hours.includes(hour)
+                          ? 'bg-green-500 text-white'
+                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                      }`}
+                      disabled={isUpacara || hasConflict}
+                      title={isUpacara ? 'Jam Upacara' : `Jam Pelajaran ${hour}`}
+                    >
+                      {isUpacara ? 'JP 1' : `JP ${hour}`}
+                      {/* Tooltip untuk konflik */}
+                      {hasConflict && (
+                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50">
+                          {conflictDetails}
+                          <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2 rotate-45 w-2 h-2 bg-gray-900"></div>
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+              {existingSchedules.teacherSchedules.length > 0 && (
+                <div className="mt-2 text-sm text-gray-600">
+                  <p className="font-medium">Jadwal yang sudah ada:</p>
+                  <ul className="list-disc list-inside">
+                    {existingSchedules.teacherSchedules.map((schedule, idx) => (
+                      <li key={idx}>
+                        Kelas {schedule.classId}: JP {schedule.hours.join(', ')}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </>
+          ) : (
+            <p className="text-sm text-gray-500">
+              Pilih guru, hari, dan kelas terlebih dahulu untuk melihat jadwal yang tersedia
+            </p>
+          )}
         </div>
 
         {conflicts.length > 0 && (
