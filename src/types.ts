@@ -32,6 +32,8 @@ export interface Student {
   barak: string;
   photoUrl?: string; // Tambah field untuk foto profil
   isDeleted?: boolean;
+  status: StudentStatus;
+  graduationYear?: string; // Untuk siswa yang lulus
 }
 
 export interface StudentLeaveRequest {
@@ -75,19 +77,17 @@ export interface StudentLeave {
   returnStatus?: ReturnStatus;
 }
 
-export type UserRole = 'admin_master' | 'admin' | 'piket' | 'wakil_kepala' | 'pengasuh' | 'admin_asrama' | 'admin_barak';
+export type UserRole = 'admin_master' | 'admin_asrama' | 'pengasuh';
 
 export interface User {
   id: string;
-  username: string;
-  fullName: string;
-  role: UserRole;
-  asramaId?: string;
-  barakId?: string;
   email: string;
-  photoUrl?: string; // Tambah field untuk foto profil
-  isDefaultAccount?: boolean;
-  isMasterAdmin?: boolean;
+  role: UserRole;
+  barakId?: string;
+  permissions?: {
+    canManageAlumni?: boolean;
+    // ... permissions lainnya
+  };
 }
 
 export interface Barak {
@@ -188,3 +188,8 @@ export interface RosterHistory {
   createdAt: string;
   updatedAt?: string;
 }
+
+export type StudentStatus = 'Aktif' | 'Lulus' | 'Keluar';
+
+// Tambahkan export untuk TabType
+export type TabType = 'active' | 'deleted' | 'deleted_graduated' | 'graduated';

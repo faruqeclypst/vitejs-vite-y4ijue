@@ -26,9 +26,8 @@ const GuidanceManagement: React.FC = () => {
     const unhandledViolations = violations.filter(v => !v.isResolved);
     return unhandledViolations.reduce((acc, violation) => {
       const student = students.find(s => s.id === violation.studentId);
-      if (!student || student.isDeleted) return acc;
+      if (!student || student.isDeleted || student.status !== 'Aktif') return acc;
 
-      // Filter berdasarkan pencarian
       const matchesSearch = 
         student.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         student.class.toLowerCase().includes(searchTerm.toLowerCase()) ||

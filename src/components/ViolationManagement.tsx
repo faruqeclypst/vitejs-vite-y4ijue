@@ -29,7 +29,14 @@ const ViolationManagement: React.FC = () => {
   const groupedViolations = useMemo(() => {
     const grouped = violations.reduce((acc, violation) => {
       const student = students.find(s => s.id === violation.studentId);
-      if (!student || student.isDeleted) return acc;
+      if (!student || student.isDeleted || student.status !== 'Aktif') return acc;
+
+      const matchesSearch = 
+        student.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        student.class.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        student.barak.toLowerCase().includes(searchTerm.toLowerCase());
+
+      if (!matchesSearch) return acc;
 
       if (!acc[student.id]) {
         acc[student.id] = {
@@ -41,12 +48,7 @@ const ViolationManagement: React.FC = () => {
       return acc;
     }, {} as Record<string, { student: Student; violations: Violation[] }>);
 
-    // Filter berdasarkan pencarian
-    return Object.values(grouped).filter(({ student }) =>
-      student.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      student.class.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      student.barak.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    return Object.values(grouped);
   }, [violations, students, searchTerm]);
 
   // Tambahkan useEffect untuk animasi

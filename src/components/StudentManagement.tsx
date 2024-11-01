@@ -1,49 +1,63 @@
 import React, { useState, useMemo, useEffect, Suspense } from 'react';
 import { Student, availableClasses } from '../types';
 import { useStudents } from '../contexts/StudentContext';
-import { useBarak } from '../contexts/BarakContext'; // Ganti useAsrama dengan useBarak
+import { useBarak } from '../contexts/BarakContext';
 import Papa from 'papaparse';
-import { Edit, Trash2, Plus, FileText, History, Search, Users, User, Camera, MoreVertical } from 'lucide-react';
+import { Edit, Trash2, Plus, FileText, History, Search, Users, User, Camera, MoreVertical, ArrowUpCircle } from 'lucide-react';
 import StudentLeaveHistory from './StudentLeaveHistory';
 import { useAuth } from '../contexts/AuthContext';
 import Alert from '../components/Alert';
 import useAlert from '../hooks/useAlert';
-import { ref, onValue, get } from 'firebase/database'; // Hapus 'get' karena tidak digunakan
+import { ref, onValue, get } from 'firebase/database';
 import { db } from '../firebase';
 import ConfirmationModal from '../components/ConfirmationModal';
 import useConfirmation from '../hooks/useConfirmation';
 import { exportStudent } from '../utils/exportStudent';
-import { useStudentLeave } from '../contexts/StudentLeaveContext';
 import Modal from '../components/Modal';
 import { compressImage, formatFileSize } from '../utils/imageCompression';
 import LoadingSpinner from './common/LoadingSpinner';
 
 // Update interface untuk tab
-type TabType = 'active' | 'deleted';
+type TabType = 'active' | 'deleted' | 'deleted_graduated' | 'graduated';
 
-const StudentManagement: React.FC = () => {
-  const { students, allStudents, addStudent, updateStudent, deleteStudent, restoreStudent, deleteStudentPermanently } = useStudents(); // Tambahkan allStudents
+// Tambahkan interface untuk props
+interface StudentManagementProps {
+  initialTab?: TabType;
+}
+
+const StudentManagement: React.FC<StudentManagementProps> = ({ initialTab }) => {
+  const { students, allStudents, addStudent, updateStudent, deleteStudent, restoreStudent, deleteStudentPermanently, promoteStudents } = useStudents(); // Tambahkan allStudents
   const { baraks } = useBarak(); // Ganti asramas dengan baraks
   const { user: currentUser } = useAuth();
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newStudent, setNewStudent] = useState<Omit<Student, 'id'>>({
     fullName: '',
-    gender: 'Laki-laki', // Ini akan diset otomatis berdasarkan barak
+    gender: 'Laki-laki',
     class: availableClasses[0],
-    barak: ''
+    barak: '',
+    status: 'Aktif'
   });
   const [selectedGrade, setSelectedGrade] = useState<'X' | 'XI' | 'XII' | ''>('');
   const [selectedStudentForHistory, setSelectedStudentForHistory] = useState<Student | null>(null);
   const { alert, showAlert, hideAlert } = useAlert();
   const [groupedStudents, setGroupedStudents] = useState<Record<string, Student[]>>({ 'Semua Siswa': students });
-  const [activeTab, setActiveTab] = useState<TabType>('active');
+  const [activeTab, setActiveTab] = useState<TabType>(initialTab || 'active');
   const { isOpen: isConfirmOpen, options: confirmOptions, confirm, handleConfirm, handleCancel } = useConfirmation();
-  const { leaves, deleteLeave } = useStudentLeave();
   const [selectedPhoto, setSelectedPhoto] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [previewPhoto, setPreviewPhoto] = useState<string | null>(null);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [selectedYear, setSelectedYear] = useState<string>('all');
+
+  // Tambahkan fungsi untuk mendapatkan tahun-tahun lulusan yang tersedia
+  const graduationYears = useMemo(() => {
+    const years = new Set<string>();
+    allStudents
+      .filter(s => s.status === 'Lulus' && s.graduationYear)
+      .forEach(s => years.add(s.graduationYear!));
+    return ['all', ...Array.from(years)].sort().reverse();
+  }, [allStudents]);
 
   // Tambahkan useEffect untuk memantau perubahan user dan barakId
   useEffect(() => {
@@ -58,37 +72,62 @@ const StudentManagement: React.FC = () => {
         const userData = snapshot.val();
         
         if (userData) {
-          // Filter students berdasarkan tab yang aktif
-          const filteredStudents = activeTab === 'active' 
-            ? students.filter((student: Student) => !student.isDeleted)
-            : allStudents.filter((student: Student) => student.isDeleted);
+          // Filter students berdasarkan tab yang aktif dan role
+          let filteredStudents = activeTab === 'active' 
+            ? students.filter(s => !s.isDeleted && s.status === 'Aktif')
+            : activeTab === 'deleted'
+            ? allStudents.filter(s => s.isDeleted && s.status === 'Aktif')
+            : activeTab === 'deleted_graduated'
+            ? allStudents.filter(s => s.isDeleted && s.status === 'Lulus')
+            : activeTab === 'graduated'
+            ? allStudents.filter(s => !s.isDeleted && s.status === 'Lulus')
+            : [];
 
-          if (currentUser.role === 'admin_master' || currentUser.role === 'admin_asrama') {
-            // Admin master dan admin_asrama melihat semua siswa dikelompokkan per barak
-            const groupedByBarak = filteredStudents.reduce((acc: Record<string, Student[]>, student: Student) => {
-              if (!acc[student.barak]) {
-                acc[student.barak] = [];
+          // Tambahkan filter tahun untuk tab lulusan
+          if ((activeTab === 'graduated' || activeTab === 'deleted_graduated') && selectedYear !== 'all') {
+            filteredStudents = filteredStudents.filter(s => s.graduationYear === selectedYear);
+          }
+
+          // Kelompokkan berdasarkan tab
+          if (activeTab === 'graduated' || activeTab === 'deleted_graduated') {
+            const groupedByYear = filteredStudents.reduce((acc: Record<string, Student[]>, student: Student) => {
+              const year = student.graduationYear || 'Tanpa Tahun';
+              const groupKey = `Lulusan ${year}`;
+              if (!acc[groupKey]) {
+                acc[groupKey] = [];
               }
-              acc[student.barak].push(student);
+              acc[groupKey].push(student);
               return acc;
             }, {} as Record<string, Student[]>);
-            setGroupedStudents(groupedByBarak);
-          } else if (currentUser.role === 'pengasuh' && currentUser.barakId) {
-            // Pengasuh hanya melihat siswa di barak yang ditugaskan
-            const barakIds = currentUser.barakId.split(',');
-            const groupedStudents: Record<string, Student[]> = {};
-            
-            barakIds.forEach((barakId: string) => {
-              const barak = baraks.find(b => b.id === barakId);
-              if (barak) {
-                const barakStudents = filteredStudents.filter((student: Student) => student.barak === barak.name);
-                if (barakStudents.length > 0) {
-                  groupedStudents[barak.name] = barakStudents;
+            setGroupedStudents(groupedByYear);
+          } else {
+            // Untuk tab lain, kelompokkan berdasarkan barak
+            if (currentUser.role === 'admin_master' || currentUser.role === 'admin_asrama') {
+              const groupedByBarak = filteredStudents.reduce((acc: Record<string, Student[]>, student: Student) => {
+                if (!acc[student.barak]) {
+                  acc[student.barak] = [];
                 }
-              }
-            });
+                acc[student.barak].push(student);
+                return acc;
+              }, {} as Record<string, Student[]>);
+              setGroupedStudents(groupedByBarak);
+            } else if (currentUser.role === 'pengasuh' && currentUser.barakId) {
+              // Pengasuh hanya melihat siswa di barak yang ditugaskan
+              const barakIds = currentUser.barakId.split(',');
+              const groupedStudents: Record<string, Student[]> = {};
+              
+              barakIds.forEach((barakId: string) => {
+                const barak = baraks.find(b => b.id === barakId);
+                if (barak) {
+                  const barakStudents = filteredStudents.filter((student: Student) => student.barak === barak.name);
+                  if (barakStudents.length > 0) {
+                    groupedStudents[barak.name] = barakStudents;
+                  }
+                }
+              });
 
-            setGroupedStudents(groupedStudents);
+              setGroupedStudents(groupedStudents);
+            }
           }
         }
       }
@@ -108,7 +147,7 @@ const StudentManagement: React.FC = () => {
       unsubscribeStudents();
       unsubscribeBaraks();
     };
-  }, [currentUser?.id, students, allStudents, baraks, activeTab]);
+  }, [currentUser?.id, students, allStudents, baraks, activeTab, selectedYear]);
 
   // Tambahkan useEffect untuk menutup menu saat klik di luar
   useEffect(() => {
@@ -184,6 +223,8 @@ const StudentManagement: React.FC = () => {
         });
         resetForm();
         setIsModalOpen(false);
+        // Pindah ke tab aktif setelah menambah siswa baru
+        setActiveTab('active');
       }
     } catch (error) {
       showAlert({
@@ -198,7 +239,8 @@ const StudentManagement: React.FC = () => {
       fullName: '',
       gender: 'Laki-laki',
       class: availableClasses[0],
-      barak: ''
+      barak: '',
+      status: 'Aktif'
     });
     setSelectedPhoto(null);
     setPhotoPreview(null);
@@ -243,8 +285,8 @@ const StudentManagement: React.FC = () => {
 
   // Update handleEdit
   const handleEdit = (student: Student) => {
-    // Admin master memiliki akses penuh untuk edit
-    if (currentUser?.role === 'admin_master') {
+    // Admin master dan admin_asrama memiliki akses penuh untuk edit
+    if (currentUser?.role === 'admin_master' || currentUser?.role === 'admin_asrama') {
       setEditingStudent(student);
       setNewStudent(student);
       const grade = student.class.split('-')[0] as 'X' | 'XI' | 'XII';
@@ -272,14 +314,20 @@ const StudentManagement: React.FC = () => {
 
   // Update handleDelete
   const handleDelete = async (id: string) => {
-    const student = students.find(s => s.id === id);
+    const student = students.find(s => s.id === id) || allStudents.find(s => s.id === id);
     if (!student) return;
 
-    // Admin master memiliki akses penuh untuk delete
-    if (currentUser?.role === 'admin_master') {
+    // Admin master dan admin_asrama memiliki akses penuh untuk delete
+    if (currentUser?.role === 'admin_master' || currentUser?.role === 'admin_asrama') {
+      const message = student.status === 'Lulus' 
+        ? student.isDeleted
+          ? 'Apakah Anda yakin ingin menghapus data lulusan ini secara permanen? Data tidak dapat dikembalikan.'
+          : 'Apakah Anda yakin ingin menghapus data lulusan ini? Data akan dipindahkan ke tab Lulusan Terhapus.'
+        : 'Apakah Anda yakin ingin menghapus siswa ini?';
+
       const confirmed = await confirm({
         title: 'Konfirmasi Hapus',
-        message: 'Apakah Anda yakin ingin menghapus siswa ini?',
+        message,
         confirmText: 'Hapus',
         cancelText: 'Batal'
       });
@@ -287,14 +335,24 @@ const StudentManagement: React.FC = () => {
       if (confirmed) {
         try {
           await deleteStudent(id);
+          
           showAlert({
             type: 'success',
-            message: 'Data siswa berhasil dihapus'
+            message: student.status === 'Lulus'
+              ? student.isDeleted
+                ? 'Data lulusan berhasil dihapus permanen'
+                : 'Data lulusan berhasil dipindahkan ke tab Lulusan Terhapus'
+              : 'Data siswa berhasil dihapus'
           });
+
+          // Tetap di tab yang sama jika di tab lulusan
+          if (activeTab === 'graduated') {
+            setActiveTab('graduated');
+          }
         } catch (error) {
           showAlert({
             type: 'error',
-            message: 'Gagal menghapus data siswa'
+            message: 'Gagal menghapus data'
           });
         }
       }
@@ -381,12 +439,13 @@ const StudentManagement: React.FC = () => {
 
   const openModal = () => {
     setEditingStudent(null);
-    setSelectedGrade(''); // Reset selectedGrade
+    setSelectedGrade('');
     setNewStudent({
       fullName: '',
       gender: 'Laki-laki',
       class: availableClasses[0],
-      barak: ''
+      barak: '',
+      status: 'Aktif'
     });
     setIsModalOpen(true);
   };
@@ -395,7 +454,7 @@ const StudentManagement: React.FC = () => {
   const hasAccessToBarak = (barakName: string) => {
     if (!currentUser) return false;
     
-    // Admin master dan admin_asrama punya akses ke semua barak
+    // Admin master dan admin_asrama memiliki akses penuh
     if (currentUser.role === 'admin_master' || currentUser.role === 'admin_asrama') {
       return true;
     }
@@ -414,54 +473,64 @@ const StudentManagement: React.FC = () => {
   };
 
   // Update fungsi handleRestore
-  const handleRestore = async (studentId: string) => {
-    const shouldRestore = await confirm({
+  const handleRestore = async (id: string) => {
+    const student = allStudents.find(s => s.id === id);
+    if (!student) return;
+
+    const confirmed = await confirm({
       title: 'Konfirmasi Pemulihan',
-      message: 'Apakah Anda yakin ingin memulihkan siswa ini? Semua data perizinan siswa akan kembali aktif.',
+      message: student.status === 'Lulus'
+        ? 'Apakah Anda yakin ingin memulihkan data lulusan ini ke tab Lulusan?'
+        : 'Apakah Anda yakin ingin memulihkan siswa ini?',
       confirmText: 'Ya, Pulihkan',
       cancelText: 'Batal'
     });
 
-    if (shouldRestore) {
+    if (confirmed) {
       try {
-        await restoreStudent(studentId);
+        await restoreStudent(id);
         showAlert({
           type: 'success',
-          message: 'Siswa berhasil dipulihkan'
+          message: student.status === 'Lulus'
+            ? 'Data lulusan berhasil dipulihkan ke tab Lulusan'
+            : 'Siswa berhasil dipulihkan'
         });
+
+        // Tetap di tab yang sama
+        if (activeTab === 'deleted_graduated') {
+          setActiveTab('deleted_graduated');
+        }
       } catch (error) {
         showAlert({
           type: 'error',
-          message: 'Gagal memulihkan siswa'
+          message: 'Gagal memulihkan data'
         });
       }
     }
   };
 
   const handlePermanentDelete = async (id: string) => {
+    const student = allStudents.find(s => s.id === id);
+    if (!student) return;
+
     const confirmed = await confirm({
       title: 'Konfirmasi Hapus Permanen',
-      message: 'Apakah Anda yakin ingin menghapus siswa ini secara permanen? Semua perizinan siswa ini akan hilang jika dihapus!!!.',
+      message: 'Apakah Anda yakin ingin menghapus data lulusan ini secara permanen? Data tidak dapat dikembalikan!',
       confirmText: 'Hapus Permanen',
       cancelText: 'Batal'
     });
 
     if (confirmed) {
       try {
-        // Hapus perizinan siswa terlebih dahulu
-        const studentLeaves = leaves.filter(leave => leave.studentId === id);
-        await Promise.all(studentLeaves.map(leave => deleteLeave(leave.id)));
-        
-        // Kemudian hapus siswa
         await deleteStudentPermanently(id);
         showAlert({
           type: 'success',
-          message: 'Siswa dan semua perizinannya berhasil dihapus secara permanen'
+          message: 'Data lulusan berhasil dihapus permanen'
         });
       } catch (error) {
         showAlert({
           type: 'error',
-          message: 'Gagal menghapus siswa secara permanen'
+          message: 'Gagal menghapus data lulusan secara permanen'
         });
       }
     }
@@ -500,6 +569,8 @@ const StudentManagement: React.FC = () => {
       );
     }
 
+    // Update logika akses untuk admin_asrama
+    const canManageAlumni = currentUser?.role === 'admin_master' || currentUser?.role === 'admin_asrama';
     const canEditBarak = hasAccessToBarak(barakName);
     const emptyRows = Math.max(0, 10 - students.length);
 
@@ -573,8 +644,15 @@ const StudentManagement: React.FC = () => {
                           <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                         </button>
                       </>
-                    ) : activeTab === 'deleted' ? (
+                    ) : activeTab === 'deleted' && canEditBarak ? (
                       <>
+                        <button
+                          onClick={() => handleEdit(student)}
+                          className="text-blue-600 hover:text-blue-900 p-0.5 sm:p-1"
+                          title="Edit"
+                        >
+                          <Edit className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                        </button>
                         <button
                           onClick={() => handleRestore(student.id)}
                           className="text-green-600 hover:text-green-900 p-0.5 sm:p-1"
@@ -590,6 +668,42 @@ const StudentManagement: React.FC = () => {
                           <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                         </button>
                       </>
+                    ) : (activeTab === 'graduated' || activeTab === 'deleted_graduated') && canManageAlumni ? (
+                      <>
+                        <button
+                          onClick={() => handleEdit(student)}
+                          className="text-blue-600 hover:text-blue-900 p-0.5 sm:p-1"
+                          title="Edit"
+                        >
+                          <Edit className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                        </button>
+                        {activeTab === 'graduated' ? (
+                          <button
+                            onClick={() => handleDelete(student.id)}
+                            className="text-red-600 hover:text-red-900 p-0.5 sm:p-1"
+                            title="Hapus"
+                          >
+                            <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                          </button>
+                        ) : (
+                          <>
+                            <button
+                              onClick={() => handleRestore(student.id)}
+                              className="text-green-600 hover:text-green-900 p-0.5 sm:p-1"
+                              title="Pulihkan ke Lulusan"
+                            >
+                              <History className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                            </button>
+                            <button
+                              onClick={() => handlePermanentDelete(student.id)}
+                              className="text-red-600 hover:text-red-900 p-0.5 sm:p-1"
+                              title="Hapus Permanen"
+                            >
+                              <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                            </button>
+                          </>
+                        )}
+                      </>
                     ) : null}
                     <button
                       onClick={() => setSelectedStudentForHistory(student)}
@@ -600,6 +714,7 @@ const StudentManagement: React.FC = () => {
                     </button>
                   </div>
 
+                  {/* Mobile menu */}
                   <div className="sm:hidden relative">
                     <button
                       onClick={(e) => {
@@ -611,7 +726,6 @@ const StudentManagement: React.FC = () => {
                       <MoreVertical className="h-4 w-4 text-gray-500" />
                     </button>
 
-                    {/* Dropdown menu */}
                     {openMenuId === student.id && (
                       <div className="absolute right-0 mt-1 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-10">
                         <div className="py-1" role="menu">
@@ -638,8 +752,18 @@ const StudentManagement: React.FC = () => {
                                 Hapus
                               </button>
                             </>
-                          ) : activeTab === 'deleted' ? (
+                          ) : activeTab === 'deleted' && canEditBarak ? (
                             <>
+                              <button
+                                onClick={() => {
+                                  handleEdit(student);
+                                  setOpenMenuId(null);
+                                }}
+                                className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                              >
+                                <Edit className="h-4 w-4" />
+                                Edit
+                              </button>
                               <button
                                 onClick={() => {
                                   handleRestore(student.id);
@@ -660,6 +784,45 @@ const StudentManagement: React.FC = () => {
                                 <Trash2 className="h-4 w-4" />
                                 Hapus Permanen
                               </button>
+                            </>
+                          ) : (activeTab === 'graduated' || activeTab === 'deleted_graduated') && canManageAlumni ? (
+                            <>
+                              <button
+                                onClick={() => {
+                                  handleEdit(student);
+                                  setOpenMenuId(null);
+                                }}
+                                className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                              >
+                                <Edit className="h-4 w-4" />
+                                Edit
+                              </button>
+                              {activeTab === 'graduated' ? (
+                                <button
+                                  onClick={() => handleDelete(student.id)}
+                                  className="text-red-600 hover:text-red-900 p-0.5 sm:p-1"
+                                  title="Hapus"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                                </button>
+                              ) : (
+                                <>
+                                  <button
+                                    onClick={() => handleRestore(student.id)}
+                                    className="text-green-600 hover:text-green-900 p-0.5 sm:p-1"
+                                    title="Pulihkan ke Lulusan"
+                                  >
+                                    <History className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                                  </button>
+                                  <button
+                                    onClick={() => handlePermanentDelete(student.id)}
+                                    className="text-red-600 hover:text-red-900 p-0.5 sm:p-1"
+                                    title="Hapus Permanen"
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                                  </button>
+                                </>
+                              )}
                             </>
                           ) : null}
                           <button
@@ -696,6 +859,61 @@ const StudentManagement: React.FC = () => {
     );
   };
 
+  const handlePromoteStudents = async () => {
+    // Hanya admin_master dan admin_asrama yang bisa melakukan kenaikan kelas
+    if (currentUser?.role !== 'admin_master' && currentUser?.role !== 'admin_asrama') {
+      showAlert({
+        type: 'error',
+        message: 'Anda tidak memiliki akses untuk melakukan kenaikan kelas'
+      });
+      return;
+    }
+
+    const hasClass12 = students.some(student => 
+      !student.isDeleted && 
+      student.status === 'Aktif' && 
+      student.class.startsWith('XII')
+    );
+
+    const message = hasClass12 
+      ? 'Anda yakin ingin melakukan kenaikan kelas? Siswa kelas XII akan diarsipkan sebagai lulusan dan dapat dilihat di tab Lulusan.'
+      : 'Anda yakin ingin melakukan kenaikan kelas untuk semua siswa? Proses ini tidak dapat dibatalkan.';
+
+    const confirmed = await confirm({
+      title: 'Konfirmasi Kenaikan Kelas',
+      message,
+      confirmText: 'Ya, Naikkan Kelas',
+      cancelText: 'Batal'
+    });
+
+    if (confirmed) {
+      try {
+        const result = await promoteStudents();
+        
+        showAlert({
+          type: 'success',
+          message: result.hasGraduatingStudents 
+            ? 'Kenaikan kelas berhasil dilakukan. Siswa kelas XII telah diarsipkan sebagai lulusan.'
+            : 'Kenaikan kelas berhasil dilakukan'
+        });
+
+        // Pindah ke tab lulusan jika ada siswa yang lulus
+        if (result.hasGraduatingStudents) {
+          setActiveTab('graduated');
+        } else {
+          setActiveTab('active');
+        }
+        
+      } catch (error) {
+        console.error('Error promoting students:', error);
+        showAlert({
+          type: 'error',
+          message: 'Gagal melakukan kenaikan kelas'
+        });
+      }
+    }
+  };
+
   return (
     <>
       {/* Alert dan ConfirmationModal */}
@@ -718,10 +936,11 @@ const StudentManagement: React.FC = () => {
       />
 
       {/* Header dengan Search, Tabs, dan Actions */}
-      <div className="flex flex-col gap-3 mb-4">
-        {/* Mobile View */}
-        <div className="sm:hidden flex flex-col gap-3 w-full">
-          <div className="relative w-full">
+      <div className="flex flex-col gap-4 mb-6">
+        {/* Header Section */}
+        <div className="flex flex-col sm:flex-row justify-between gap-4">
+          {/* Search */}
+          <div className="relative w-full sm:w-64">
             <input
               type="text"
               placeholder="Cari siswa..."
@@ -730,75 +949,8 @@ const StudentManagement: React.FC = () => {
             <Search className="absolute left-2 top-2.5 text-gray-400" size={18} />
           </div>
 
-          <button
-            onClick={openModal}
-            className="w-full bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 flex items-center justify-center gap-2"
-          >
-            <Plus size={18} />
-            <span>Tambah Siswa</span>
-          </button>
-
-          <nav className="flex space-x-1">
-            <button
-              onClick={() => setActiveTab('active')}
-              className={`flex-1 px-4 py-2 rounded-lg transition-colors ${
-                activeTab === 'active'
-                  ? 'bg-blue-500 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              Aktif
-            </button>
-            <button
-              onClick={() => setActiveTab('deleted')}
-              className={`flex-1 px-4 py-2 rounded-lg transition-colors ${
-                activeTab === 'deleted'
-                  ? 'bg-blue-500 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              Terhapus
-            </button>
-          </nav>
-        </div>
-
-        {/* Desktop View */}
-        <div className="hidden sm:flex justify-between items-center w-full">
-          <div className="flex gap-3 items-center">
-            <div className="relative w-64">
-              <input
-                type="text"
-                placeholder="Cari siswa..."
-                className="w-full p-2 pl-8 border rounded-lg"
-              />
-              <Search className="absolute left-2 top-2.5 text-gray-400" size={18} />
-            </div>
-            
-            <div className="flex space-x-1">
-              <button
-                onClick={() => setActiveTab('active')}
-                className={`px-4 py-2 rounded-lg transition-colors ${
-                  activeTab === 'active'
-                    ? 'bg-blue-500 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                Aktif
-              </button>
-              <button
-                onClick={() => setActiveTab('deleted')}
-                className={`px-4 py-2 rounded-lg transition-colors ${
-                  activeTab === 'deleted'
-                    ? 'bg-blue-500 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                Terhapus
-              </button>
-            </div>
-          </div>
-
-          <div className="flex gap-2">
+          {/* Action Buttons */}
+          <div className="flex flex-col sm:flex-row gap-2">
             <button
               onClick={openModal}
               className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 flex items-center justify-center gap-2"
@@ -819,6 +971,96 @@ const StudentManagement: React.FC = () => {
               <span>Export CSV</span>
             </button>
           </div>
+        </div>
+
+        {/* Navigation Tabs */}
+        <div className="flex flex-col sm:flex-row gap-4">
+          {/* Student Management Section */}
+          <div className="flex-1">
+            <div className="text-sm font-medium text-gray-500 mb-2">Manajemen Siswa</div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setActiveTab('active')}
+                className={`flex-1 px-4 py-2 rounded-lg transition-colors ${
+                  activeTab === 'active'
+                    ? 'bg-blue-500 text-white'
+                    : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                }`}
+              >
+                Siswa Aktif
+              </button>
+              <button
+                onClick={() => setActiveTab('deleted')}
+                className={`flex-1 px-4 py-2 rounded-lg transition-colors ${
+                  activeTab === 'deleted'
+                    ? 'bg-blue-500 text-white'
+                    : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                }`}
+              >
+                Siswa Terhapus
+              </button>
+            </div>
+          </div>
+
+          {/* Alumni Management Section */}
+          <div className="flex-1">
+            <div className="text-sm font-medium text-gray-500 mb-2">Manajemen Alumni</div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setActiveTab('graduated')}
+                className={`flex-1 px-4 py-2 rounded-lg transition-colors ${
+                  activeTab === 'graduated'
+                    ? 'bg-blue-500 text-white'
+                    : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                }`}
+              >
+                Lulusan
+              </button>
+              <button
+                onClick={() => setActiveTab('deleted_graduated')}
+                className={`flex-1 px-4 py-2 rounded-lg transition-colors ${
+                  activeTab === 'deleted_graduated'
+                    ? 'bg-blue-500 text-white'
+                    : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                }`}
+              >
+                Lulusan Terhapus
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Action Buttons - Conditional rendering berdasarkan tab */}
+        <div className="flex justify-end gap-2">
+          {/* Kenaikan Kelas Button - Hanya muncul di tab active dan deleted */}
+          {currentUser?.role === 'admin_master' && (activeTab === 'active' || activeTab === 'deleted') && (
+            <button
+              onClick={handlePromoteStudents}
+              className="bg-green-500 text-white h-10 w-48 px-4 py-2 rounded-lg hover:bg-green-600 flex items-center justify-center gap-2 text-sm"
+            >
+              <ArrowUpCircle size={18} />
+              <span>Kenaikan Kelas</span>
+            </button>
+          )}
+
+          {/* Filter Tahun - Hanya muncul di tab graduated dan deleted_graduated */}
+          {(activeTab === 'graduated' || activeTab === 'deleted_graduated') && (
+            <select
+              value={selectedYear}
+              onChange={(e) => setSelectedYear(e.target.value)}
+              className="h-10 w-48 px-4 py-2 border rounded-lg text-sm bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+            >
+              <option value="all">Semua Tahun Lulusan</option>
+              {graduationYears
+                .filter(year => year !== 'all')
+                .map(year => (
+                  <option key={year} value={year}>
+                    Lulusan {year}
+                  </option>
+                ))
+              }
+            </select>
+          )}
         </div>
       </div>
 
@@ -844,13 +1086,22 @@ const StudentManagement: React.FC = () => {
             <div className="text-center py-12 rounded-lg shadow-sm border border-gray-200">
               <Users className="mx-auto h-12 w-12 text-gray-400" />
               <h3 className="mt-2 text-sm font-medium text-gray-900">
-                {activeTab === 'active' ? 'Tidak ada siswa aktif' : 'Tidak ada siswa terhapus'}
+                {activeTab === 'active' 
+                  ? 'Tidak ada siswa aktif' 
+                  : activeTab === 'deleted'
+                  ? 'Tidak ada siswa terhapus'
+                  : activeTab === 'deleted_graduated'
+                  ? 'Tidak ada lulusan yang terhapus'
+                  : 'Tidak ada siswa lulusan'}
               </h3>
               <p className="mt-1 text-sm text-gray-500">
                 {activeTab === 'active' 
                   ? 'Mulai dengan menambahkan siswa baru'
-                  : 'Semua siswa masih aktif'
-                }
+                  : activeTab === 'deleted'
+                  ? 'Tidak ada data siswa yang dihapus'
+                  : activeTab === 'deleted_graduated'
+                  ? 'Tidak ada data lulusan yang dihapus'
+                  : 'Belum ada data siswa lulusan'}
               </p>
             </div>
           </div>

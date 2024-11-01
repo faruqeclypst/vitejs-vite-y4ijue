@@ -45,7 +45,9 @@ const ViolationForm: React.FC<ViolationFormProps> = ({
     const matchesSearch = student.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          student.class.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          student.barak.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesSearch;
+    // Tambahkan filter untuk siswa aktif                     
+    const isActive = !student.isDeleted && student.status === 'Aktif';
+    return matchesSearch && isActive;
   });
 
   useEffect(() => {

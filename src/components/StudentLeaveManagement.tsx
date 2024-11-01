@@ -69,17 +69,28 @@ const StudentLeaveManagement: React.FC = () => {
 
   // Filter siswa berdasarkan pencarian
   const filteredStudents = useMemo(() => {
-    return filterStudentsByUserAccess(students).filter(student => 
-      student.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      student.class.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      student.barak.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    return filterStudentsByUserAccess(students)
+      .filter(student => 
+        // Hanya tampilkan siswa aktif (tidak dihapus dan status Aktif)
+        !student.isDeleted && 
+        student.status === 'Aktif' &&
+        (
+          student.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          student.class.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          student.barak.toLowerCase().includes(searchTerm.toLowerCase())
+        )
+      );
   }, [students, searchTerm, filterStudentsByUserAccess]);
 
-  // Hapus filter perizinan berdasarkan asrama pengasuh
+  // Update filteredLeaves untuk hanya menampilkan perizinan siswa aktif
   const filteredLeaves = useMemo(() => {
-    return leaves;
-  }, [leaves]);
+    return leaves.filter(leave => {
+      const student = students.find(s => s.id === leave.studentId);
+      // Hanya tampilkan perizinan jika siswa ditemukan, tidak dihapus, dan masih aktif
+      return student && !student.isDeleted && student.status === 'Aktif';
+    });
+  }, [leaves, students]);
+
   // Filter perizinan berdasarkan tanggal yang dipilih
   useEffect(() => {
     const filtered = filteredLeaves.filter(leave => leave.startDate === selectedDate);
@@ -436,7 +447,7 @@ const StudentLeaveManagement: React.FC = () => {
     }
   }, [alert]);
 
-  // Update useEffect untuk filter leaves
+  // Update useEffect untuk filter leaves berdasarkan tanggal
   useEffect(() => {
     const leavesRef = ref(db, 'studentLeaves');
     const unsubscribe = onValue(leavesRef, (snapshot) => {
@@ -447,46 +458,23 @@ const StudentLeaveManagement: React.FC = () => {
           ...(value as Omit<StudentLeave, 'id'>)
         }));
 
-        // Filter leaves berdasarkan status siswa (tidak dihapus)
+        // Filter leaves berdasarkan status siswa (aktif)
         const activeLeaves = leavesList.filter(leave => {
           const student = students.find(s => s.id === leave.studentId);
-          // Hanya tampilkan perizinan jika siswa ditemukan dan tidak dalam status terhapus
-          return student && !student.isDeleted;
+          // Hanya tampilkan perizinan jika siswa ditemukan, tidak dihapus, dan masih aktif
+          return student && !student.isDeleted && student.status === 'Aktif';
         });
 
-        // Group by date
-        const groupedByDate = activeLeaves.reduce((acc, leave) => {
-          if (!acc[leave.startDate]) {
-            acc[leave.startDate] = [];
-          }
-          acc[leave.startDate].push(leave);
-          return acc;
-        }, {} as Record<string, StudentLeave[]>);
-
-        // Sort leaves by date and set state
-        const sortedDates = Object.keys(groupedByDate).sort((a, b) => 
-          new Date(b).getTime() - new Date(a).getTime()
-        );
-
-        const filteredLeaves = sortedDates
-          .filter(date => {
-            if (selectedDate) {
-              return date === selectedDate;
-            }
-            return true;
-          })
-          .reduce((acc, date) => {
-            return [...acc, ...groupedByDate[date]];
-          }, [] as StudentLeave[]);
-
-        setFilteredLeavesByDate(filteredLeaves);
+        // Filter berdasarkan tanggal yang dipilih
+        const filtered = activeLeaves.filter(leave => leave.startDate === selectedDate);
+        setFilteredLeavesByDate(filtered);
       } else {
         setFilteredLeavesByDate([]);
       }
     });
 
     return () => unsubscribe();
-  }, [selectedDate, students]); // Tambahkan students sebagai dependency
+  }, [selectedDate, students]);
 
   return (
     <div className="space-y-6">
