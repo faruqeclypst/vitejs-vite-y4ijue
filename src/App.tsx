@@ -46,9 +46,9 @@ const AppRoutes = () => {
     <Router>
       <div className={`min-h-screen ${!user ? 'h-screen overflow-hidden' : 'flex bg-gray-50'}`}>
         {user && <Sidebar isExpanded={isSidebarExpanded} setIsExpanded={setIsSidebarExpanded} />}
-        <div className={`flex-1 flex flex-col transition-all duration-300 ${
-          user ? (isSidebarExpanded ? 'md:ml-64' : 'md:ml-20') : ''
-        }`}>
+        <div className={`flex-1 flex flex-col 
+          ${user ? (isSidebarExpanded ? 'md:ml-64' : 'md:ml-20') : ''}
+          transition-[margin] duration-300 ease-in-out`}>
           {user && <Header />}
           <main className={`flex-1 ${!user ? 'h-full' : ''}`}>
             <Suspense fallback={<LoadingSpinner />}>

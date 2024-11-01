@@ -270,7 +270,7 @@ const ViolationForm: React.FC<ViolationFormProps> = ({
                 key={detail}
                 type="button"
                 onClick={() => setViolationDetail(detail)}
-                className={`p-2 rounded-lg transition-colors ${
+                className={`p-2 rounded-lg transition-colors text-xs sm:text-base ${
                   violationDetail === detail
                     ? 'bg-blue-500 text-white'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -295,22 +295,6 @@ const ViolationForm: React.FC<ViolationFormProps> = ({
             placeholder="Tambahkan detail pelanggaran..."
           />
         </div>
-
-        {/* Date and Time - hide in edit mode */}
-        {mode === 'add' && (
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Dibuat oleh
-            </label>
-            <input
-              type="text"
-              placeholder="Dibuat oleh..."
-              value=""
-              className="w-full p-3 border rounded-lg"
-              readOnly
-            />
-          </div>
-        )}
 
         {/* Action Buttons */}
         <div className="flex justify-end space-x-3">

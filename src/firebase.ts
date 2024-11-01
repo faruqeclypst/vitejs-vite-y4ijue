@@ -4,13 +4,13 @@ import { getStorage } from 'firebase/storage';
 import { getAuth } from 'firebase/auth';
 
 const firebaseConfig = {
-  apiKey: "AIzaSyAyZ_ycbfampCWC6fqoWwDSgokMFTby370",
-  authDomain: "alfa-project-4ccf0.firebaseapp.com",
-  databaseURL: "https://alfa-project-4ccf0-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "alfa-project-4ccf0",
-  storageBucket: "alfa-project-4ccf0.appspot.com",
-  messagingSenderId: "68665549482",
-  appId: "1:68665549482:web:d6607d347982b4140ee6d3"
+  apiKey: "AIzaSyA4LJ0sPhb7qehE8K0ou7NKIauamNAEuB8",
+  authDomain: "sman-modalbangsa.firebaseapp.com",
+  databaseURL: "https://sman-modalbangsa-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "sman-modalbangsa",
+  storageBucket: "sman-modalbangsa.appspot.com",
+  messagingSenderId: "318465029002",
+  appId: "1:318465029002:web:030d18e747b67fffb74e73"
 };
 
 const app = initializeApp(firebaseConfig);

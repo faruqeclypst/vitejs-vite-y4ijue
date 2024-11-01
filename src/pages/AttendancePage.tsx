@@ -201,17 +201,17 @@ const AttendancePage: React.FC = () => {
                     type="date"
                     value={exportStartDate.toISOString().split('T')[0]}
                     onChange={(e) => handleExportStartDateChange(new Date(e.target.value))}
-                    className="flex-1 px-3 py-2 border rounded focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                    className="w-full sm:w-auto flex-1 px-3 py-2 border rounded focus:ring-2 focus:ring-blue-500 focus:outline-none"
                   />
                   <input
                     type="date"
                     value={exportEndDate.toISOString().split('T')[0]}
                     onChange={(e) => handleExportEndDateChange(new Date(e.target.value))}
-                    className="flex-1 px-3 py-2 border rounded focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                    className="w-full sm:w-auto flex-1 px-3 py-2 border rounded focus:ring-2 focus:ring-blue-500 focus:outline-none"
                   />
                   <button
                     onClick={() => handleExport('custom')}
-                    className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                    className="w-full sm:w-auto px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
                   >
                     Ekspor
                   </button>

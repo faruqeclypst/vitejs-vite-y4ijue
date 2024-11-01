@@ -128,17 +128,18 @@ const Sidebar: React.FC<SidebarProps> = ({ isExpanded, setIsExpanded }) => {
   );
 
   const DesktopSidebar = () => (
-    <nav className={`bg-blue-700 text-white ${
-      isExpanded ? 'w-64' : 'w-20'
-    } min-h-screen py-4 px-2 sm:px-4 transition-all duration-300 hidden md:flex flex-col fixed left-0 top-0 bottom-0 z-40`}>
+    <nav className={`bg-blue-700 text-white overflow-hidden
+      ${isExpanded ? 'w-64' : 'w-20'} 
+      min-h-screen py-4 px-2 sm:px-4 
+      transition-[width] duration-300 ease-in-out
+      hidden md:flex flex-col fixed left-0 top-0 bottom-0 z-40`}>
       <div className={`flex ${isExpanded ? 'justify-between' : 'justify-center'} items-center mb-8`}>
-        {/* {isExpanded && <h1 className="text-xl font-bold">Piket MOSA</h1>} */}
-        <button onClick={() => setIsExpanded(!isExpanded)} className="p-2 rounded-full hover:bg-blue-600">
+        <button onClick={() => setIsExpanded(!isExpanded)} 
+          className="p-2 rounded-full hover:bg-blue-600 transition-all duration-200">
           {isExpanded ? <X size={24} /> : <Menu size={24} />}
         </button>
       </div>
       
-      {/* Menu Items */}
       <ul className="space-y-2">
         {filteredNavItems.map((item) => (
           <NavItem key={item.path} item={item} />
