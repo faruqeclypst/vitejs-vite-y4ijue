@@ -3,7 +3,7 @@ import { useAttendance } from '../contexts/AttendanceContext';
 import { useRoster } from '../contexts/RosterContext';
 import { useTeachers } from '../contexts/TeachersContext';
 import { useAuth } from '../contexts/AuthContext';
-import { DayOfWeek, RosterEntry, Attendance } from '../types';
+import { DayOfWeek, RosterEntry, Attendance, UserRole } from '../types';
 import AttendanceTable from '../components/AttendanceTable';
 import Alert from '../components/Alert';
 import ConfirmationModal from '../components/ConfirmationModal';
@@ -30,7 +30,10 @@ const AttendancePage: React.FC = () => {
   const [exportYear, setExportYear] = useState(new Date().getFullYear());
   const [confirmedTeachers, setConfirmedTeachers] = useState<string[]>([]);
 
-  const isAdmin = user?.role === 'admin' || user?.role === 'admin_master'; // Update isAdmin check
+  const isAdmin = (): boolean => {
+    if (!user?.role) return false;
+    return ['admin_master', 'admin'].includes(user.role as UserRole);
+  };
 
   useEffect(() => {
     updateDayFromDate(new Date(currentDate));
@@ -61,7 +64,7 @@ const AttendancePage: React.FC = () => {
   };
 
   const handleDateChange = (newDate: string) => {
-    if (isAdmin) {
+    if (isAdmin()) {
       setCurrentDate(newDate);
     }
   };
@@ -183,13 +186,13 @@ const AttendancePage: React.FC = () => {
               confirmedTeachers={confirmedTeachers}
               currentDate={currentDate}
               onDateChange={handleDateChange}
-              isAdmin={isAdmin} // Pass isAdmin yang sudah diupdate
+              isAdmin={isAdmin()}
             />
           </div>
         </div>
 
         {/* Export Section */}
-        {isAdmin && (
+        {isAdmin() && (
           <div className="bg-white p-6 rounded-lg shadow">
             <h3 className="text-xl font-semibold mb-4">Ekspor Data Kehadiran</h3>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

@@ -8,8 +8,6 @@ import StudentLeaveHistory from './StudentLeaveHistory';
 import { useAuth } from '../contexts/AuthContext';
 import Alert from '../components/Alert';
 import useAlert from '../hooks/useAlert';
-import { ref, onValue, get } from 'firebase/database';
-import { db } from '../firebase';
 import ConfirmationModal from '../components/ConfirmationModal';
 import useConfirmation from '../hooks/useConfirmation';
 import { exportStudent } from '../utils/exportStudent';
@@ -49,6 +47,8 @@ const StudentManagement: React.FC<StudentManagementProps> = ({ initialTab }) => 
   const [previewPhoto, setPreviewPhoto] = useState<string | null>(null);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [selectedYear, setSelectedYear] = useState<string>('all');
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Tambahkan fungsi untuk mendapatkan tahun-tahun lulusan yang tersedia
   const graduationYears = useMemo(() => {
@@ -61,93 +61,9 @@ const StudentManagement: React.FC<StudentManagementProps> = ({ initialTab }) => 
 
   // Tambahkan useEffect untuk memantau perubahan user dan barakId
   useEffect(() => {
-    const usersRef = ref(db, 'users');
-    const studentsRef = ref(db, 'students');
-    const baraksRef = ref(db, 'baraks');
-
-    const unsubscribeUsers = onValue(usersRef, async () => {
-      if (currentUser) {
-        const userRef = ref(db, `users/${currentUser.id}`);
-        const snapshot = await get(userRef);
-        const userData = snapshot.val();
-        
-        if (userData) {
-          // Filter students berdasarkan tab yang aktif dan role
-          let filteredStudents = activeTab === 'active' 
-            ? students.filter(s => !s.isDeleted && s.status === 'Aktif')
-            : activeTab === 'deleted'
-            ? allStudents.filter(s => s.isDeleted && s.status === 'Aktif')
-            : activeTab === 'deleted_graduated'
-            ? allStudents.filter(s => s.isDeleted && s.status === 'Lulus')
-            : activeTab === 'graduated'
-            ? allStudents.filter(s => !s.isDeleted && s.status === 'Lulus')
-            : [];
-
-          // Tambahkan filter tahun untuk tab lulusan
-          if ((activeTab === 'graduated' || activeTab === 'deleted_graduated') && selectedYear !== 'all') {
-            filteredStudents = filteredStudents.filter(s => s.graduationYear === selectedYear);
-          }
-
-          // Kelompokkan berdasarkan tab
-          if (activeTab === 'graduated' || activeTab === 'deleted_graduated') {
-            const groupedByYear = filteredStudents.reduce((acc: Record<string, Student[]>, student: Student) => {
-              const year = student.graduationYear || 'Tanpa Tahun';
-              const groupKey = `Lulusan ${year}`;
-              if (!acc[groupKey]) {
-                acc[groupKey] = [];
-              }
-              acc[groupKey].push(student);
-              return acc;
-            }, {} as Record<string, Student[]>);
-            setGroupedStudents(groupedByYear);
-          } else {
-            // Untuk tab lain, kelompokkan berdasarkan barak
-            if (currentUser.role === 'admin_master' || currentUser.role === 'admin_asrama') {
-              const groupedByBarak = filteredStudents.reduce((acc: Record<string, Student[]>, student: Student) => {
-                if (!acc[student.barak]) {
-                  acc[student.barak] = [];
-                }
-                acc[student.barak].push(student);
-                return acc;
-              }, {} as Record<string, Student[]>);
-              setGroupedStudents(groupedByBarak);
-            } else if (currentUser.role === 'pengasuh' && currentUser.barakId) {
-              // Pengasuh hanya melihat siswa di barak yang ditugaskan
-              const barakIds = currentUser.barakId.split(',');
-              const groupedStudents: Record<string, Student[]> = {};
-              
-              barakIds.forEach((barakId: string) => {
-                const barak = baraks.find(b => b.id === barakId);
-                if (barak) {
-                  const barakStudents = filteredStudents.filter((student: Student) => student.barak === barak.name);
-                  if (barakStudents.length > 0) {
-                    groupedStudents[barak.name] = barakStudents;
-                  }
-                }
-              });
-
-              setGroupedStudents(groupedStudents);
-            }
-          }
-        }
-      }
-    });
-
-    // Tambahkan listener untuk perubahan pada students dan baraks
-    const unsubscribeStudents = onValue(studentsRef, () => {
-      // Trigger useEffect untuk memperbarui groupedStudents
-    });
-
-    const unsubscribeBaraks = onValue(baraksRef, () => {
-      // Trigger useEffect untuk memperbarui groupedStudents
-    });
-
-    return () => {
-      unsubscribeUsers();
-      unsubscribeStudents();
-      unsubscribeBaraks();
-    };
-  }, [currentUser?.id, students, allStudents, baraks, activeTab, selectedYear]);
+    setIsLoading(true);
+    handleData().finally(() => setIsLoading(false));
+  }, [currentUser?.id, students, allStudents, activeTab, selectedYear]);
 
   // Tambahkan useEffect untuk menutup menu saat klik di luar
   useEffect(() => {
@@ -191,30 +107,20 @@ const StudentManagement: React.FC<StudentManagementProps> = ({ initialTab }) => 
   // Update handleAddOrUpdateStudent
   const handleAddOrUpdateStudent = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (isSubmitting) return;
+    
+    setIsSubmitting(true);
+    
     try {
       if (editingStudent) {
-        setIsModalOpen(false);
-        const confirmed = await confirm({
-          title: 'Konfirmasi Perubahan',
-          message: 'Anda yakin ingin melakukan perubahan data siswa? Perubahan tidak dapat dikembalikan.',
-          confirmText: 'Ya, Ubah',
-          cancelText: 'Batal'
+        await updateStudent(editingStudent.id, newStudent, selectedPhoto || undefined);
+        showAlert({
+          type: 'success',
+          message: 'Data siswa berhasil diperbarui'
         });
-
-        if (confirmed) {
-          await updateStudent(editingStudent.id, newStudent, selectedPhoto || undefined);
-          showAlert({
-            type: 'success',
-            message: 'Data siswa berhasil diperbarui'
-          });
-          resetForm();
-        } else {
-          // Reset foto jika user membatalkan
-          setSelectedPhoto(null);
-          setPhotoPreview(editingStudent.photoUrl || null);
-          setIsModalOpen(true);
-          return;
-        }
+        resetForm();
+        setIsModalOpen(false);
       } else {
         await addStudent(newStudent, selectedPhoto || undefined);
         showAlert({
@@ -223,7 +129,6 @@ const StudentManagement: React.FC<StudentManagementProps> = ({ initialTab }) => 
         });
         resetForm();
         setIsModalOpen(false);
-        // Pindah ke tab aktif setelah menambah siswa baru
         setActiveTab('active');
       }
     } catch (error) {
@@ -231,6 +136,8 @@ const StudentManagement: React.FC<StudentManagementProps> = ({ initialTab }) => 
         type: 'error',
         message: 'Gagal menyimpan data siswa'
       });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -914,6 +821,51 @@ const StudentManagement: React.FC<StudentManagementProps> = ({ initialTab }) => 
     }
   };
 
+  const handleData = async () => {
+    if (!currentUser) return;
+
+    // Filter students berdasarkan tab yang aktif dan role
+    let filteredStudents = activeTab === 'active' 
+      ? students.filter(s => !s.isDeleted && s.status === 'Aktif')
+      : activeTab === 'deleted'
+      ? allStudents.filter(s => s.isDeleted && s.status === 'Aktif')
+      : activeTab === 'deleted_graduated'
+      ? allStudents.filter(s => s.isDeleted && s.status === 'Lulus')
+      : activeTab === 'graduated'
+      ? allStudents.filter(s => !s.isDeleted && s.status === 'Lulus')
+      : [];
+
+    // Tambahkan filter tahun untuk tab lulusan
+    if ((activeTab === 'graduated' || activeTab === 'deleted_graduated') && selectedYear !== 'all') {
+      filteredStudents = filteredStudents.filter(s => s.graduationYear === selectedYear);
+    }
+
+    // Group students berdasarkan tab
+    if (activeTab === 'graduated' || activeTab === 'deleted_graduated') {
+      const groupedByYear = filteredStudents.reduce((acc: Record<string, Student[]>, student: Student) => {
+        const year = student.graduationYear || 'Tanpa Tahun';
+        const groupKey = `Lulusan ${year}`;
+        if (!acc[groupKey]) acc[groupKey] = [];
+        acc[groupKey].push(student);
+        return acc;
+      }, {});
+      setGroupedStudents(groupedByYear);
+    } else {
+      // Group by barak
+      const groupedByBarak = filteredStudents.reduce((acc: Record<string, Student[]>, student: Student) => {
+        if (!acc[student.barak]) acc[student.barak] = [];
+        acc[student.barak].push(student);
+        return acc;
+      }, {});
+      setGroupedStudents(groupedByBarak);
+    }
+  };
+
+  // Tampilkan loading state
+  if (isLoading) {
+    return <LoadingSpinner />;
+  }
+
   return (
     <>
       {/* Alert dan ConfirmationModal */}
@@ -1247,14 +1199,21 @@ const StudentManagement: React.FC<StudentManagementProps> = ({ initialTab }) => 
             </button>
             <button
               type="submit"
-              disabled={!newStudent.barak}
+              disabled={!newStudent.barak || isSubmitting}
               className={`px-4 py-2 rounded-lg ${
-                !newStudent.barak
+                !newStudent.barak || isSubmitting
                   ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                   : 'bg-blue-500 text-white hover:bg-blue-600'
               }`}
             >
-              {editingStudent ? 'Update' : 'Simpan'}
+              {isSubmitting ? (
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  <span>Menyimpan...</span>
+                </div>
+              ) : (
+                editingStudent ? 'Update' : 'Simpan'
+              )}
             </button>
           </div>
         </form>

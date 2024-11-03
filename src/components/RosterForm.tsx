@@ -7,7 +7,6 @@ interface RosterFormProps {
   isOpen: boolean;
   onClose: () => void;
   teachers: Teacher[];
-  classes: string[];
   onSubmit: (entry: Omit<RosterEntry, 'id'>) => void;
   initialData?: RosterEntry | null;
   preselectedTeacherId?: string | null;
@@ -23,7 +22,6 @@ const RosterForm: React.FC<RosterFormProps> = ({
   isOpen, 
   onClose, 
   teachers, 
-  classes, 
   onSubmit, 
   initialData, 
   preselectedTeacherId
@@ -31,12 +29,13 @@ const RosterForm: React.FC<RosterFormProps> = ({
   const [formData, setFormData] = useState<Omit<RosterEntry, 'id'>>({
     teacherId: preselectedTeacherId || '',
     dayOfWeek: 'Senin',
-    classId: classes[0],
+    classId: '',
     hours: [],
     createdAt: new Date().toISOString()
   });
   const [conflicts, setConflicts] = useState<Conflict[]>([]);
   const { roster } = useRoster();
+  const [selectedGrade, setSelectedGrade] = useState<'X' | 'XI' | 'XII' | ''>('X');
 
   const days = Object.keys(daySchedule) as DayOfWeek[];
 
@@ -47,9 +46,6 @@ const RosterForm: React.FC<RosterFormProps> = ({
     teacherSchedules: [],
     classSchedules: []
   });
-
-  const [grade, setGrade] = useState<'X' | 'XI' | 'XII' | ''>('');
-  const gradeOptions = ['X', 'XI', 'XII'];
 
   const updateExistingSchedules = useCallback(() => {
     if (formData.teacherId && formData.dayOfWeek && formData.classId) {
@@ -88,23 +84,24 @@ const RosterForm: React.FC<RosterFormProps> = ({
     
     const teacherSchedule = existingSchedules.teacherSchedules.find(s => s.hours.includes(hour));
     if (teacherSchedule) {
-      details.push(`Guru sudah mengajar kelas ${teacherSchedule.classId}`);
+      const currentTeacher = teachers.find(t => t.id === formData.teacherId);
+      details.push(`${currentTeacher?.name} memiliki jadwal di ${teacherSchedule.classId}`);
     }
 
     const classSchedule = existingSchedules.classSchedules.find(s => s.hours.includes(hour));
     if (classSchedule) {
       const teacher = teachers.find(t => t.id === classSchedule.teacherId);
-      details.push(`Kelas ${classSchedule.classId} sudah ada jadwal dengan ${teacher?.name || 'Unknown'} (${teacher?.code || 'Unknown'})`);
+      details.push(`${formData.classId} sudah ada ${teacher?.name}`);
     }
 
-    return details.join(', ');
+    return details.join(' | ');
   };
 
   useEffect(() => {
     if (initialData) {
       setFormData(initialData);
       const gradeFromClassId = initialData.classId.split('-')[0] as 'X' | 'XI' | 'XII';
-      setGrade(gradeFromClassId);
+      setSelectedGrade(gradeFromClassId);
     } else if (preselectedTeacherId) {
       setFormData(prev => ({
         ...prev,
@@ -162,6 +159,10 @@ const RosterForm: React.FC<RosterFormProps> = ({
       alert('Harap pilih hari.');
       return;
     }
+    if (!formData.classId) {
+      alert('Harap pilih kelas.');
+      return;
+    }
     
     const submitData = {
       ...formData,
@@ -190,24 +191,43 @@ const RosterForm: React.FC<RosterFormProps> = ({
   const getConflictMessage = () => {
     if (conflicts.length === 0) return '';
 
-    const conflictHours = [...new Set(conflicts.map(c => c.hour))].sort((a, b) => a - b).join(', ');
-    const classConflicts = conflicts.filter(c => c.conflictType === 'class');
-    const teacherConflicts = conflicts.filter(c => c.conflictType === 'teacher');
-    
-    let message = `Konflik jadwal pada jam ${conflictHours}: `;
-    
-    if (classConflicts.length > 0) {
-      const conflictingTeachers = [...new Set(classConflicts.map(c => c.conflictWith))].join(', ');
-      message += `Kelas ${formData.classId} sudah ada jadwal dengan ${conflictingTeachers}. `;
-    }
-    
-    if (teacherConflicts.length > 0) {
-      const conflictingClasses = [...new Set(teacherConflicts.map(c => c.conflictWith))].join(', ');
-      const teacherName = teachers.find(t => t.id === formData.teacherId)?.name || 'Unknown Teacher';
-      message += `${teacherName} sudah mengajar kelas ${conflictingClasses}.`;
-    }
-    
-    return message.trim();
+    const conflictsByHour = conflicts.reduce((acc, conflict) => {
+      if (!acc[conflict.hour]) {
+        acc[conflict.hour] = { class: false, teacher: false, details: { teacher: '', class: '' } };
+      }
+      if (conflict.conflictType === 'class') {
+        acc[conflict.hour].class = true;
+        acc[conflict.hour].details.class = conflict.conflictWith;
+      }
+      if (conflict.conflictType === 'teacher') {
+        acc[conflict.hour].teacher = true;
+        acc[conflict.hour].details.teacher = conflict.conflictWith;
+      }
+      return acc;
+    }, {} as Record<number, { 
+      class: boolean; 
+      teacher: boolean; 
+      details: { 
+        teacher: string; 
+        class: string; 
+      } 
+    }>);
+
+    return Object.entries(conflictsByHour)
+      .map(([hour, info]) => {
+        const messages = [];
+        const currentTeacher = teachers.find(t => t.id === formData.teacherId);
+        
+        if (info.teacher) {
+          messages.push(`${currentTeacher?.name} memiliki jadwal di ${info.details.teacher}`);
+        }
+        if (info.class) {
+          messages.push(`${formData.classId} sudah ada ${info.details.class}`);
+        }
+        
+        return `JP ${hour}: ${messages.join(' | ')}`;
+      })
+      .join(' | ');
   };
 
   const isFormValid = useMemo(() => {
@@ -257,53 +277,53 @@ const RosterForm: React.FC<RosterFormProps> = ({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Tingkatan Kelas</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Tingkat</label>
             <div className="grid grid-cols-3 gap-2">
-              {gradeOptions.map((g) => (
+              {['X', 'XI', 'XII'].map((grade) => (
                 <button
-                  key={g}
+                  key={grade}
                   type="button"
-                  onClick={() => setGrade(g as "X" | "XI" | "XII")}
-                  className={`min-w-[80px] min-h-[40px] p-2 text-sm rounded-md ${
-                    grade === g 
-                      ? 'bg-blue-500 text-white' 
-                      : 'bg-gray-200 text-gray-700'
+                  onClick={() => setSelectedGrade(grade as 'X' | 'XI' | 'XII')}
+                  className={`p-2.5 rounded-md transition-colors ${
+                    selectedGrade === grade
+                      ? 'bg-blue-500 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                 >
-                  {g}
+                  {grade}
                 </button>
               ))}
             </div>
           </div>
         </div>
 
-        {grade && (
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Kelas</label>
-            <div className="grid grid-cols-3 gap-2">
-              {Array.from({ length: 6 }, (_, i) => i + 1).map((num) => {
-                const cls = `${grade}-${num}`;
-                return (
-                  <button
-                    key={cls}
-                    type="button" 
-                    onClick={() => setFormData(prev => ({
-                      ...prev,
-                      classId: cls
-                    }))}
-                    className={`min-w-[80px] min-h-[40px] p-2 text-sm rounded-md ${
-                      formData.classId === cls 
-                        ? 'bg-blue-500 text-white' 
-                        : 'bg-gray-200 text-gray-700'
-                    }`}
-                  >
-                    {cls}
-                  </button>
-                );
-              })}
-            </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Kelas
+          </label>
+          <div className="grid grid-cols-3 gap-2">
+            {Array.from({ length: 6 }, (_, i) => i + 1).map((num) => {
+              const cls = `${selectedGrade}-${num}`;
+              return (
+                <button
+                  key={cls}
+                  type="button"
+                  onClick={() => setFormData(prev => ({
+                    ...prev,
+                    classId: cls
+                  }))}
+                  className={`p-2.5 rounded-md transition-colors ${
+                    formData.classId === cls 
+                      ? 'bg-blue-500 text-white' 
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  {cls}
+                </button>
+              );
+            })}
           </div>
-        )}
+        </div>
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Hari</label>
@@ -386,7 +406,7 @@ const RosterForm: React.FC<RosterFormProps> = ({
           </p>
         )}
 
-        <div className="flex justify-end space-x-3">
+        <div className="flex justify-end space-x-3 pt-4 border-t">
           <button
             type="button"
             onClick={onClose}
@@ -397,23 +417,15 @@ const RosterForm: React.FC<RosterFormProps> = ({
           <button
             type="submit"
             disabled={!isFormValid || conflicts.length > 0}
-            className={`px-4 py-2 text-white rounded-lg ${
+            className={`px-4 py-2 rounded-lg ${
               !isFormValid || conflicts.length > 0
-                ? 'bg-gray-400 cursor-not-allowed'
-                : 'bg-blue-500 hover:bg-blue-600'
+                ? 'bg-gray-400 cursor-not-allowed text-white'
+                : 'bg-blue-500 hover:bg-blue-600 text-white'
             }`}
           >
             {initialData ? 'Update' : 'Simpan'}
           </button>
         </div>
-
-        {!isFormValid && (
-          <p className="text-red-500 text-sm text-center">
-            {!formData.teacherId ? 'Pilih guru' : 
-             !formData.dayOfWeek ? 'Pilih hari' :
-             !formData.classId ? 'Pilih kelas' : ''}
-          </p>
-        )}
       </form>
     </Modal>
   );

@@ -4,6 +4,7 @@ import { db } from '../firebase';
 import { Student } from '../types';
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { storage } from '../firebase'; // Pastikan storage sudah diexport dari firebase.ts
+import { unstable_batchedUpdates } from 'react-dom';
 
 interface StudentContextType {
   students: Student[];
@@ -25,59 +26,81 @@ export const StudentProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   useEffect(() => {
     const studentsRef = ref(db, 'students');
-    onValue(studentsRef, (snapshot) => {
+    const unsubscribe = onValue(studentsRef, (snapshot) => {
       const data = snapshot.val();
       if (data) {
         const studentsList = Object.entries(data).map(([id, student]) => ({
           id,
           ...(student as Omit<Student, 'id'>)
         }));
-        // Filter untuk tampilan aktif
-        const activeStudents = studentsList.filter(student => !student.isDeleted);
-        setStudents(activeStudents);
         
-        // Simpan semua siswa termasuk yang dihapus
-        setAllStudents(studentsList);
+        unstable_batchedUpdates(() => {
+          setStudents(studentsList.filter(student => !student.isDeleted));
+          setAllStudents(studentsList);
+        });
       } else {
-        setStudents([]);
-        setAllStudents([]);
+        unstable_batchedUpdates(() => {
+          setStudents([]);
+          setAllStudents([]);
+        });
       }
     });
+
+    return () => unsubscribe();
   }, []);
 
   const uploadPhoto = async (file: File, studentId: string, student: Omit<Student, 'id'>): Promise<string> => {
-    // Get file extension
-    const extension = file.name.split('.').pop()?.toLowerCase() || '';
-    
-    // Create filename: nama_siswa_kelas_barak.extension
-    const fileName = `${student.fullName.replace(/\s+/g, '_')}_${student.class}_${student.barak.replace(/\s+/g, '_')}.${extension}`;
-    
-    // Create reference with new filename
-    const fileRef = storageRef(storage, `student-photos/${studentId}/${fileName}`);
-    await uploadBytes(fileRef, file);
-    return getDownloadURL(fileRef);
+    try {
+      const extension = file.name.split('.').pop()?.toLowerCase() || '';
+      const fileName = `${student.fullName.replace(/\s+/g, '_')}_${student.class}_${student.barak.replace(/\s+/g, '_')}.${extension}`;
+      const fileRef = storageRef(storage, `student-photos/${studentId}/${fileName}`);
+      
+      const metadata = {
+        cacheControl: 'public,max-age=7200',
+        contentType: `image/${extension}`
+      };
+      
+      const uploadResult = await uploadBytes(fileRef, file, metadata);
+      
+      return getDownloadURL(uploadResult.ref);
+    } catch (error) {
+      console.error('Error uploading photo:', error);
+      throw error;
+    }
   };
 
   const addStudent = async (student: Omit<Student, 'id'>, photoFile?: File) => {
     const studentsRef = ref(db, 'students');
     const newStudentRef = push(studentsRef);
     
-    if (photoFile) {
-      const photoUrl = await uploadPhoto(photoFile, newStudentRef.key!, student);
-      await update(newStudentRef, { ...student, photoUrl });
-    } else {
-      await update(newStudentRef, student);
+    try {
+      if (photoFile) {
+        const photoUrl = await uploadPhoto(photoFile, newStudentRef.key!, student);
+        await update(newStudentRef, { ...student, photoUrl });
+      } else {
+        await update(newStudentRef, student);
+      }
+      
+    } catch (error) {
+      console.error('Error adding student:', error);
+      throw error;
     }
   };
 
   const updateStudent = async (id: string, updatedStudent: Omit<Student, 'id'>, photoFile?: File) => {
     const studentRef = ref(db, `students/${id}`);
     
-    if (photoFile) {
-      const photoUrl = await uploadPhoto(photoFile, id, updatedStudent);
-      await update(studentRef, { ...updatedStudent, photoUrl });
-    } else {
-      await update(studentRef, updatedStudent);
+    try {
+      if (photoFile) {
+        const photoUrl = await uploadPhoto(photoFile, id, updatedStudent);
+        await update(studentRef, { ...updatedStudent, photoUrl });
+      } else {
+        await update(studentRef, updatedStudent);
+      }
+      
+    } catch (error) {
+      console.error('Error updating student:', error);
+      throw error;
     }
   };
 

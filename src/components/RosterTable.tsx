@@ -159,7 +159,6 @@ interface RosterTableProps {
   teachers: Teacher[];
   onAdd: (entry: Omit<RosterEntry, 'id'>) => void;
   onUpdate: (id: string, entry: Omit<RosterEntry, 'id'>) => void;
-  classes: string[];
 }
 
 // Tambahkan interface untuk RosterHistoryModal
@@ -221,8 +220,7 @@ const RosterTable: React.FC<RosterTableProps> = ({
   roster, 
   teachers, 
   onAdd, 
-  onUpdate, 
-  classes 
+  onUpdate 
 }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [openTeachers, setOpenTeachers] = useState<string[]>([]);
@@ -447,7 +445,6 @@ const RosterTable: React.FC<RosterTableProps> = ({
               setAddingForTeacher(null);
             }}
             teachers={teachers}
-            classes={classes}
             onSubmit={handleSubmit}
             initialData={editingEntry}
             preselectedTeacherId={addingForTeacher}

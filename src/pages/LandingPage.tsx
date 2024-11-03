@@ -45,6 +45,11 @@ const LandingPage: React.FC = () => {
   const { violations } = useViolation();
   const [academicStats, setAcademicStats] = useState<StatsItem[]>([]);
   const [dormitoryStats, setDormitoryStats] = useState<StatsItem[]>([]);
+  // Fungsi helper untuk pengecekan role
+  const checkRole = (allowedRoles: string[]): boolean => {
+    if (!user?.role) return false;
+    return allowedRoles.includes(user.role);
+  };
 
   useEffect(() => {
     const dayOfWeek = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'][new Date().getDay() - 1] as DayOfWeek;
@@ -165,13 +170,13 @@ const LandingPage: React.FC = () => {
       }
     ];
 
-    if (user?.role === 'admin_master') {
+    if (checkRole(['admin_master'])) {
       setAcademicStats(academicStatsData);
       setDormitoryStats(dormitoryStatsData);
-    } else if (user?.role === 'admin' || user?.role === 'piket') {
+    } else if (checkRole(['admin', 'piket'])) {
       setAcademicStats(academicStatsData);
       setDormitoryStats([]);
-    } else if (user?.role === 'admin_asrama' || user?.role === 'pengasuh') {
+    } else if (checkRole(['admin_asrama', 'pengasuh'])) {
       setAcademicStats([]);
       setDormitoryStats(dormitoryStatsData);
     }

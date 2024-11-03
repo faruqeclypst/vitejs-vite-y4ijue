@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { ref, onValue, Unsubscribe } from 'firebase/database';
 import { db } from '../firebase';
+import { unstable_batchedUpdates } from 'react-dom';
 
 interface UseFirebaseDataOptions<T> {
   path: string;
@@ -16,49 +17,63 @@ export const useFirebaseData = <T>({
   const [data, setData] = useState<T | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  
+  // Ref untuk tracking initial load
+  const initialLoadRef = useRef(true);
+  
+  // Ref untuk latest data
+  const latestDataRef = useRef<T | null>(null);
 
   useEffect(() => {
     let isMounted = true;
-    let retryCount = 0;
-    const maxRetries = 3;
-    let retryTimeout: NodeJS.Timeout;
     let unsubscribe: Unsubscribe | undefined;
 
     const loadData = () => {
       try {
-        setIsLoading(true);
-        setError(null);
-
         const dbRef = ref(db, path);
         
+        // Selalu set loading true pada initial load
+        if (initialLoadRef.current) {
+          setIsLoading(true);
+        }
+
         unsubscribe = onValue(dbRef, 
           (snapshot) => {
             if (isMounted) {
               const rawData = snapshot.val();
               const transformedData = transform ? transform(rawData) : rawData;
-              setData(transformedData);
-              setIsLoading(false);
-              retryCount = 0;
+              
+              // Update latest data ref
+              latestDataRef.current = transformedData;
+
+              // Batch updates
+              unstable_batchedUpdates(() => {
+                setData(transformedData);
+                setIsLoading(false);
+                setError(null);
+                initialLoadRef.current = false;
+              });
             }
           },
           (error) => {
             console.error(`Firebase error for ${path}:`, error);
             if (isMounted) {
-              setError(error as Error);
-              setIsLoading(false);
-              
-              if (retryCount < maxRetries) {
-                retryCount++;
-                retryTimeout = setTimeout(loadData, 1000 * retryCount);
-              }
+              unstable_batchedUpdates(() => {
+                setError(error as Error);
+                setIsLoading(false);
+                initialLoadRef.current = false;
+              });
             }
           }
         );
       } catch (error) {
         console.error(`Error loading ${path}:`, error);
         if (isMounted) {
-          setError(error as Error);
-          setIsLoading(false);
+          unstable_batchedUpdates(() => {
+            setError(error as Error);
+            setIsLoading(false);
+            initialLoadRef.current = false;
+          });
         }
       }
     };
@@ -67,10 +82,34 @@ export const useFirebaseData = <T>({
     
     return () => {
       isMounted = false;
-      if (retryTimeout) clearTimeout(retryTimeout);
-      if (unsubscribe) unsubscribe();
+      if (unsubscribe) {
+        unsubscribe();
+      }
     };
   }, [path, transform, ...dependencies]);
 
-  return { data, isLoading, error };
+  // Jika masih loading tapi sudah ada data sebelumnya, gunakan data terakhir
+  if (isLoading && latestDataRef.current) {
+    return { 
+      data: latestDataRef.current, 
+      isLoading: true, 
+      error: null 
+    };
+  }
+
+  // Error handling
+  if (error) {
+    console.error(`Error loading data from ${path}:`, error);
+    return { 
+      data: latestDataRef.current, // Tetap return latest data jika ada error
+      isLoading: false, 
+      error 
+    };
+  }
+
+  return { 
+    data, 
+    isLoading: isLoading && initialLoadRef.current, // Hanya loading pada initial load
+    error: null 
+  };
 }; 

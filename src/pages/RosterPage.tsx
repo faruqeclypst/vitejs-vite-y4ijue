@@ -4,7 +4,7 @@ import Alert from '../components/Alert';
 import ConfirmationModal from '../components/ConfirmationModal';
 import { useRoster } from '../contexts/RosterContext';
 import { useTeachers } from '../contexts/TeachersContext';
-import { availableClasses, RosterEntry } from '../types';
+import { RosterEntry } from '../types';
 import useAlert from '../hooks/useAlert';
 import useConfirmation from '../hooks/useConfirmation';
 
@@ -55,7 +55,6 @@ const RosterPage: React.FC = () => {
               teachers={teachers}
               onAdd={handleAddRosterEntry}
               onUpdate={handleUpdateRosterEntry}
-              classes={availableClasses}
             />
           </div>
         </div>
