@@ -11,6 +11,8 @@ import useConfirmation from '../hooks/useConfirmation';
 import ViolationHistory from './ViolationHistory';
 import ViolationForm from './ViolationForm';
 import LoadingSpinner from './common/LoadingSpinner';
+import EmptyState from './common/EmptyState';
+import { AlertCircle } from 'lucide-react';
 
 const ViolationManagement: React.FC = () => {
   const { violations, addViolation, updateViolation } = useViolation();
@@ -187,6 +189,19 @@ const ViolationManagement: React.FC = () => {
 
         {/* Daftar Pelanggaran (Dikelompokkan per Siswa) */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-2">
+          {Object.keys(groupedViolations).length === 0 && (
+            <div className="col-span-1 lg:col-span-2">
+              <EmptyState
+                icon={AlertCircle}
+                title={searchTerm ? 'Tidak ada hasil pencarian' : 'Tidak ada data pelanggaran'}
+                description={searchTerm ? 'Coba kata kunci lain' : 'Belum ada pelanggaran yang tercatat'}
+                action={!searchTerm ? {
+                  label: 'Tambah Pelanggaran',
+                  onClick: handleAddViolation
+                } : undefined}
+              />
+            </div>
+          )}
           {groupedViolations.map(({ student, violations }) => {
             const latestViolation = violations[currentViolationIndex % violations.length];
             const unresolved = violations.filter(v => !v.isResolved).length;

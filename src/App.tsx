@@ -13,11 +13,12 @@ import { useState } from 'react';
 import { BarakProvider } from './contexts/BarakContext';
 import { ViolationProvider } from './contexts/ViolationContext';
 import { GuidanceProvider } from './contexts/GuidanceContext';
+import { ErrorBoundary, FallbackProps } from 'react-error-boundary';
 
 // Lazy load pages
 const Login = lazy(() => import('./components/Login'));
 const LandingPage = lazy(() => import('./pages/LandingPage'));
-const TeachersPage = lazy(() => import('./pages/TeachersPage' /* webpackChunkName: "teachers" */));
+const TeachersPage = lazy(() => import('./pages/TeachersPage'));
 const RosterPage = lazy(() => import('./pages/RosterPage'));
 const AttendancePage = lazy(() => import('./pages/AttendancePage'));
 const UserManagementPage = lazy(() => import('./pages/UserManagementPage'));
@@ -28,18 +29,41 @@ const ViolationPage = lazy(() => import('./pages/ViolationPage'));
 const GuidancePage = lazy(() => import('./pages/GuidancePage'));
 
 // Loading component
-const LoadingSpinner = () => (
-  <div className="flex items-center justify-center min-h-screen">
+interface LoadingSpinnerProps {
+  fullScreen?: boolean;
+}
+
+const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({ fullScreen }) => (
+  <div className={`flex items-center justify-center ${fullScreen ? 'min-h-screen' : ''}`}>
     <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
   </div>
 );
+
+const ErrorFallback: React.FC<FallbackProps> = ({ error, resetErrorBoundary }) => {
+  return (
+    <div className="min-h-screen flex items-center justify-center p-4">
+      <div className="text-center">
+        <h2 className="text-xl font-bold text-red-600 mb-4">
+          Terjadi kesalahan
+        </h2>
+        <pre className="text-sm text-gray-500 mb-4">{error.message}</pre>
+        <button
+          onClick={resetErrorBoundary}
+          className="px-4 py-2 bg-blue-500 text-white rounded-lg"
+        >
+          Coba lagi
+        </button>
+      </div>
+    </div>
+  );
+};
 
 const AppRoutes = () => {
   const { user, isLoading } = useAuth();
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
 
   if (isLoading) {
-    return <LoadingSpinner />;
+    return <LoadingSpinner fullScreen />;
   }
 
   return (
@@ -51,7 +75,7 @@ const AppRoutes = () => {
           transition-[margin] duration-300 ease-in-out`}>
           {user && <Header />}
           <main className={`flex-1 ${!user ? 'h-full' : ''}`}>
-            <Suspense fallback={<LoadingSpinner />}>
+            <Suspense fallback={<LoadingSpinner fullScreen />}>
               <Routes>
                 <Route 
                   path="/login" 
@@ -149,25 +173,29 @@ const AppRoutes = () => {
 };
 
 const App = () => (
-  <AuthProvider>
-    <TeachersProvider>
-      <RosterProvider>
-        <AttendanceProvider>
-          <StudentProvider>
-            <BarakProvider>
-              <StudentLeaveProvider>
-                <ViolationProvider>
-                  <GuidanceProvider>
-                    <AppRoutes />
-                  </GuidanceProvider>
-                </ViolationProvider>
-              </StudentLeaveProvider>
-            </BarakProvider>
-          </StudentProvider>
-        </AttendanceProvider>
-      </RosterProvider>
-    </TeachersProvider>
-  </AuthProvider>
+  <ErrorBoundary FallbackComponent={ErrorFallback}>
+    <AuthProvider>
+      <Suspense fallback={<LoadingSpinner fullScreen />}>
+        <TeachersProvider>
+          <RosterProvider>
+            <AttendanceProvider>
+              <StudentProvider>
+                <BarakProvider>
+                  <StudentLeaveProvider>
+                    <ViolationProvider>
+                      <GuidanceProvider>
+                        <AppRoutes />
+                      </GuidanceProvider>
+                    </ViolationProvider>
+                  </StudentLeaveProvider>
+                </BarakProvider>
+              </StudentProvider>
+            </AttendanceProvider>
+          </RosterProvider>
+        </TeachersProvider>
+      </Suspense>
+    </AuthProvider>
+  </ErrorBoundary>
 );
 
 export default App;

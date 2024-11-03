@@ -8,6 +8,7 @@ import Alert from './Alert';
 import useAlert from '../hooks/useAlert';
 import ConfirmationModal from './ConfirmationModal';
 import useConfirmation from '../hooks/useConfirmation';
+import EmptyState from './common/EmptyState';
 
 const GuidanceManagement: React.FC = () => {
   const { addGuidance, getViolationGuidances } = useGuidance();
@@ -297,21 +298,11 @@ const GuidanceManagement: React.FC = () => {
         </div>
 
         {Object.keys(groupedViolations).length === 0 && (
-          <div className="text-center py-12">
-            <AlertCircle className="mx-auto h-12 w-12 text-gray-400" />
-            <h3 className="mt-2 text-sm font-medium text-gray-900">
-              {searchTerm 
-                ? 'Tidak ada hasil pencarian'
-                : 'Tidak ada siswa yang perlu dibina'
-              }
-            </h3>
-            <p className="mt-1 text-sm text-gray-500">
-              {searchTerm 
-                ? 'Coba kata kunci lain'
-                : 'Semua pelanggaran sudah ditangani'
-              }
-            </p>
-          </div>
+          <EmptyState
+            icon={AlertCircle}
+            title={searchTerm ? 'Tidak ada hasil pencarian' : 'Tidak ada siswa yang perlu dibina'}
+            description={searchTerm ? 'Coba kata kunci lain' : 'Semua pelanggaran sudah ditangani'}
+          />
         )}
 
         {isModalOpen && selectedViolation && selectedStudent && (

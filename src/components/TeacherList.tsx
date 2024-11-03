@@ -1,8 +1,9 @@
-import React, { useState, useMemo, Suspense } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Teacher } from '../types';
 import { Users, Edit, Trash2, Search, UserPlus, History } from 'lucide-react';
 import TeacherForm from './TeacherForm';
-import LoadingSpinner from './common/LoadingSpinner';
+import EmptyState from './common/EmptyState';
+import LoadingState from './common/LoadingState';
 
 type TabType = 'active' | 'deleted';
 
@@ -33,7 +34,8 @@ const TeacherList: React.FC<TeacherListProps> = ({
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState<TabType>('active');
-  
+  const [isLoading, setIsLoading] = useState(true);
+
   const filteredAndSortedTeachers = useMemo(() => {
     return teachers
       .filter(teacher => {
@@ -45,17 +47,25 @@ const TeacherList: React.FC<TeacherListProps> = ({
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [teachers, searchTerm, activeTab]);
 
+  useEffect(() => {
+    if (teachers.length > 0) {
+      setIsLoading(false);
+    }
+  }, [teachers]);
+
+  if (isLoading) {
+    return <LoadingState message="Memuat data guru..." />;
+  }
+
   return (
     <>
       {showModal && (
-        <Suspense fallback={<LoadingSpinner />}>
-          <TeacherForm 
-            isOpen={showModal}
-            onClose={onCloseModal}
-            onSubmit={onSubmit}
-            initialTeacher={selectedTeacher}
-          />
-        </Suspense>
+        <TeacherForm 
+          isOpen={showModal}
+          onClose={onCloseModal}
+          onSubmit={onSubmit}
+          initialTeacher={selectedTeacher}
+        />
       )}
 
       <div className="space-y-6">
@@ -183,13 +193,15 @@ const TeacherList: React.FC<TeacherListProps> = ({
 
         {/* Empty State */}
         {filteredAndSortedTeachers.length === 0 && (
-          <div className="text-center py-12">
-            <Users className="mx-auto h-12 w-12 text-gray-400" />
-            <h3 className="mt-2 text-sm font-medium text-gray-900">Tidak ada guru</h3>
-            <p className="mt-1 text-sm text-gray-500">
-              {searchTerm ? 'Tidak ada hasil pencarian' : 'Mulai dengan menambahkan guru baru'}
-            </p>
-          </div>
+          <EmptyState
+            icon={Users}
+            title={searchTerm ? 'Tidak ada hasil pencarian' : 'Tidak ada data guru'}
+            description={searchTerm ? 'Coba kata kunci lain' : 'Mulai dengan menambahkan guru baru'}
+            action={!searchTerm ? {
+              label: 'Tambah Guru',
+              onClick: onOpenModal
+            } : undefined}
+          />
         )}
       </div>
     </>

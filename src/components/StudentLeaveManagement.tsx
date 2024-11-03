@@ -12,6 +12,7 @@ import Alert from '../components/Alert';
 import useAlert from '../hooks/useAlert';
 import { ref, onValue } from 'firebase/database';
 import { db } from '../firebase';
+import EmptyState from './common/EmptyState';
 
 const StudentLeaveManagement: React.FC = () => {
   const { leaves, addLeave, updateLeave, deleteLeave } = useStudentLeave();
@@ -708,13 +709,18 @@ const StudentLeaveManagement: React.FC = () => {
 
       {/* Empty State */}
       {filteredLeavesByDate.length === 0 && (
-        <div className="text-center py-12 bg-white rounded-lg shadow-sm border">
-          <Calendar className="mx-auto h-12 w-12 text-gray-400" />
-          <h3 className="mt-2 text-sm font-medium text-gray-900">Belum ada perizinan yang dibuat hari ini</h3>
-          <p className="mt-1 text-sm text-gray-500">
-            Klik tombol "Tambah Perizinan" untuk membuat perizinan baru
-          </p>
-        </div>
+        <EmptyState
+          icon={Calendar}
+          title={searchTerm ? 'Tidak ada hasil pencarian' : 'Tidak ada perizinan untuk tanggal ini'}
+          description={searchTerm 
+            ? 'Coba kata kunci lain' 
+            : 'Klik tombol "Tambah Perizinan" untuk membuat perizinan baru'
+          }
+          action={!searchTerm ? {
+            label: 'Tambah Perizinan',
+            onClick: () => setIsModalOpen(true)
+          } : undefined}
+        />
       )}
 
       {/* Modal form */}
